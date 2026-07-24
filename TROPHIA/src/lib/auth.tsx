@@ -114,14 +114,11 @@ export function useAuth(): AuthContextValue {
 
 */
 
-
-
-
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { supabase } from './supabase';
 import { db } from './db';
 import { seedExercises } from './seed';
-import { startSyncLoop, pendingCount } from './sync';
+import { startSyncLoop, pendingCount, flush } from './sync';
 
 export interface SupabaseUser {
   id: string;
@@ -185,6 +182,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error || !data) return false;
       setUser(data as SupabaseUser);
       localStorage.setItem(SESSION_KEY, JSON.stringify({ id: data.id }));
+      
+      // Forzar descarga inmediata de los datos del usuario al iniciar sesión
+      await flush().catch(() => {});
+
       return true;
     },
     logout: () => {
