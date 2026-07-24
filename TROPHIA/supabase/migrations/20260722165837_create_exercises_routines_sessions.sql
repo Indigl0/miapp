@@ -50,6 +50,8 @@ store exercises, routines, and training sessions so they sync across devices.
 3. `updated_at` is used for conflict resolution — the sync logic compares
    timestamps to decide whether to push local or pull remote.
 */
+
+/*
 CREATE TABLE IF NOT EXISTS exercises (
   id uuid PRIMARY KEY,
   name text NOT NULL,
@@ -134,3 +136,125 @@ CREATE POLICY "anon_update_sessions" ON sessions FOR UPDATE
 DROP POLICY IF EXISTS "anon_delete_sessions" ON sessions;
 CREATE POLICY "anon_delete_sessions" ON sessions FOR DELETE
   TO anon, authenticated USING (true);
+
+
+*/
+
+
+
+
+-- Habilitar extensión si fuera necesario (por defecto ya viene)
+-- create extension if not exists "uuid-ossp";
+
+----------------------------------------------------
+-- 1. TABLA EXERCISES
+----------------------------------------------------
+CREATE TABLE IF NOT EXISTS exercises (
+    id uuid PRIMARY KEY,
+    user_id uuid REFERENCES auth.users(id) NOT NULL DEFAULT auth.uid(),
+    name text NOT NULL,
+    muscle_group text NOT NULL,
+    notes text,
+    created_at timestamptz DEFAULT now(),
+    updated_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE exercises ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "user_select_exercises" ON exercises;
+CREATE POLICY "user_select_exercises" ON exercises 
+FOR SELECT TO authenticated 
+USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "user_insert_exercises" ON exercises;
+CREATE POLICY "user_insert_exercises" ON exercises 
+FOR INSERT TO authenticated 
+WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "user_update_exercises" ON exercises;
+CREATE POLICY "user_update_exercises" ON exercises 
+FOR UPDATE TO authenticated 
+USING (auth.uid() = user_id) 
+WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "user_delete_exercises" ON exercises;
+CREATE POLICY "user_delete_exercises" ON exercises 
+FOR DELETE TO authenticated 
+USING (auth.uid() = user_id);
+
+
+----------------------------------------------------
+-- 2. TABLA ROUTINES
+----------------------------------------------------
+CREATE TABLE IF NOT EXISTS routines (
+    id uuid PRIMARY KEY,
+    user_id uuid REFERENCES auth.users(id) NOT NULL DEFAULT auth.uid(),
+    name text NOT NULL,
+    description text,
+    exercises jsonb NOT NULL DEFAULT '[]'::jsonb,
+    created_at timestamptz DEFAULT now(),
+    updated_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE routines ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "user_select_routines" ON routines;
+CREATE POLICY "user_select_routines" ON routines 
+FOR SELECT TO authenticated 
+USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "user_insert_routines" ON routines;
+CREATE POLICY "user_insert_routines" ON routines 
+FOR INSERT TO authenticated 
+WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "user_update_routines" ON routines;
+CREATE POLICY "user_update_routines" ON routines 
+FOR UPDATE TO authenticated 
+USING (auth.uid() = user_id) 
+WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "user_delete_routines" ON routines;
+CREATE POLICY "user_delete_routines" ON routines 
+FOR DELETE TO authenticated 
+USING (auth.uid() = user_id);
+
+
+----------------------------------------------------
+-- 3. TABLA SESSIONS
+----------------------------------------------------
+CREATE TABLE IF NOT EXISTS sessions (
+    id uuid PRIMARY KEY,
+    user_id uuid REFERENCES auth.users(id) NOT NULL DEFAULT auth.uid(),
+    routine_id uuid,
+    routine_name text NOT NULL,
+    date bigint NOT NULL,
+    exercises jsonb NOT NULL DEFAULT '[]'::jsonb,
+    notes text,
+    completed boolean NOT NULL DEFAULT false,
+    created_at timestamptz DEFAULT now(),
+    updated_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "user_select_sessions" ON sessions;
+CREATE POLICY "user_select_sessions" ON sessions 
+FOR SELECT TO authenticated 
+USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "user_insert_sessions" ON sessions;
+CREATE POLICY "user_insert_sessions" ON sessions 
+FOR INSERT TO authenticated 
+WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "user_update_sessions" ON sessions;
+CREATE POLICY "user_update_sessions" ON sessions 
+FOR UPDATE TO authenticated 
+USING (auth.uid() = user_id) 
+WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "user_delete_sessions" ON sessions;
+CREATE POLICY "user_delete_sessions" ON sessions 
+FOR DELETE TO authenticated 
+USING (auth.uid() = user_id);
