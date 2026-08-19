@@ -114,7 +114,6 @@ export function SessionTimer() {
   );
 }
 
-
 */
 
 
@@ -204,42 +203,51 @@ export function SessionTimer() {
   };
 
   return (
-    <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-gray-50 to-orange-50/40 dark:from-gray-800 dark:to-gray-800/90 border border-orange-100 dark:border-gray-700/80 px-3.5 py-2 shadow-sm transition-all">
-      {/* Icono con indicador de estado (pulso si está activo) */}
-      <div className="relative flex items-center justify-center p-2 bg-orange-500/10 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 rounded-xl">
-        <Timer size={18} />
-        {running && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-orange-500"></span>
-          </span>
-        )}
+    <div className="w-full bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/80 p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 transition-all">
+      {/* Lado izquierdo: Icono y etiqueta descriptiva */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex items-center justify-center p-3 bg-orange-500/10 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 rounded-2xl">
+          <Timer size={26} />
+          {running && (
+            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
+            </span>
+          )}
+        </div>
+        <div>
+          <span className="text-xs uppercase tracking-wider font-semibold text-gray-400 dark:text-gray-500 block">Tiempo de Sesión</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">Cronómetro en vivo</span>
+        </div>
       </div>
 
-      {/* Tiempo con tipografía más marcada */}
-      <span className="font-mono font-black text-lg sm:text-xl tracking-wider text-gray-900 dark:text-white tabular-nums">
-        {fmtTime(elapsed)}
-      </span>
+      {/* Centro: Números Gigantes del Cronómetro */}
+      <div className="text-center my-1 sm:my-0">
+        <span className="font-mono font-black text-4xl sm:text-5xl tracking-wider text-orange-600 dark:text-orange-500 tabular-nums">
+          {fmtTime(elapsed)}
+        </span>
+      </div>
 
-      {/* Controles estéticos */}
-      <div className="flex items-center gap-1 pl-1 border-l border-gray-200 dark:border-gray-700">
+      {/* Lado derecho: Controles grandes y cómodos */}
+      <div className="flex items-center gap-2 w-full sm:w-auto justify-center">
         <button
           onClick={toggleTimer}
-          className={`p-1.5 rounded-xl transition-all ${
+          className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl transition-all font-semibold flex items-center justify-center gap-2 text-white shadow-sm ${
             running 
-              ? 'bg-amber-500 text-white shadow-sm hover:bg-amber-600' 
-              : 'bg-orange-600 text-white shadow-sm hover:bg-orange-700'
+              ? 'bg-amber-500 hover:bg-amber-600' 
+              : 'bg-orange-600 hover:bg-orange-700'
           }`}
-          aria-label={running ? 'Pausar' : 'Iniciar'}
         >
-          {running ? <Pause size={15} /> : <Play size={15} />}
+          {running ? <Pause size={18} /> : <Play size={18} />}
+          <span>{running ? 'Pausar' : 'Iniciar'}</span>
         </button>
         <button
           onClick={resetTimer}
-          className="p-1.5 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+          className="p-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-xl transition"
+          title="Reiniciar"
           aria-label="Reiniciar"
         >
-          <RotateCcw size={15} />
+          <RotateCcw size={18} />
         </button>
       </div>
     </div>
