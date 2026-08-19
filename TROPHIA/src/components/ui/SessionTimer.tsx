@@ -221,9 +221,9 @@ export function SessionTimer() {
         </div>
       </div>
 
-      {/* Centro: Números Gigantes del Cronómetro */}
+      {/* Centro: Números limpios y claros sin ceros tachados */}
       <div className="text-center my-1 sm:my-0">
-        <span className="font-mono font-black text-4xl sm:text-5xl tracking-wider text-orange-600 dark:text-orange-500 tabular-nums">
+        <span className="font-sans font-black text-4xl sm:text-5xl tracking-tight text-orange-600 dark:text-orange-500 tabular-nums">
           {fmtTime(elapsed)}
         </span>
       </div>
