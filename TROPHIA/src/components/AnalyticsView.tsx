@@ -172,8 +172,10 @@ export function AnalyticsView() {
 */
 
 
+
+
 import { useMemo, useState } from 'react';
-import { BarChart3, TrendingUp, Activity, Calendar, FileDown } from 'lucide-react';
+import { BarChart3, TrendingUp, Activity, Calendar, FileDown, Dumbbell } from 'lucide-react';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
 import type { TrainingSession, Exercise } from '@/lib/types';
@@ -183,7 +185,7 @@ import { EmptyState } from '@/components/ui/Feedback';
 import { useTheme } from '@/lib/theme';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend } from 'recharts';
 
-function fmtDate(ts: number): string { return new Date(ts).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }); }
+function fmtDate(ts: number): string { return new Date(ts).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); }
 
 interface DayVolume { date: string; timestamp: number; volume: number; sets: number; }
 interface ExerciseProgress { date: string; timestamp: number; weight: number; volume: number; }
@@ -208,7 +210,12 @@ export function AnalyticsView() {
   const isDark = theme === 'dark';
   const axisColor = isDark ? '#6b7280' : '#9ca3af';
   const gridColor = isDark ? '#1f2937' : '#f3f4f6';
-  const completedSessions = useMemo(() => sessions.filter((s) => s.completed), [sessions]);
+  
+  // Sesiones completadas ordenadas de la más reciente a la más antigua
+  const completedSessions = useMemo(() => 
+    sessions.filter((s) => s.completed).sort((a, b) => b.date - a.date), 
+    [sessions]
+  );
 
   const dailyVolume = useMemo<DayVolume[]>(() => {
     const map = new Map<number, DayVolume>();
@@ -270,7 +277,7 @@ export function AnalyticsView() {
 
   return (
     <div className="space-y-6">
-      {/* Encabezado con el botón Exportar PDF alineado a la derecha */}
+      {/* Encabezado con el botón Exportar PDF */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="font-condensed text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
@@ -281,10 +288,8 @@ export function AnalyticsView() {
         
         {/* Botón Exportar PDF */}
         <button
-          onClick={() => {
-            console.log("Exportar PDF clickeado");
-          }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-xl transition-all shadow-lg shadow-brand-500/20 text-sm cursor-pointer active:scale-95 shrink-0"
+          onClick={() => window.print()}
+          className="flex items-center gap-2 px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-xl transition-all shadow-lg shadow-brand-500/20 text-sm cursor-pointer active:scale-95 shrink-0 print:hidden"
         >
           <FileDown size={18} />
           Exportar PDF
@@ -297,6 +302,7 @@ export function AnalyticsView() {
         <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><TrendingUp size={18} className="text-brand-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{totalSets}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Series</p></CardBody></Card>
         <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><Calendar size={18} className="text-brand-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{avgWeight.toFixed(1)}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Peso prom.</p></CardBody></Card>
       </div>
+
       <Card>
         <CardHeader><CardTitle>Volumen de Entrenamiento</CardTitle></CardHeader>
         <CardBody>
@@ -312,6 +318,7 @@ export function AnalyticsView() {
           </ResponsiveContainer>
         </CardBody>
       </Card>
+
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader><CardTitle>Distribución por Grupo Muscular</CardTitle></CardHeader>
@@ -328,6 +335,7 @@ export function AnalyticsView() {
             </ResponsiveContainer>
           </CardBody>
         </Card>
+        
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -356,6 +364,54 @@ export function AnalyticsView() {
           </CardBody>
         </Card>
       </div>
+
+      {/* HISTORIAL DETALLADO DE SESIONES (Ordenado del más reciente al más antiguo) */}
+      <Card className="break-before-page">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Dumbbell size={20} className="text-brand-500" />
+            Historial Detallado de Sesiones
+          </CardTitle>
+        </CardHeader>
+        <CardBody>
+          <div className="space-y-6">
+            {completedSessions.map((session) => (
+              <div key={session.id} className="border-b border-gray-200 dark:border-gray-800 pb-4 last:border-b-0 last:pb-0 break-inside-avoid">
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="font-bold text-base text-gray-900 dark:text-gray-100">
+                    Entrenamiento del {fmtDate(session.date)}
+                  </h4>
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-lg">
+                    {fmtDate(session.date)}
+                  </span>
+                </div>
+                
+                <div className="space-y-2 mt-3">
+                  {session.exercises.map((exItem, idx) => {
+                    const exerciseMeta = exercises.find((e) => e.id === exItem.exerciseId);
+                    return (
+                      <div key={idx} className="text-sm bg-gray-50 dark:bg-gray-900/50 p-2.5 rounded-xl">
+                        <span className="font-semibold text-gray-800 dark:text-gray-200 block mb-1">
+                          {exerciseMeta ? exerciseMeta.name : 'Ejercicio desconocido'}
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {exItem.sets.map((set, setIdx) => (
+                            set.completed ? (
+                              <span key={setIdx} className="text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-2 py-1 rounded-md text-gray-600 dark:text-gray-300">
+                                Serie {setIdx + 1}: <strong className="text-brand-500">{set.weight} kg</strong> × {set.reps} reps
+                              </span>
+                            ) : null
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardBody>
+      </Card>
     </div>
   );
 }
