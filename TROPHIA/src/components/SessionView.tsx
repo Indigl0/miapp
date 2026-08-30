@@ -163,6 +163,24 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
           <Card><CardBody className="text-center py-3 sm:py-4"><p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">{activeSession.exercises.length}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Ejercicios</p></CardBody></Card>
         </div>
 
+        {/* Session Notes / Observations */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">📝 Observaciones de la sesión</CardTitle>
+          </CardHeader>
+          <CardBody>
+            <textarea
+              value={activeSession.notes ?? ''}
+              onChange={async (e) => {
+                const newNotes = e.target.value;
+                await updateSession({ ...activeSession, notes: newNotes });
+              }}
+              placeholder="Ej. Me sentí con buena energía, descanso de 2 min entre series, molestia leve en el hombro..."
+              className="w-full h-24 p-3 text-sm rounded-xl border border-gray-200 dark:border-gray-800 bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+            />
+          </CardBody>
+        </Card>
+
         {/* Exercises with mobile-responsive sets */}
         <div className="space-y-4">
           {activeSession.exercises.map((ex, exIdx) => (
@@ -262,7 +280,20 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
             <Card key={s.id} className="hover:shadow-md transition-shadow">
               <CardBody className="space-y-3">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0"><h3 className="font-semibold break-words leading-tight">{s.routineName}</h3><p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1 break-words"><Calendar size={12} className="shrink-0" />{fmtDate(s.date)}</p></div>
+                  <div className="min-w-0">
+                    <h3 className="font-semibold break-words leading-tight">{s.routineName}</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mt-1 flex-wrap">
+                      <Calendar size={12} className="shrink-0" />
+                      {fmtDate(s.date)}
+                      
+                      {/* Indicador de notas */}
+                      {s.notes && (
+                        <span className="inline-flex items-center gap-1 text-brand-500 bg-brand-50 dark:bg-brand-500/10 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                          📝 Con notas
+                        </span>
+                      )}
+                    </p>
+                  </div>
                   <Badge color={s.completed ? 'green' : 'amber'}>{s.completed ? 'Completada' : 'En progreso'}</Badge>
                 </div>
                 <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400 break-words"><span>{completedSets(s)}/{totalSets(s)} series</span><span>{totalVolume(s).toFixed(0)} kg vol.</span></div>
