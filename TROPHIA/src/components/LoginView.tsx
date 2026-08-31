@@ -3,6 +3,7 @@ import { TrendingUp, Lock, User as UserIcon, Eye, EyeOff, AlertCircle } from 'lu
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
 import { Input, Label } from '@/components/ui/Input';
+import { APP_VERSION } from '../version';
 
 export function LoginView() {
   const { login } = useAuth();
@@ -62,9 +63,14 @@ export function LoginView() {
           <Button type="submit" size="lg" className="w-full" disabled={loading}>{loading ? 'Ingresando...' : 'Ingresar'}</Button>
           <p className="text-center text-xs text-gray-400 break-words">Acceso restringido · No hay registro público</p>
         </form>
-        <p className="text-center text-xs text-gray-400 mt-6 break-words">
-          Desarrollado y creado por <span className="text-brand-500 font-semibold">Felipe Ibarra</span>
-        </p>
+        <div className="flex items-center justify-center gap-2 mt-6">
+          <p className="text-center text-xs text-gray-400 break-words">
+            Desarrollado y creado por <span className="text-brand-500 font-semibold">Felipe Ibarra</span>
+          </p>
+          <span className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded text-[10px] font-mono">
+            {APP_VERSION}
+          </span>
+        </div>
       </div>
     </div>
   );
