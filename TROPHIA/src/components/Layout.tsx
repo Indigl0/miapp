@@ -2,6 +2,7 @@ import { TrendingUp, BarChart3, ClipboardList, ListChecks, LogOut, Moon, Sun, Sh
 import { useState, type ReactNode } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useTheme } from '@/lib/theme';
+import { APP_VERSION } from '../version';
 
 export type View = 'routines' | 'exercises' | 'session' | 'analytics' | 'admin';
 
@@ -118,9 +119,14 @@ export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
       <footer className="border-t border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-[#0f0f10]/50">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-xs text-gray-400 font-condensed tracking-wide break-words">TROPHIA · Offline-First PWA</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold break-words text-center">
-            Desarrollado y creado por <span className="text-brand-500">Felipe Ibarra</span>
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold break-words text-center">
+              Desarrollado y creado por <span className="text-brand-500">Felipe Ibarra</span>
+            </p>
+            <span className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded text-[10px] font-mono">
+              {APP_VERSION}
+            </span>
+          </div>
         </div>
       </footer>
     </div>

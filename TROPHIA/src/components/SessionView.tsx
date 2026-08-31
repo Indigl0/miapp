@@ -362,3 +362,4 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     </div>
   );
 }
+
