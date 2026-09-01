@@ -1,10 +1,9 @@
-import { useMemo, useState } from 'react';
-import { BarChart3, TrendingUp, Activity, Calendar, FileDown, Dumbbell } from 'lucide-react';
+import { useMemo, useState, useRef, useEffect } from 'react';
+import { BarChart3, TrendingUp, Activity, Calendar, FileDown, Dumbbell, ChevronDown } from 'lucide-react';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
 import type { TrainingSession, Exercise } from '@/lib/types';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Select } from '@/components/ui/Input';
 import { EmptyState } from '@/components/ui/Feedback';
 import { useTheme } from '@/lib/theme';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend } from 'recharts';
@@ -30,10 +29,23 @@ export function AnalyticsView() {
   const exercises = useLiveQuery(() => db.exercises.toArray(), [], [] as Exercise[]);
   const [theme] = useTheme();
   const [selectedExercise, setSelectedExercise] = useState<string>('all');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isDark = theme === 'dark';
   const axisColor = isDark ? '#6b7280' : '#9ca3af';
   const gridColor = isDark ? '#1f2937' : '#f3f4f6';
+
+  // Cerrar dropdown al hacer clic fuera
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   
   // Sesiones completadas ordenadas de la más reciente a la más antigua
   const completedSessions = useMemo(() => 
@@ -85,6 +97,10 @@ export function AnalyticsView() {
   const totalVolume = dailyVolume.reduce((sum, d) => sum + d.volume, 0);
   const totalSets = dailyVolume.reduce((sum, d) => sum + d.sets, 0);
   const avgWeight = exerciseProgress.length > 0 ? exerciseProgress.reduce((sum, d) => sum + d.weight, 0) / exerciseProgress.length : 0;
+
+  const currentExerciseName = selectedExercise === 'all' 
+    ? 'Todos los ejercicios' 
+    : exercises.find((e) => e.id === selectedExercise)?.name ?? 'Seleccionar ejercicio';
 
   if (completedSessions.length === 0) {
     return (
@@ -164,14 +180,42 @@ export function AnalyticsView() {
           <CardHeader>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
               <CardTitle>Progreso de Fuerza</CardTitle>
-              <Select 
-                value={selectedExercise} 
-                onChange={(e) => setSelectedExercise(e.target.value)} 
-                className="w-full sm:w-auto sm:min-w-[180px] h-9 py-1.5 text-xs sm:text-sm"
-              >
-                <option value="all">Todos los ejercicios</option>
-                {exercises.map((ex) => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
-              </Select>
+              
+              {/* Dropdown Personalizado con soporte completo para textos largos */}
+              <div className="relative w-full sm:w-64" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="w-full flex items-center justify-between gap-2 px-3 py-2 text-xs sm:text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
+                >
+                  <span className="text-left whitespace-normal break-words leading-tight py-0.5">
+                    {currentExerciseName}
+                  </span>
+                  <ChevronDown size={16} className={`text-gray-400 shrink-0 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isDropdownOpen && (
+                  <div className="absolute z-50 mt-1.5 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-60 overflow-y-auto py-1.5">
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedExercise('all'); setIsDropdownOpen(false); }}
+                      className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center justify-between ${selectedExercise === 'all' ? 'text-brand-500 font-semibold bg-brand-50/50 dark:bg-brand-950/30' : 'text-gray-700 dark:text-gray-300'}`}
+                    >
+                      <span className="whitespace-normal break-words">Todos los ejercicios</span>
+                    </button>
+                    {exercises.map((ex) => (
+                      <button
+                        key={ex.id}
+                        type="button"
+                        onClick={() => { setSelectedExercise(ex.id); setIsDropdownOpen(false); }}
+                        className={`w-full text-left px-3.5 py-2.5 text-xs sm:text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center justify-between border-t border-gray-100 dark:border-gray-800 ${selectedExercise === ex.id ? 'text-brand-500 font-semibold bg-brand-50/50 dark:bg-brand-950/30' : 'text-gray-700 dark:text-gray-300'}`}
+                      >
+                        <span className="whitespace-normal break-words leading-snug">{ex.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardBody>
@@ -193,7 +237,7 @@ export function AnalyticsView() {
         </Card>
       </div>
 
-      {/* HISTORIAL DETALLADO DE SESIONES (Ordenado del más reciente al más antiguo) */}
+      {/* HISTORIAL DETALLADO DE SESIONES */}
       <Card className="break-before-page">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -243,5 +287,3 @@ export function AnalyticsView() {
     </div>
   );
 }
-
-
