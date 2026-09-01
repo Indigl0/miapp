@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ListChecks, Plus, Check, Trash2, Play, Calendar, CheckCircle2, Clock, X, Save, RotateCcw } from 'lucide-react';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
@@ -32,6 +32,14 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   
   const [createOpen, setCreateOpen] = useState(false);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
+
+  // Estado local para las notas de la sesión activa (evita saltos de cursor)
+  const [localNotes, setLocalNotes] = useState('');
+
+  // Sincroniza el estado local de las notas cuando cambia la sesión activa
+  useEffect(() => {
+    setLocalNotes(activeSession?.notes ?? '');
+  }, [activeSession?.id]);
 
   const exName = (id: string) => exercises.find((e) => e.id === id)?.name ?? 'Ejercicio eliminado';
   const totalVolume = (s: TrainingSession) => s.exercises.reduce((sum, ex) => sum + ex.sets.reduce((a, set) => a + (set.completed ? set.reps * set.weight : 0), 0), 0);
@@ -74,7 +82,8 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   };
 
   const finishSession = async (s: TrainingSession) => { 
-    await updateSession({ ...s, completed: true }); 
+    // Asegurar guardar notas pendientes antes de finalizar
+    await updateSession({ ...s, completed: true, notes: localNotes }); 
     onActiveSessionChange(null); 
   };
 
@@ -146,7 +155,11 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
           </div>
           <div className="flex gap-2 shrink-0">
             {!activeSession.completed && <Button onClick={() => finishSession(activeSession)}><Check size={18} />Finalizar</Button>}
-            <Button variant="outline" onClick={() => onActiveSessionChange(null)}><X size={18} />Cerrar</Button>
+            <Button variant="outline" onClick={async () => {
+              // Guardar notas al cerrar
+              await updateSession({ ...activeSession, notes: localNotes });
+              onActiveSessionChange(null);
+            }}><X size={18} />Cerrar</Button>
           </div>
         </div>
 
@@ -170,10 +183,11 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
           </CardHeader>
           <CardBody>
             <textarea
-              value={activeSession.notes ?? ''}
-              onChange={async (e) => {
-                const newNotes = e.target.value;
-                await updateSession({ ...activeSession, notes: newNotes });
+              value={localNotes}
+              onChange={(e) => setLocalNotes(e.target.value)}
+              onBlur={async () => {
+                // Guarda en la base de datos cuando el usuario hace clic fuera de la caja de texto
+                await updateSession({ ...activeSession, notes: localNotes });
               }}
               placeholder="Ej. Me sentí con buena energía, descanso de 2 min entre series, molestia leve en el hombro..."
               className="w-full h-24 p-3 text-sm rounded-xl border border-gray-200 dark:border-gray-800 bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
