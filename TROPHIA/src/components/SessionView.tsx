@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ListChecks, Plus, Check, Trash2, Play, Calendar, CheckCircle2, Clock, X, Save, RotateCcw } from 'lucide-react';
+import { ListChecks, Plus, Check, Trash2, Play, Calendar, CheckCircle2, Clock, X, Save, RotateCcw, Activity } from 'lucide-react';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
 import { enqueue } from '@/lib/sync';
@@ -7,7 +7,7 @@ import { uuid, now } from '@/lib/uuid';
 import type { TrainingSession, Exercise, SessionExercise, SessionSet, Routine } from '@/lib/types';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Input, Label } from '@/components/ui/Input';
+import { Input, Label, Select } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/Feedback';
@@ -17,7 +17,6 @@ import { SessionTimer } from '@/components/ui/SessionTimer';
 function fmtDate(ts: number): string { return new Date(ts).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); }
 
 export function SessionView({ activeSessionId, onActiveSessionChange }: { activeSessionId: string | null; onActiveSessionChange: (id: string | null) => void }) {
-  // Obtenemos todas las sesiones y las separamos entre activas y papelera
   const allSessions = useLiveQuery(() => db.sessions.orderBy('date').reverse().toArray(), [], [] as TrainingSession[]);
   const sessions = allSessions.filter((s) => !(s as TrainingSession & { deletedAt?: number }).deletedAt);
   const trashSessions = allSessions.filter((s) => (s as TrainingSession & { deletedAt?: number }).deletedAt);
@@ -32,19 +31,30 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   
   const [createOpen, setCreateOpen] = useState(false);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
-
-  // Estado local para las notas de la sesión activa (evita saltos de cursor)
   const [localNotes, setLocalNotes] = useState('');
 
-  // Sincroniza el estado local de las notas cuando cambia la sesión activa
   useEffect(() => {
     setLocalNotes(activeSession?.notes ?? '');
   }, [activeSession?.id]);
 
-  const exName = (id: string) => exercises.find((e) => e.id === id)?.name ?? 'Ejercicio eliminado';
-  const totalVolume = (s: TrainingSession) => s.exercises.reduce((sum, ex) => sum + ex.sets.reduce((a, set) => a + (set.completed ? set.reps * set.weight : 0), 0), 0);
-  const completedSets = (s: TrainingSession) => s.exercises.reduce((sum, ex) => sum + ex.sets.filter((set) => set.completed).length, 0);
-  const totalSets = (s: TrainingSession) => s.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
+  const getExercise = (id: string) => exercises.find((e) => e.id === id);
+  const exName = (id: string) => getExercise(id)?.name ?? 'Ejercicio eliminado';
+  const isCardio = (id: string) => getExercise(id)?.muscleGroup?.toLowerCase() === 'cardio';
+
+  const totalVolume = (s: TrainingSession) =>
+    s.exercises.reduce((sum, ex) => sum + (ex.sets ? ex.sets.reduce((a, set) => a + (set.completed ? set.reps * set.weight : 0), 0) : 0), 0);
+
+  const completedSets = (s: TrainingSession) =>
+    s.exercises.reduce((sum, ex) => {
+      if (ex.cardioDetails) return sum + (ex.cardioDetails.completed ? 1 : 0);
+      return sum + (ex.sets ? ex.sets.filter((set) => set.completed).length : 0);
+    }, 0);
+
+  const totalSets = (s: TrainingSession) =>
+    s.exercises.reduce((sum, ex) => {
+      if (ex.cardioDetails) return sum + 1;
+      return sum + (ex.sets ? ex.sets.length : 0);
+    }, 0);
 
   const updateSession = async (s: TrainingSession) => {
     const updated = { ...s, updatedAt: now() };
@@ -53,18 +63,22 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   };
 
   const toggleSet = async (s: TrainingSession, exIdx: number, setIdx: number) => {
-    const exercisesCopy = s.exercises.map((ex, i) => i !== exIdx ? ex : { ...ex, sets: ex.sets.map((set, j) => j === setIdx ? { ...set, completed: !set.completed } : set) });
+    const exercisesCopy = s.exercises.map((ex, i) =>
+      i !== exIdx || !ex.sets ? ex : { ...ex, sets: ex.sets.map((set, j) => (j === setIdx ? { ...set, completed: !set.completed } : set)) }
+    );
     await updateSession({ ...s, exercises: exercisesCopy });
   };
 
   const updateSet = async (s: TrainingSession, exIdx: number, setIdx: number, patch: Partial<SessionSet>) => {
-    const exercisesCopy = s.exercises.map((ex, i) => i !== exIdx ? ex : { ...ex, sets: ex.sets.map((set, j) => j === setIdx ? { ...set, ...patch } : set) });
+    const exercisesCopy = s.exercises.map((ex, i) =>
+      i !== exIdx || !ex.sets ? ex : { ...ex, sets: ex.sets.map((set, j) => (j === setIdx ? { ...set, ...patch } : set)) }
+    );
     await updateSession({ ...s, exercises: exercisesCopy });
   };
 
   const addSet = async (s: TrainingSession, exIdx: number) => {
     const exercisesCopy = s.exercises.map((ex, i) => {
-      if (i !== exIdx) return ex;
+      if (i !== exIdx || !ex.sets) return ex;
       const nextNum = ex.sets.length + 1;
       const last = ex.sets[ex.sets.length - 1];
       return { ...ex, sets: [...ex.sets, { setNumber: nextNum, reps: last?.reps ?? 10, weight: last?.weight ?? 0, completed: false }] };
@@ -73,7 +87,17 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   };
 
   const removeSet = async (s: TrainingSession, exIdx: number, setIdx: number) => {
-    const exercisesCopy = s.exercises.map((ex, i) => i !== exIdx ? ex : { ...ex, sets: ex.sets.filter((_, j) => j !== setIdx).map((set, j) => ({ ...set, setNumber: j + 1 })) });
+    const exercisesCopy = s.exercises.map((ex, i) =>
+      i !== exIdx || !ex.sets ? ex : { ...ex, sets: ex.sets.filter((_, j) => j !== setIdx).map((set, j) => ({ ...set, setNumber: j + 1 })) }
+    );
+    await updateSession({ ...s, exercises: exercisesCopy });
+  };
+
+  const updateCardioDetails = async (s: TrainingSession, exIdx: number, patch: Partial<NonNullable<SessionExercise['cardioDetails']>>) => {
+    const exercisesCopy = s.exercises.map((ex, i) => {
+      if (i !== exIdx || !ex.cardioDetails) return ex;
+      return { ...ex, cardioDetails: { ...ex.cardioDetails, ...patch } };
+    });
     await updateSession({ ...s, exercises: exercisesCopy });
   };
 
@@ -82,12 +106,10 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   };
 
   const finishSession = async (s: TrainingSession) => { 
-    // Asegurar guardar notas pendientes antes de finalizar
     await updateSession({ ...s, completed: true, notes: localNotes }); 
     onActiveSessionChange(null); 
   };
 
-  // Enviar a la papelera (Soft Delete) en lugar de borrar directamente
   const moveToTrash = async (id: string) => {
     const target = allSessions.find((s) => s.id === id);
     if (!target) return;
@@ -97,7 +119,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     if (activeSessionId === id) onActiveSessionChange(null);
   };
 
-  // Restaurar sesión desde la papelera
   const restoreSession = async (id: string) => {
     const target = allSessions.find((s) => s.id === id);
     if (!target) return;
@@ -106,14 +127,12 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     await enqueue({ kind: 'upsert', table: 'sessions', record: updated as unknown as Record<string, unknown> });
   };
 
-  // Eliminar permanentemente un registro de la base de datos
   const permanentDelete = async (id: string) => {
     if (!confirm('¿Eliminar permanentemente esta sesión? Esta acción no se puede deshacer.')) return;
     await db.sessions.delete(id);
     await enqueue({ kind: 'delete', table: 'sessions', id });
   };
 
-  // Vaciar toda la papelera
   const emptyTrash = async () => {
     if (!confirm('¿Vaciar toda la papelera? Los elementos eliminados aquí no se podrán recuperar.')) return;
     for (const s of trashSessions) {
@@ -129,7 +148,22 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
       const r = routines.find((rt) => rt.id === routineId);
       if (r) {
         routineName = r.name;
-        sessionExercises = r.exercises.map((re) => ({ exerciseId: re.exerciseId, sets: Array.from({ length: re.sets }, (_, i) => ({ setNumber: i + 1, reps: re.targetReps, weight: 0, completed: false })) }));
+        sessionExercises = r.exercises.map((re) => {
+          if (isCardio(re.exerciseId)) {
+            return {
+              exerciseId: re.exerciseId,
+              cardioDetails: {
+                cardioType: re.cardioType ?? 'Cinta',
+                durationMinutes: re.durationMinutes ?? 30,
+                completed: false,
+              },
+            };
+          }
+          return {
+            exerciseId: re.exerciseId,
+            sets: Array.from({ length: re.sets ?? 3 }, (_, i) => ({ setNumber: i + 1, reps: re.targetReps ?? 10, weight: 0, completed: false })),
+          };
+        });
       }
     }
     const ts = now();
@@ -149,34 +183,32 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <Badge color={activeSession.completed ? 'green' : 'amber'}>{activeSession.completed ? <><CheckCircle2 size={12} />Completada</> : <><Clock size={12} />En progreso</>}</Badge>
+              <Badge color={activeSession.completed ? 'green' : 'amber'}>
+                {activeSession.completed ? <><CheckCircle2 size={12} />Completada</> : <><Clock size={12} />En progreso</>}
+              </Badge>
             </div>
             <h2 className="font-condensed text-xl sm:text-2xl font-bold tracking-tight break-words">{activeSession.routineName}</h2>
           </div>
           <div className="flex gap-2 shrink-0">
             {!activeSession.completed && <Button onClick={() => finishSession(activeSession)}><Check size={18} />Finalizar</Button>}
             <Button variant="outline" onClick={async () => {
-              // Guardar notas al cerrar
               await updateSession({ ...activeSession, notes: localNotes });
               onActiveSessionChange(null);
             }}><X size={18} />Cerrar</Button>
           </div>
         </div>
 
-        {/* Calendar + Timer row */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <CalendarPicker value={activeSession.date} onChange={(ts) => updateDate(activeSession, ts)} />
           <SessionTimer />
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          <Card><CardBody className="text-center py-3 sm:py-4"><p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">{done}/{total}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Series</p></CardBody></Card>
+          <Card><CardBody className="text-center py-3 sm:py-4"><p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">{done}/{total}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Bloques</p></CardBody></Card>
           <Card><CardBody className="text-center py-3 sm:py-4"><p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">{vol.toFixed(0)}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Volumen kg</p></CardBody></Card>
           <Card><CardBody className="text-center py-3 sm:py-4"><p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">{activeSession.exercises.length}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Ejercicios</p></CardBody></Card>
         </div>
 
-        {/* Session Notes / Observations */}
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-semibold flex items-center gap-2">📝 Observaciones de la sesión</CardTitle>
@@ -186,85 +218,144 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
               value={localNotes}
               onChange={(e) => setLocalNotes(e.target.value)}
               onBlur={async () => {
-                // Guarda en la base de datos cuando el usuario hace clic fuera de la caja de texto
                 await updateSession({ ...activeSession, notes: localNotes });
               }}
-              placeholder="Ej. Me sentí con buena energía, descanso de 2 min entre series, molestia leve en el hombro..."
+              placeholder="Ej. Me sentí con buena energía, descanso de 2 min entre series..."
               className="w-full h-24 p-3 text-sm rounded-xl border border-gray-200 dark:border-gray-800 bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
             />
           </CardBody>
         </Card>
 
-        {/* Exercises with mobile-responsive sets */}
         <div className="space-y-4">
-          {activeSession.exercises.map((ex, exIdx) => (
-            <Card key={exIdx}>
-              <CardHeader>
-                <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="break-words whitespace-normal leading-tight">{exName(ex.exerciseId)}</CardTitle>
-                  <Button size="sm" variant="ghost" onClick={() => addSet(activeSession, exIdx)} className="shrink-0"><Plus size={14} />Serie</Button>
-                </div>
-              </CardHeader>
-              <CardBody className="p-0">
-                {/* Desktop: table layout */}
-                <div className="hidden sm:block overflow-x-auto scrollbar-thin">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-xs uppercase text-gray-400 border-b border-gray-100 dark:border-gray-800">
-                        <th className="text-left px-4 py-2.5 font-semibold">#</th>
-                        <th className="text-left px-4 py-2.5 font-semibold">Reps</th>
-                        <th className="text-left px-4 py-2.5 font-semibold">Peso (kg)</th>
-                        <th className="text-left px-4 py-2.5 font-semibold">Volumen</th>
-                        <th className="px-4 py-2.5"></th>
-                        <th className="px-4 py-2.5"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {ex.sets.map((set, setIdx) => (
-                        <tr key={setIdx} className={`border-b border-gray-50 dark:border-gray-800/50 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
-                          <td className="px-4 py-2.5 font-semibold whitespace-nowrap">{set.setNumber}</td>
-                          <td className="px-4 py-2.5"><Input type="number" min={0} value={set.reps} onChange={(e) => updateSet(activeSession, exIdx, setIdx, { reps: Math.max(0, Number(e.target.value)) })} className="w-20 h-9 py-1.5" /></td>
-                          <td className="px-4 py-2.5"><Input type="number" min={0} step={2.5} value={set.weight} onChange={(e) => updateSet(activeSession, exIdx, setIdx, { weight: Math.max(0, Number(e.target.value)) })} className="w-24 h-9 py-1.5" /></td>
-                          <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">{(set.reps * set.weight).toFixed(0)}</td>
-                          <td className="px-4 py-2.5"><button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600'}`}><Check size={16} /></button></td>
-                          <td className="px-4 py-2.5"><button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1.5 text-gray-300 hover:text-red-500"><X size={14} /></button></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+          {activeSession.exercises.map((ex, exIdx) => {
+            const isExCardio = isCardio(ex.exerciseId) || !!ex.cardioDetails;
+            const cardioData = ex.cardioDetails ?? { cardioType: 'Cinta', durationMinutes: 30, completed: false };
 
-                {/* Mobile: card-based layout */}
-                <div className="sm:hidden divide-y divide-gray-100 dark:divide-gray-800">
-                  {ex.sets.map((set, setIdx) => (
-                    <div key={setIdx} className={`p-3.5 space-y-2.5 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold uppercase text-gray-400 break-words">Serie {set.setNumber}</span>
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}><Check size={16} /></button>
-                          <button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1.5 text-gray-300 hover:text-red-500"><X size={14} /></button>
-                        </div>
+            return (
+              <Card key={exIdx}>
+                <CardHeader>
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="break-words whitespace-normal leading-tight flex items-center gap-2">
+                      {isExCardio && <Activity size={18} className="text-blue-500 shrink-0" />}
+                      {exName(ex.exerciseId)}
+                    </CardTitle>
+                    {!isExCardio && (
+                      <Button size="sm" variant="ghost" onClick={() => addSet(activeSession, exIdx)} className="shrink-0"><Plus size={14} />Serie</Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardBody className={isExCardio ? 'p-4' : 'p-0'}>
+                  {isExCardio ? (
+                    <div className="flex flex-col sm:flex-row sm:items-end gap-3 p-3 rounded-xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30">
+                      <div className="flex-1">
+                        <Label>Tipo de Cardio</Label>
+                        <Select
+                          value={cardioData.cardioType}
+                          onChange={(e) => updateCardioDetails(activeSession, exIdx, { cardioType: e.target.value })}
+                        >
+                          <option value="Cinta">Cinta / Trote</option>
+                          <option value="Bicicleta">Bicicleta</option>
+                          <option value="Elíptica">Elíptica</option>
+                          <option value="Caminata">Caminata</option>
+                          <option value="Remo">Remo</option>
+                          <option value="Otro">Otro</option>
+                        </Select>
                       </div>
-                      <div className="flex gap-2.5">
-                        <div className="flex-1 min-w-0">
-                          <Label>Reps</Label>
-                          <Input type="number" min={0} value={set.reps} onChange={(e) => updateSet(activeSession, exIdx, setIdx, { reps: Math.max(0, Number(e.target.value)) })} className="h-10 text-base" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <Label>Peso (kg)</Label>
-                          <Input type="number" min={0} step={2.5} value={set.weight} onChange={(e) => updateSet(activeSession, exIdx, setIdx, { weight: Math.max(0, Number(e.target.value)) })} className="h-10 text-base" />
-                        </div>
-                        <div className="flex flex-col justify-end min-w-0">
-                          <Label>Vol.</Label>
-                          <div className="h-10 flex items-center justify-center text-sm font-semibold text-gray-500 dark:text-gray-400 break-words whitespace-nowrap">{(set.reps * set.weight).toFixed(0)}</div>
-                        </div>
+
+                      <div className="w-full sm:w-32">
+                        <Label>Tiempo (min)</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={cardioData.durationMinutes}
+                          onChange={(e) => updateCardioDetails(activeSession, exIdx, { durationMinutes: Math.max(1, Number(e.target.value)) })}
+                        />
                       </div>
+
+                      <div className="w-full sm:w-32">
+                        <Label>Distancia (km)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={0.1}
+                          placeholder="Opcional"
+                          value={cardioData.distanceKm ?? ''}
+                          onChange={(e) => updateCardioDetails(activeSession, exIdx, { distanceKm: e.target.value ? Number(e.target.value) : undefined })}
+                        />
+                      </div>
+
+                      <button
+                        onClick={() => updateCardioDetails(activeSession, exIdx, { completed: !cardioData.completed })}
+                        className={`h-10 px-4 rounded-xl flex items-center justify-center gap-2 font-medium text-sm transition-colors ${
+                          cardioData.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+                        }`}
+                      >
+                        <Check size={16} />
+                        {cardioData.completed ? 'Completado' : 'Marcar'}
+                      </button>
                     </div>
-                  ))}
-                </div>
-              </CardBody>
-            </Card>
-          ))}
+                  ) : (
+                    <>
+                      <div className="hidden sm:block overflow-x-auto scrollbar-thin">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-xs uppercase text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                              <th className="text-left px-4 py-2.5 font-semibold">#</th>
+                              <th className="text-left px-4 py-2.5 font-semibold">Reps</th>
+                              <th className="text-left px-4 py-2.5 font-semibold">Peso (kg)</th>
+                              <th className="text-left px-4 py-2.5 font-semibold">Volumen</th>
+                              <th className="px-4 py-2.5"></th>
+                              <th className="px-4 py-2.5"></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {ex.sets?.map((set, setIdx) => (
+                              <tr key={setIdx} className={`border-b border-gray-50 dark:border-gray-800/50 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
+                                <td className="px-4 py-2.5 font-semibold whitespace-nowrap">{set.setNumber}</td>
+                                <td className="px-4 py-2.5"><Input type="number" min={0} value={set.reps} onChange={(e) => updateSet(activeSession, exIdx, setIdx, { reps: Math.max(0, Number(e.target.value)) })} className="w-20 h-9 py-1.5" /></td>
+                                <td className="px-4 py-2.5"><Input type="number" min={0} step={2.5} value={set.weight} onChange={(e) => updateSet(activeSession, exIdx, setIdx, { weight: Math.max(0, Number(e.target.value)) })} className="w-24 h-9 py-1.5" /></td>
+                                <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">{(set.reps * set.weight).toFixed(0)}</td>
+                                <td className="px-4 py-2.5"><button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600'}`}><Check size={16} /></button></td>
+                                <td className="px-4 py-2.5"><button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1.5 text-gray-300 hover:text-red-500"><X size={14} /></button></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="sm:hidden divide-y divide-gray-100 dark:divide-gray-800">
+                        {ex.sets?.map((set, setIdx) => (
+                          <div key={setIdx} className={`p-3.5 space-y-2.5 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-bold uppercase text-gray-400 break-words">Serie {set.setNumber}</span>
+                              <div className="flex items-center gap-2">
+                                <button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}><Check size={16} /></button>
+                                <button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1.5 text-gray-300 hover:text-red-500"><X size={14} /></button>
+                              </div>
+                            </div>
+                            <div className="flex gap-2.5">
+                              <div className="flex-1 min-w-0">
+                                <Label>Reps</Label>
+                                <Input type="number" min={0} value={set.reps} onChange={(e) => updateSet(activeSession, exIdx, setIdx, { reps: Math.max(0, Number(e.target.value)) })} className="h-10 text-base" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <Label>Peso (kg)</Label>
+                                <Input type="number" min={0} step={2.5} value={set.weight} onChange={(e) => updateSet(activeSession, exIdx, setIdx, { weight: Math.max(0, Number(e.target.value)) })} className="h-10 text-base" />
+                              </div>
+                              <div className="flex flex-col justify-end min-w-0">
+                                <Label>Vol.</Label>
+                                <div className="h-10 flex items-center justify-center text-sm font-semibold text-gray-500 dark:text-gray-400 break-words whitespace-nowrap">{(set.reps * set.weight).toFixed(0)}</div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </CardBody>
+              </Card>
+            );
+          })}
         </div>
       </div>
     );
@@ -278,7 +369,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 break-words">Inicia una rutina o crea una sesión libre.</p>
         </div>
         <div className="flex gap-2 shrink-0 flex-wrap">
-          {/* Botón para abrir la papelera */}
           <Button variant="outline" onClick={() => setIsTrashOpen(true)}>
             <Trash2 size={18} /> Papelera ({trashSessions.length})
           </Button>
@@ -299,8 +389,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                     <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mt-1 flex-wrap">
                       <Calendar size={12} className="shrink-0" />
                       {fmtDate(s.date)}
-                      
-                      {/* Indicador de notas */}
                       {s.notes && (
                         <span className="inline-flex items-center gap-1 text-brand-500 bg-brand-50 dark:bg-brand-500/10 px-1.5 py-0.5 rounded text-[10px] font-medium">
                           📝 Con notas
@@ -310,7 +398,10 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                   </div>
                   <Badge color={s.completed ? 'green' : 'amber'}>{s.completed ? 'Completada' : 'En progreso'}</Badge>
                 </div>
-                <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400 break-words"><span>{completedSets(s)}/{totalSets(s)} series</span><span>{totalVolume(s).toFixed(0)} kg vol.</span></div>
+                <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400 break-words">
+                  <span>{completedSets(s)}/{totalSets(s)} bloques</span>
+                  <span>{totalVolume(s).toFixed(0)} kg vol.</span>
+                </div>
                 <div className="flex gap-2 pt-1">
                   <Button size="sm" onClick={() => onActiveSessionChange(s.id)} className="flex-1"><Play size={14} />Abrir</Button>
                   <Button size="sm" variant="danger" onClick={() => moveToTrash(s.id)}><Trash2 size={14} /></Button>
@@ -321,7 +412,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
         </div>
       )}
 
-      {/* Modal de Creación */}
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Nueva sesión"
         footer={<><Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancelar</Button><Button onClick={() => createBlankSession()}><Save size={16} />Crear libre</Button></>}>
         <div className="space-y-4">
@@ -340,7 +430,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
         </div>
       </Modal>
 
-      {/* Modal de la Papelera de Reciclaje */}
       <Modal open={isTrashOpen} onClose={() => setIsTrashOpen(false)} title="Papelera de Reciclaje"
         footer={
           <>
@@ -358,7 +447,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
               <div key={s.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
                 <div className="min-w-0">
                   <p className="font-semibold text-sm truncate">{s.routineName}</p>
-                  <p className="text-xs text-gray-400">{fmtDate(s.date)} • {completedSets(s)}/{totalSets(s)} series</p>
+                  <p className="text-xs text-gray-400">{fmtDate(s.date)} • {completedSets(s)}/{totalSets(s)} bloques</p>
                 </div>
                 <div className="flex gap-1.5 shrink-0">
                   <Button size="sm" variant="outline" onClick={() => restoreSession(s.id)}>
@@ -376,4 +465,3 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     </div>
   );
 }
-

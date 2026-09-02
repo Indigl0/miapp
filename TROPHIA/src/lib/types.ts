@@ -13,9 +13,14 @@ export interface Exercise {
 
 export interface RoutineExercise {
   exerciseId: ID;
-  sets: number;
-  targetReps: number;
-  restSeconds: number;
+  // Campos de Fuerza (opcionales para cardio)
+  sets?: number;
+  targetReps?: number;
+  restSeconds?: number;
+  // Campos de Cardio (opcionales para fuerza)
+  cardioType?: string;
+  durationMinutes?: number;
+  distanceKm?: number;
 }
 
 export interface Routine {
@@ -34,9 +39,17 @@ export interface SessionSet {
   completed: boolean;
 }
 
+export interface SessionCardioDetails {
+  cardioType: string;
+  durationMinutes: number;
+  distanceKm?: number;
+  completed: boolean;
+}
+
 export interface SessionExercise {
   exerciseId: ID;
-  sets: SessionSet[];
+  sets?: SessionSet[];
+  cardioDetails?: SessionCardioDetails;
 }
 
 export interface TrainingSession {
