@@ -217,6 +217,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
             <textarea
               value={localNotes}
               onChange={(e) => setLocalNotes(e.target.value)}
+              onFocus={(e) => e.target.select()}
               onBlur={async () => {
                 await updateSession({ ...activeSession, notes: localNotes });
               }}
@@ -266,9 +267,12 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                         <Label>Tiempo (min)</Label>
                         <Input
                           type="number"
+                          inputMode="decimal"
                           min={1}
-                          value={cardioData.durationMinutes}
-                          onChange={(e) => updateCardioDetails(activeSession, exIdx, { durationMinutes: Math.max(1, Number(e.target.value)) })}
+                          value={cardioData.durationMinutes || ''}
+                          placeholder="0"
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => updateCardioDetails(activeSession, exIdx, { durationMinutes: Math.max(0, Number(e.target.value)) })}
                         />
                       </div>
 
@@ -276,10 +280,12 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                         <Label>Distancia (km)</Label>
                         <Input
                           type="number"
+                          inputMode="decimal"
                           min={0}
                           step={0.1}
-                          placeholder="Opcional"
+                          placeholder="0"
                           value={cardioData.distanceKm ?? ''}
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) => updateCardioDetails(activeSession, exIdx, { distanceKm: e.target.value ? Number(e.target.value) : undefined })}
                         />
                       </div>
@@ -296,6 +302,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                     </div>
                   ) : (
                     <>
+                      {/* Vista escritorio */}
                       <div className="hidden sm:block overflow-x-auto scrollbar-thin">
                         <table className="w-full text-sm">
                           <thead>
@@ -312,8 +319,31 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                             {ex.sets?.map((set, setIdx) => (
                               <tr key={setIdx} className={`border-b border-gray-50 dark:border-gray-800/50 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
                                 <td className="px-4 py-2.5 font-semibold whitespace-nowrap">{set.setNumber}</td>
-                                <td className="px-4 py-2.5"><Input type="number" min={0} value={set.reps} onChange={(e) => updateSet(activeSession, exIdx, setIdx, { reps: Math.max(0, Number(e.target.value)) })} className="w-20 h-9 py-1.5" /></td>
-                                <td className="px-4 py-2.5"><Input type="number" min={0} step={2.5} value={set.weight} onChange={(e) => updateSet(activeSession, exIdx, setIdx, { weight: Math.max(0, Number(e.target.value)) })} className="w-24 h-9 py-1.5" /></td>
+                                <td className="px-4 py-2.5">
+                                  <Input
+                                    type="number"
+                                    inputMode="decimal"
+                                    min={0}
+                                    value={set.reps || ''}
+                                    placeholder="0"
+                                    onFocus={(e) => e.target.select()}
+                                    onChange={(e) => updateSet(activeSession, exIdx, setIdx, { reps: Math.max(0, Number(e.target.value)) })}
+                                    className="w-20 h-9 py-1.5 text-center"
+                                  />
+                                </td>
+                                <td className="px-4 py-2.5">
+                                  <Input
+                                    type="number"
+                                    inputMode="decimal"
+                                    min={0}
+                                    step={2.5}
+                                    value={set.weight || ''}
+                                    placeholder="0"
+                                    onFocus={(e) => e.target.select()}
+                                    onChange={(e) => updateSet(activeSession, exIdx, setIdx, { weight: Math.max(0, Number(e.target.value)) })}
+                                    className="w-24 h-9 py-1.5 text-center"
+                                  />
+                                </td>
                                 <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">{(set.reps * set.weight).toFixed(0)}</td>
                                 <td className="px-4 py-2.5"><button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600'}`}><Check size={16} /></button></td>
                                 <td className="px-4 py-2.5"><button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1.5 text-gray-300 hover:text-red-500"><X size={14} /></button></td>
@@ -323,6 +353,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                         </table>
                       </div>
 
+                      {/* Vista móvil */}
                       <div className="sm:hidden divide-y divide-gray-100 dark:divide-gray-800">
                         {ex.sets?.map((set, setIdx) => (
                           <div key={setIdx} className={`p-3.5 space-y-2.5 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
@@ -336,11 +367,30 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                             <div className="flex gap-2.5">
                               <div className="flex-1 min-w-0">
                                 <Label>Reps</Label>
-                                <Input type="number" min={0} value={set.reps} onChange={(e) => updateSet(activeSession, exIdx, setIdx, { reps: Math.max(0, Number(e.target.value)) })} className="h-10 text-base" />
+                                <Input
+                                  type="number"
+                                  inputMode="decimal"
+                                  min={0}
+                                  value={set.reps || ''}
+                                  placeholder="0"
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) => updateSet(activeSession, exIdx, setIdx, { reps: Math.max(0, Number(e.target.value)) })}
+                                  className="h-10 text-base text-center"
+                                />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <Label>Peso (kg)</Label>
-                                <Input type="number" min={0} step={2.5} value={set.weight} onChange={(e) => updateSet(activeSession, exIdx, setIdx, { weight: Math.max(0, Number(e.target.value)) })} className="h-10 text-base" />
+                                <Input
+                                  type="number"
+                                  inputMode="decimal"
+                                  min={0}
+                                  step={2.5}
+                                  value={set.weight || ''}
+                                  placeholder="0"
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) => updateSet(activeSession, exIdx, setIdx, { weight: Math.max(0, Number(e.target.value)) })}
+                                  className="h-10 text-base text-center"
+                                />
                               </div>
                               <div className="flex flex-col justify-end min-w-0">
                                 <Label>Vol.</Label>
