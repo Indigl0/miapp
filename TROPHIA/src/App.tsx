@@ -7,11 +7,12 @@ import { ExercisesView } from '@/components/ExercisesView';
 import { RoutinesView } from '@/components/RoutinesView';
 import { SessionView } from '@/components/SessionView';
 import { AnalyticsView } from '@/components/AnalyticsView';
+import { MetricsView } from '@/components/MetricsView';
 import { FullPageSpinner } from '@/components/ui/Feedback';
 
 function AppContent() {
   const { user, ready } = useAuth();
-  const [view, setView] = useState<View>('routines');
+  const [view, setView] = useState<View>('metrics');
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
   if (!ready) return <FullPageSpinner />;
@@ -24,6 +25,7 @@ function AppContent() {
 
   return (
     <Layout view={view} onView={setView}>
+      {view === 'metrics' && <MetricsView />}
       {view === 'routines' && <RoutinesView onStartSession={handleStartSession} />}
       {view === 'exercises' && <ExercisesView />}
       {view === 'session' && <SessionView activeSessionId={activeSessionId} onActiveSessionChange={setActiveSessionId} />}
