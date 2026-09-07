@@ -59,9 +59,9 @@ export function MetricsView() {
 
       if (profData) {
         setProfile({
-          age: profData.age || '',
-          height: profData.height || '',
-          initial_weight: profData.initial_weight || '',
+          age: profData.age ?? '',
+          height: profData.height ?? '',
+          initial_weight: profData.initial_weight ?? '',
           goal: profData.goal || 'Ganar Masa Muscular',
         });
       }
@@ -88,7 +88,6 @@ export function MetricsView() {
     try {
       const payload = {
         user_id: user.id,
-        name: user.name,
         age: profile.age === '' ? null : Number(profile.age),
         height: profile.height === '' ? null : Number(profile.height),
         initial_weight: profile.initial_weight === '' ? null : Number(profile.initial_weight),
@@ -96,14 +95,30 @@ export function MetricsView() {
         updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('user_profiles')
-        .upsert(payload, { onConflict: 'user_id' });
+        .upsert(payload, { onConflict: 'user_id' })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error de Supabase al guardar perfil:', error.message, error.details);
+        alert(`Error al guardar perfil: ${error.message}`);
+        return;
+      }
+
+      if (data) {
+        setProfile({
+          age: data.age ?? '',
+          height: data.height ?? '',
+          initial_weight: data.initial_weight ?? '',
+          goal: data.goal ?? 'Ganar Masa Muscular',
+        });
+      }
+
       setEditingProfile(false);
     } catch (err) {
-      console.error('Error guardando perfil:', err);
+      console.error('Error inesperado guardando perfil:', err);
     }
   };
 
@@ -123,7 +138,12 @@ export function MetricsView() {
         ])
         .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error de Supabase al guardar peso:', error.message);
+        alert(`Error al guardar peso: ${error.message}`);
+        return;
+      }
+
       if (data) {
         setLogs((prev) => [...prev, ...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
         setNewWeight('');
