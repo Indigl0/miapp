@@ -329,25 +329,25 @@ export function AnalyticsView() {
               </p>
             </div>
 
-            {/* Acciones Rápidas Desplegar/Colapsar */}
+            {/* Acciones Rápidas Desplegar/Colapsar con el Diseño Oficial Trophia */}
             <div className="flex items-center gap-2 print:hidden w-full sm:w-auto justify-end">
               <button
                 type="button"
                 onClick={expandAll}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                className="flex items-center gap-2 px-3.5 py-2 bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-xl transition-all shadow-md shadow-brand-500/20 text-xs sm:text-sm cursor-pointer active:scale-95"
                 title="Desplegar todas las sesiones"
               >
-                <ChevronsDown size={14} className="text-brand-500" />
+                <ChevronsDown size={16} />
                 <span>Desplegar todo</span>
               </button>
 
               <button
                 type="button"
                 onClick={collapseAll}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                className="flex items-center gap-2 px-3.5 py-2 bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-xl transition-all shadow-md shadow-brand-500/20 text-xs sm:text-sm cursor-pointer active:scale-95"
                 title="Colapsar todas las sesiones"
               >
-                <ChevronsUp size={14} className="text-gray-400" />
+                <ChevronsUp size={16} />
                 <span>Colapsar todo</span>
               </button>
             </div>
@@ -355,7 +355,7 @@ export function AnalyticsView() {
         </CardHeader>
 
         <CardBody>
-          {/* LISTA EN PANTALLA (Respeta el límite visual) */}
+          {/* LISTA EN PANTALLA */}
           <div className="space-y-3 print:hidden">
             {visibleSessions.map((session) => {
               const isOpen = !!expandedSessions[session.id];
@@ -440,7 +440,7 @@ export function AnalyticsView() {
               <button
                 type="button"
                 onClick={() => setVisibleCount((prev) => prev + 5)}
-                className="w-full sm:w-auto px-5 py-2.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-5 py-2.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
               >
                 <ChevronDown size={16} />
                 <span>Mostrar más ({completedSessions.length - visibleCount} restantes)</span>
@@ -449,7 +449,7 @@ export function AnalyticsView() {
               <button
                 type="button"
                 onClick={() => setVisibleCount(completedSessions.length)}
-                className="w-full sm:w-auto px-5 py-2.5 border border-brand-500/30 text-brand-500 hover:bg-brand-500/10 font-semibold rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-5 py-2.5 border border-brand-500/30 text-brand-500 hover:bg-brand-500/10 font-semibold rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
               >
                 <span>Mostrar todas</span>
               </button>
@@ -461,7 +461,7 @@ export function AnalyticsView() {
               <button
                 type="button"
                 onClick={() => setVisibleCount(5)}
-                className="text-xs font-semibold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors inline-flex items-center gap-1"
+                className="text-xs font-semibold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors inline-flex items-center gap-1 cursor-pointer"
               >
                 <ChevronUp size={14} />
                 <span>Contraer lista a las 5 más recientes</span>
