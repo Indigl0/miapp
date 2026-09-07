@@ -40,27 +40,22 @@ export function MetricsView() {
   const [newDate, setNewDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
-    fetchData();
+    if (user?.id) {
+      fetchData();
+    } else {
+      setLoading(false);
+    }
   }, [user]);
 
-  const getActiveUserId = async (): Promise<string> => {
-    // Intenta obtener el ID autenticado real de Supabase primero
-    const { data } = await supabase.auth.getUser();
-    if (data?.user?.id) return data.user.id;
-    // Si no existe sesión estándar de Supabase, utiliza el ID local o 'felipe' como fallback
-    return user?.id || 'felipe';
-  };
-
   const fetchData = async () => {
+    if (!user?.id) return;
     setLoading(true);
     try {
-      const activeUserId = await getActiveUserId();
-
-      // Cargar Perfil
+      // Cargar Perfil vinculando public.users(id)
       const { data: profData } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('user_id', activeUserId)
+        .eq('user_id', user.id)
         .maybeSingle();
 
       if (profData) {
@@ -72,11 +67,11 @@ export function MetricsView() {
         });
       }
 
-      // Cargar Registros de Peso
+      // Cargar Registros de Peso vinculando public.users(id)
       const { data: weightData } = await supabase
         .from('weight_logs')
         .select('*')
-        .eq('user_id', activeUserId)
+        .eq('user_id', user.id)
         .order('date', { ascending: true });
 
       if (weightData) {
@@ -90,11 +85,14 @@ export function MetricsView() {
   };
 
   const handleSaveProfile = async () => {
-    try {
-      const activeUserId = await getActiveUserId();
+    if (!user?.id) {
+      alert("Error: No se encontró una sesión activa de usuario.");
+      return;
+    }
 
+    try {
       const payload = {
-        user_id: activeUserId,
+        user_id: user.id,
         age: profile.age === '' ? null : Number(profile.age),
         height: profile.height === '' ? null : Number(profile.height),
         initial_weight: profile.initial_weight === '' ? null : Number(profile.initial_weight),
@@ -109,7 +107,7 @@ export function MetricsView() {
         .single();
 
       if (error) {
-        console.error('Error de Supabase al guardar perfil:', error.message, error.details);
+        console.error('Error al guardar perfil:', error.message);
         alert(`Error al guardar perfil: ${error.message}`);
         return;
       }
@@ -131,16 +129,14 @@ export function MetricsView() {
 
   const handleAddWeight = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newWeight) return;
+    if (!newWeight || !user?.id) return;
 
     try {
-      const activeUserId = await getActiveUserId();
-
       const { data, error } = await supabase
         .from('weight_logs')
         .insert([
           {
-            user_id: activeUserId,
+            user_id: user.id,
             weight: Number(newWeight),
             date: newDate,
           },
@@ -148,7 +144,7 @@ export function MetricsView() {
         .select();
 
       if (error) {
-        console.error('Error de Supabase al guardar peso:', error.message);
+        console.error('Error al guardar peso:', error.message);
         alert(`Error al guardar peso: ${error.message}`);
         return;
       }
