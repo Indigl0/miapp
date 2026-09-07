@@ -43,22 +43,18 @@ export function MetricsView() {
     fetchData();
   }, [user]);
 
-  const getActiveUserId = async (): Promise<string | null> => {
+  const getActiveUserId = async (): Promise<string> => {
     // Intenta obtener el ID autenticado real de Supabase primero
     const { data } = await supabase.auth.getUser();
     if (data?.user?.id) return data.user.id;
-    // Si no existe sesión estándar de Supabase, utiliza el ID de contexto local
-    return user?.id || null;
+    // Si no existe sesión estándar de Supabase, utiliza el ID local o 'felipe' como fallback
+    return user?.id || 'felipe';
   };
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const activeUserId = await getActiveUserId();
-      if (!activeUserId) {
-        setLoading(false);
-        return;
-      }
 
       // Cargar Perfil
       const { data: profData } = await supabase
@@ -96,10 +92,6 @@ export function MetricsView() {
   const handleSaveProfile = async () => {
     try {
       const activeUserId = await getActiveUserId();
-      if (!activeUserId) {
-        alert("Error: No hay usuario autenticado activo.");
-        return;
-      }
 
       const payload = {
         user_id: activeUserId,
@@ -143,7 +135,6 @@ export function MetricsView() {
 
     try {
       const activeUserId = await getActiveUserId();
-      if (!activeUserId) return;
 
       const { data, error } = await supabase
         .from('weight_logs')
@@ -162,7 +153,7 @@ export function MetricsView() {
         return;
       }
 
-      if (data) {
+      if (data && data.length > 0) {
         setLogs((prev) => [...prev, ...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
         setNewWeight('');
       }
