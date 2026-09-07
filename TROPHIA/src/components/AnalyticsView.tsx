@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
-import { BarChart3, TrendingUp, Activity, Calendar, FileDown, Dumbbell, ChevronDown, Flame } from 'lucide-react';
+import { BarChart3, TrendingUp, Activity, Calendar, FileDown, Dumbbell, ChevronDown, ChevronUp, Flame, ChevronsDown, ChevronsUp } from 'lucide-react';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
 import type { TrainingSession, Exercise } from '@/lib/types';
@@ -32,6 +32,10 @@ export function AnalyticsView() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Estados para control de historial
+  const [visibleCount, setVisibleCount] = useState<number>(5);
+  const [expandedSessions, setExpandedSessions] = useState<Record<string, boolean>>({});
+
   const isDark = theme === 'dark';
   const axisColor = isDark ? '#6b7280' : '#9ca3af';
   const gridColor = isDark ? '#1f2937' : '#f3f4f6';
@@ -50,6 +54,25 @@ export function AnalyticsView() {
     sessions.filter((s) => s.completed).sort((a, b) => b.date - a.date), 
     [sessions]
   );
+
+  const visibleSessions = useMemo(() => 
+    completedSessions.slice(0, visibleCount), 
+    [completedSessions, visibleCount]
+  );
+
+  const toggleSession = (id: string) => {
+    setExpandedSessions((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const expandAll = () => {
+    const allExpanded: Record<string, boolean> = {};
+    completedSessions.forEach((s) => { allExpanded[s.id] = true; });
+    setExpandedSessions(allExpanded);
+  };
+
+  const collapseAll = () => {
+    setExpandedSessions({});
+  };
 
   const dailyVolume = useMemo<DayVolume[]>(() => {
     const map = new Map<number, DayVolume>();
@@ -93,7 +116,6 @@ export function AnalyticsView() {
         const vol = ex.sets.reduce((a, set) => a + (set.completed ? set.reps * set.weight : 0), 0);
         map.set(exercise.muscleGroup, (map.get(exercise.muscleGroup) ?? 0) + vol);
       } else if (ex.cardioDetails && ex.cardioDetails.completed) {
-        // Asignar min de cardio como volumen relativo si aplica
         map.set(exercise.muscleGroup, (map.get(exercise.muscleGroup) ?? 0) + (ex.cardioDetails.durationMinutes || 0));
       }
     }));
@@ -139,7 +161,6 @@ export function AnalyticsView() {
   const totalVolume = dailyVolume.reduce((sum, d) => sum + d.volume, 0);
   const totalSets = dailyVolume.reduce((sum, d) => sum + d.sets, 0);
   const totalCardioMins = dailyVolume.reduce((sum, d) => sum + d.cardioMinutes, 0);
-  const avgWeight = exerciseProgress.length > 0 ? exerciseProgress.reduce((sum, d) => sum + d.weight, 0) / exerciseProgress.length : 0;
 
   const currentExercise = exercises.find((e) => e.id === selectedExercise);
   const isSelectedCardio = currentExercise?.muscleGroup?.toLowerCase() === 'cardio';
@@ -294,38 +315,185 @@ export function AnalyticsView() {
         </Card>
       </div>
 
+      {/* HISTORIAL DETALLADO CON PAGINACIÓN Y DESPLEGABLES */}
       <Card className="break-before-page">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Dumbbell size={20} className="text-brand-500" />
-            Historial Detallado de Sesiones
-          </CardTitle>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Dumbbell size={20} className="text-brand-500" />
+                Historial Detallado de Sesiones
+              </CardTitle>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Mostrando {Math.min(visibleCount, completedSessions.length)} de {completedSessions.length} sesiones completadas.
+              </p>
+            </div>
+
+            {/* Acciones Rápidas Desplegar/Colapsar */}
+            <div className="flex items-center gap-2 print:hidden w-full sm:w-auto justify-end">
+              <button
+                type="button"
+                onClick={expandAll}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                title="Desplegar todas las sesiones"
+              >
+                <ChevronsDown size={14} className="text-brand-500" />
+                <span>Desplegar todo</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={collapseAll}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                title="Colapsar todas las sesiones"
+              >
+                <ChevronsUp size={14} className="text-gray-400" />
+                <span>Colapsar todo</span>
+              </button>
+            </div>
+          </div>
         </CardHeader>
+
         <CardBody>
-          <div className="space-y-6">
+          {/* LISTA EN PANTALLA (Respeta el límite visual) */}
+          <div className="space-y-3 print:hidden">
+            {visibleSessions.map((session) => {
+              const isOpen = !!expandedSessions[session.id];
+              return (
+                <div key={session.id} className="border border-gray-200 dark:border-gray-800/80 rounded-2xl overflow-hidden transition-all duration-200 bg-white dark:bg-gray-900/40 hover:border-brand-500/30">
+                  {/* Cabecera Desplegable de la Sesión */}
+                  <button
+                    type="button"
+                    onClick={() => toggleSession(session.id)}
+                    className="w-full flex items-center justify-between p-3.5 sm:p-4 text-left cursor-pointer hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 pr-2">
+                      <div className="h-9 w-9 rounded-xl bg-brand-500/10 text-brand-500 flex items-center justify-center shrink-0 font-bold text-xs">
+                        <Calendar size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-sm sm:text-base text-gray-900 dark:text-gray-100 truncate">
+                          {session.routineName}
+                        </h4>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                            {fmtDate(session.date)}
+                          </span>
+                          <span className="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full font-semibold">
+                            {session.exercises.length} ejercicios
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs font-semibold text-brand-500 hidden sm:inline-block">
+                        {isOpen ? 'Ocultar' : 'Ver detalle'}
+                      </span>
+                      <div className={`p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 transition-transform duration-200 ${isOpen ? 'rotate-180 text-brand-500' : ''}`}>
+                        <ChevronDown size={16} />
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Contenido Detallado al Desplegar */}
+                  {isOpen && (
+                    <div className="p-3.5 sm:p-4 pt-0 border-t border-gray-100 dark:border-gray-800/60 bg-gray-50/50 dark:bg-gray-950/20 space-y-2.5 animate-fade-in">
+                      {session.exercises.map((exItem, idx) => {
+                        const exerciseMeta = exercises.find((e) => e.id === exItem.exerciseId);
+                        return (
+                          <div key={idx} className="text-sm bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-gray-800/80 p-3 rounded-xl shadow-2xs">
+                            <span className="font-bold text-gray-800 dark:text-gray-200 block mb-2 text-xs sm:text-sm">
+                              {exerciseMeta ? exerciseMeta.name : 'Ejercicio desconocido'}
+                            </span>
+                            
+                            {exItem.cardioDetails ? (
+                              <div className="flex flex-wrap gap-2">
+                                <span className="text-xs bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 px-2.5 py-1 rounded-lg text-blue-600 dark:text-blue-300 font-medium">
+                                  {exItem.cardioDetails.cardioType} · {exItem.cardioDetails.durationMinutes} min {exItem.cardioDetails.distanceKm ? `· ${exItem.cardioDetails.distanceKm} km` : ''}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                                {exItem.sets?.map((set, setIdx) => (
+                                  set.completed ? (
+                                    <span key={setIdx} className="text-xs bg-gray-50 dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/60 px-2.5 py-1 rounded-lg text-gray-700 dark:text-gray-300">
+                                      Serie {setIdx + 1}: <strong className="text-brand-500">{set.weight} kg</strong> × {set.reps} reps
+                                    </span>
+                                  ) : null
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* BOTONES DE PAGINACIÓN ("Cargar más / Ver todas") */}
+          {completedSessions.length > visibleCount && (
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 print:hidden">
+              <button
+                type="button"
+                onClick={() => setVisibleCount((prev) => prev + 5)}
+                className="w-full sm:w-auto px-5 py-2.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <ChevronDown size={16} />
+                <span>Mostrar más ({completedSessions.length - visibleCount} restantes)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setVisibleCount(completedSessions.length)}
+                className="w-full sm:w-auto px-5 py-2.5 border border-brand-500/30 text-brand-500 hover:bg-brand-500/10 font-semibold rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>Mostrar todas</span>
+              </button>
+            </div>
+          )}
+
+          {visibleCount > 5 && (
+            <div className="mt-3 text-center print:hidden">
+              <button
+                type="button"
+                onClick={() => setVisibleCount(5)}
+                className="text-xs font-semibold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors inline-flex items-center gap-1"
+              >
+                <ChevronUp size={14} />
+                <span>Contraer lista a las 5 más recientes</span>
+              </button>
+            </div>
+          )}
+
+          {/* VISTA DE IMPRESIÓN (PDF Exclusivo: Muestra Absolutamente TODO Abierto) */}
+          <div className="hidden print:block space-y-4">
             {completedSessions.map((session) => (
-              <div key={session.id} className="border-b border-gray-200 dark:border-gray-800 pb-4 last:border-b-0 last:pb-0 break-inside-avoid">
+              <div key={session.id} className="border-b border-gray-300 pb-4 break-inside-avoid">
                 <div className="flex justify-between items-center mb-2">
-                  <h4 className="font-bold text-base text-gray-900 dark:text-gray-100">
+                  <h4 className="font-bold text-base text-black">
                     {session.routineName} — {fmtDate(session.date)}
                   </h4>
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-lg">
+                  <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded">
                     {fmtDate(session.date)}
                   </span>
                 </div>
                 
-                <div className="space-y-2 mt-3">
+                <div className="space-y-2 mt-2">
                   {session.exercises.map((exItem, idx) => {
                     const exerciseMeta = exercises.find((e) => e.id === exItem.exerciseId);
                     return (
-                      <div key={idx} className="text-sm bg-gray-50 dark:bg-gray-900/50 p-2.5 rounded-xl">
-                        <span className="font-semibold text-gray-800 dark:text-gray-200 block mb-1">
+                      <div key={idx} className="text-xs bg-gray-50 p-2 rounded border border-gray-200">
+                        <span className="font-bold text-black block mb-1">
                           {exerciseMeta ? exerciseMeta.name : 'Ejercicio desconocido'}
                         </span>
                         
                         {exItem.cardioDetails ? (
                           <div className="flex flex-wrap gap-2">
-                            <span className="text-xs bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 px-2 py-1 rounded-md text-blue-600 dark:text-blue-300 font-medium">
+                            <span className="text-xs font-medium text-blue-700">
                               {exItem.cardioDetails.cardioType} · {exItem.cardioDetails.durationMinutes} min {exItem.cardioDetails.distanceKm ? `· ${exItem.cardioDetails.distanceKm} km` : ''}
                             </span>
                           </div>
@@ -333,8 +501,8 @@ export function AnalyticsView() {
                           <div className="flex flex-wrap gap-2">
                             {exItem.sets?.map((set, setIdx) => (
                               set.completed ? (
-                                <span key={setIdx} className="text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-2 py-1 rounded-md text-gray-600 dark:text-gray-300">
-                                  Serie {setIdx + 1}: <strong className="text-brand-500">{set.weight} kg</strong> × {set.reps} reps
+                                <span key={setIdx} className="text-xs text-gray-700">
+                                  Serie {setIdx + 1}: <strong>{set.weight} kg</strong> × {set.reps} reps
                                 </span>
                               ) : null
                             ))}
@@ -347,6 +515,7 @@ export function AnalyticsView() {
               </div>
             ))}
           </div>
+
         </CardBody>
       </Card>
     </div>
