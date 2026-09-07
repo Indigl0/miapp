@@ -40,21 +40,31 @@ export function MetricsView() {
   const [newDate, setNewDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
-    if (user?.id) {
-      fetchData();
-    } else {
-      setLoading(false);
-    }
+    fetchData();
   }, [user]);
+
+  const getActiveUserId = async (): Promise<string | null> => {
+    // Intenta obtener el ID autenticado real de Supabase primero
+    const { data } = await supabase.auth.getUser();
+    if (data?.user?.id) return data.user.id;
+    // Si no existe sesión estándar de Supabase, utiliza el ID de contexto local
+    return user?.id || null;
+  };
 
   const fetchData = async () => {
     setLoading(true);
     try {
+      const activeUserId = await getActiveUserId();
+      if (!activeUserId) {
+        setLoading(false);
+        return;
+      }
+
       // Cargar Perfil
       const { data: profData } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', activeUserId)
         .maybeSingle();
 
       if (profData) {
@@ -70,7 +80,7 @@ export function MetricsView() {
       const { data: weightData } = await supabase
         .from('weight_logs')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', activeUserId)
         .order('date', { ascending: true });
 
       if (weightData) {
@@ -84,10 +94,15 @@ export function MetricsView() {
   };
 
   const handleSaveProfile = async () => {
-    if (!user?.id) return;
     try {
+      const activeUserId = await getActiveUserId();
+      if (!activeUserId) {
+        alert("Error: No hay usuario autenticado activo.");
+        return;
+      }
+
       const payload = {
-        user_id: user.id,
+        user_id: activeUserId,
         age: profile.age === '' ? null : Number(profile.age),
         height: profile.height === '' ? null : Number(profile.height),
         initial_weight: profile.initial_weight === '' ? null : Number(profile.initial_weight),
@@ -124,14 +139,17 @@ export function MetricsView() {
 
   const handleAddWeight = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newWeight || !user?.id) return;
+    if (!newWeight) return;
 
     try {
+      const activeUserId = await getActiveUserId();
+      if (!activeUserId) return;
+
       const { data, error } = await supabase
         .from('weight_logs')
         .insert([
           {
-            user_id: user.id,
+            user_id: activeUserId,
             weight: Number(newWeight),
             date: newDate,
           },
