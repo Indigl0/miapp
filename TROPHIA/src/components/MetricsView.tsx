@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 // @ts-ignore
 import { supabase } from '../supabase';
 import { useAuth } from '@/lib/auth';
+import { useTheme } from '@/lib/theme';
 import { Scale, Calendar, Plus, Edit2, Check, ArrowUpRight, ArrowDownRight, Minus, Trash2 } from 'lucide-react';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, ReferenceLine } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from 'recharts';
 
 interface UserProfile {
   age: number | '';
@@ -19,11 +20,30 @@ interface WeightLog {
   notes?: string;
 }
 
+function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
+  if (!active || !payload || payload.length === 0) return null;
+  return (
+    <div className="rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-xl px-3.5 py-2.5">
+      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 break-words">{label}</p>
+      {payload.map((p, i) => (
+        <p key={i} className="text-sm font-bold break-words" style={{ color: p.color }}>
+          {p.name}: {p.value.toLocaleString('es-ES')} kg
+        </p>
+      ))}
+    </div>
+  );
+}
+
 export function MetricsView() {
   const { user } = useAuth();
+  const [theme] = useTheme();
   const [loading, setLoading] = useState(true);
   const [editingProfile, setEditingProfile] = useState(false);
   
+  const isDark = theme === 'dark';
+  const axisColor = isDark ? '#6b7280' : '#9ca3af';
+  const gridColor = isDark ? '#1f2937' : '#f3f4f6';
+
   // Perfil del usuario
   const [profile, setProfile] = useState<UserProfile>({
     age: '',
@@ -349,21 +369,28 @@ export function MetricsView() {
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={logs} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="weightGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#FF6B00" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#FF6B00" stopOpacity={0.0} />
+                    <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f97316" stopOpacity={0.4} />
+                      <stop offset="100%" stopColor="#f97316" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                  <YAxis domain={['auto', 'auto']} tick={{ fontSize: 11 }} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#161618', borderColor: '#333', borderRadius: '12px', color: '#fff' }}
-                    formatter={(val: any) => [`${val} kg`, 'Peso']}
-                  />
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+                  <XAxis dataKey="date" tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <YAxis domain={['auto', 'auto']} tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} />
                   {initialWeight > 0 && (
                     <ReferenceLine y={initialWeight} stroke="#888" strokeDasharray="3 3" label={{ value: 'Inicial', fill: '#888', fontSize: 10 }} />
                   )}
-                  <Area type="monotone" dataKey="weight" stroke="#FF6B00" strokeWidth={3} fillOpacity={1} fill="url(#weightGrad)" />
+                  <Area
+                    type="monotone"
+                    dataKey="weight"
+                    name="Peso"
+                    stroke="#f97316"
+                    strokeWidth={2.5}
+                    fill="url(#weightGradient)"
+                    dot={{ fill: '#f97316', r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
