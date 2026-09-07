@@ -202,16 +202,16 @@ export function MetricsView() {
       {/* HEADER TÍTULO Y PERFIL */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Métricas del Usuario</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Métricas</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Control de composición corporal y avance de peso en el tiempo.
           </p>
         </div>
         <button
           onClick={() => (editingProfile ? handleSaveProfile() : setEditingProfile(true))}
-          className="flex items-center justify-center gap-2 rounded-xl bg-gray-100 dark:bg-gray-800 px-4 py-2.5 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors w-fit"
+          className="flex items-center justify-center gap-2 rounded-xl bg-brand-500 text-white px-4 py-2.5 text-sm font-semibold hover:bg-brand-600 shadow-sm shadow-brand-500/30 transition-all w-fit"
         >
-          {editingProfile ? <Check size={16} className="text-emerald-500" /> : <Edit2 size={16} />}
+          {editingProfile ? <Check size={16} /> : <Edit2 size={16} />}
           <span>{editingProfile ? 'Guardar Perfil' : 'Editar Datos Base'}</span>
         </button>
       </div>
