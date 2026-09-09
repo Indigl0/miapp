@@ -268,6 +268,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                         <Input
                           type="number"
                           inputMode="decimal"
+                          step="any"
                           min={1}
                           value={cardioData.durationMinutes || ''}
                           placeholder="0"
@@ -282,7 +283,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                           type="number"
                           inputMode="decimal"
                           min={0}
-                          step={0.1}
+                          step="any"
                           placeholder="0"
                           value={cardioData.distanceKm ?? ''}
                           onFocus={(e) => e.target.select()}
@@ -323,6 +324,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                   <Input
                                     type="number"
                                     inputMode="decimal"
+                                    step="any"
                                     min={0}
                                     value={set.reps || ''}
                                     placeholder="0"
@@ -335,8 +337,8 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                   <Input
                                     type="number"
                                     inputMode="decimal"
+                                    step="any"
                                     min={0}
-                                    step={2.5}
                                     value={set.weight || ''}
                                     placeholder="0"
                                     onFocus={(e) => e.target.select()}
@@ -344,7 +346,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                     className="w-24 h-9 py-1.5 text-center"
                                   />
                                 </td>
-                                <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">{(set.reps * set.weight).toFixed(0)}</td>
+                                <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">{(set.reps * set.weight).toFixed(1)}</td>
                                 <td className="px-4 py-2.5"><button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600'}`}><Check size={16} /></button></td>
                                 <td className="px-4 py-2.5"><button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1.5 text-gray-300 hover:text-red-500"><X size={14} /></button></td>
                               </tr>
@@ -370,6 +372,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                 <Input
                                   type="number"
                                   inputMode="decimal"
+                                  step="any"
                                   min={0}
                                   value={set.reps || ''}
                                   placeholder="0"
@@ -383,8 +386,8 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                 <Input
                                   type="number"
                                   inputMode="decimal"
+                                  step="any"
                                   min={0}
-                                  step={2.5}
                                   value={set.weight || ''}
                                   placeholder="0"
                                   onFocus={(e) => e.target.select()}
@@ -394,7 +397,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                               </div>
                               <div className="flex flex-col justify-end min-w-0">
                                 <Label>Vol.</Label>
-                                <div className="h-10 flex items-center justify-center text-sm font-semibold text-gray-500 dark:text-gray-400 break-words whitespace-nowrap">{(set.reps * set.weight).toFixed(0)}</div>
+                                <div className="h-10 flex items-center justify-center text-sm font-semibold text-gray-500 dark:text-gray-400 break-words whitespace-nowrap">{(set.reps * set.weight).toFixed(1)}</div>
                               </div>
                             </div>
                           </div>
