@@ -33,6 +33,9 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   const [isTrashOpen, setIsTrashOpen] = useState(false);
   const [localNotes, setLocalNotes] = useState('');
 
+  // Estados locales para permitir la escritura fluida de decimales como "32." o "32,5"
+  const [weightInputs, setWeightInputs] = useState<Record<string, string>>({});
+
   useEffect(() => {
     setLocalNotes(activeSession?.notes ?? '');
   }, [activeSession?.id]);
@@ -174,6 +177,20 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     setCreateOpen(false);
   };
 
+  // Manejador flexible de peso
+  const handleWeightInputChange = (s: TrainingSession, exIdx: number, setIdx: number, rawVal: string) => {
+    const key = `${exIdx}-${setIdx}`;
+    // Reemplaza comas por puntos para homologar decimales
+    const sanitized = rawVal.replace(',', '.');
+    
+    // Si es un valor numérico válido o está escribiendo un decimal parcialmente (ej: "32.")
+    if (sanitized === '' || /^\d*\.?\d*$/.test(sanitized)) {
+      setWeightInputs((prev) => ({ ...prev, [key]: rawVal }));
+      const parsed = parseFloat(sanitized);
+      updateSet(s, exIdx, setIdx, { weight: isNaN(parsed) ? 0 : parsed });
+    }
+  };
+
   if (activeSession) {
     const vol = totalVolume(activeSession);
     const done = completedSets(activeSession);
@@ -205,7 +222,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
 
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <Card><CardBody className="text-center py-3 sm:py-4"><p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">{done}/{total}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Bloques</p></CardBody></Card>
-          <Card><CardBody className="text-center py-3 sm:py-4"><p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">{vol.toFixed(0)}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Volumen kg</p></CardBody></Card>
+          <Card><CardBody className="text-center py-3 sm:py-4"><p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">{vol.toFixed(1)}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Volumen kg</p></CardBody></Card>
           <Card><CardBody className="text-center py-3 sm:py-4"><p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">{activeSession.exercises.length}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Ejercicios</p></CardBody></Card>
         </div>
 
@@ -266,10 +283,8 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                       <div className="w-full sm:w-32">
                         <Label>Tiempo (min)</Label>
                         <Input
-                          type="number"
+                          type="text"
                           inputMode="decimal"
-                          step="any"
-                          min={1}
                           value={cardioData.durationMinutes || ''}
                           placeholder="0"
                           onFocus={(e) => e.target.select()}
@@ -280,14 +295,12 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                       <div className="w-full sm:w-32">
                         <Label>Distancia (km)</Label>
                         <Input
-                          type="number"
+                          type="text"
                           inputMode="decimal"
-                          min={0}
-                          step="any"
                           placeholder="0"
                           value={cardioData.distanceKm ?? ''}
                           onFocus={(e) => e.target.select()}
-                          onChange={(e) => updateCardioDetails(activeSession, exIdx, { distanceKm: e.target.value ? Number(e.target.value) : undefined })}
+                          onChange={(e) => updateCardioDetails(activeSession, exIdx, { distanceKm: e.target.value ? Number(e.target.value.replace(',', '.')) : undefined })}
                         />
                       </div>
 
@@ -317,91 +330,93 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                             </tr>
                           </thead>
                           <tbody>
-                            {ex.sets?.map((set, setIdx) => (
-                              <tr key={setIdx} className={`border-b border-gray-50 dark:border-gray-800/50 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
-                                <td className="px-4 py-2.5 font-semibold whitespace-nowrap">{set.setNumber}</td>
-                                <td className="px-4 py-2.5">
-                                  <Input
-                                    type="number"
-                                    inputMode="decimal"
-                                    step="any"
-                                    min={0}
-                                    value={set.reps || ''}
-                                    placeholder="0"
-                                    onFocus={(e) => e.target.select()}
-                                    onChange={(e) => updateSet(activeSession, exIdx, setIdx, { reps: Math.max(0, Number(e.target.value)) })}
-                                    className="w-20 h-9 py-1.5 text-center"
-                                  />
-                                </td>
-                                <td className="px-4 py-2.5">
-                                  <Input
-                                    type="number"
-                                    inputMode="decimal"
-                                    step="any"
-                                    min={0}
-                                    value={set.weight || ''}
-                                    placeholder="0"
-                                    onFocus={(e) => e.target.select()}
-                                    onChange={(e) => updateSet(activeSession, exIdx, setIdx, { weight: Math.max(0, Number(e.target.value)) })}
-                                    className="w-24 h-9 py-1.5 text-center"
-                                  />
-                                </td>
-                                <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">{(set.reps * set.weight).toFixed(1)}</td>
-                                <td className="px-4 py-2.5"><button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600'}`}><Check size={16} /></button></td>
-                                <td className="px-4 py-2.5"><button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1.5 text-gray-300 hover:text-red-500"><X size={14} /></button></td>
-                              </tr>
-                            ))}
+                            {ex.sets?.map((set, setIdx) => {
+                              const key = `${exIdx}-${setIdx}`;
+                              const displayWeight = weightInputs[key] ?? (set.weight ? String(set.weight) : '');
+
+                              return (
+                                <tr key={setIdx} className={`border-b border-gray-50 dark:border-gray-800/50 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
+                                  <td className="px-4 py-2.5 font-semibold whitespace-nowrap">{set.setNumber}</td>
+                                  <td className="px-4 py-2.5">
+                                    <Input
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={set.reps || ''}
+                                      placeholder="0"
+                                      onFocus={(e) => e.target.select()}
+                                      onChange={(e) => updateSet(activeSession, exIdx, setIdx, { reps: Math.max(0, parseInt(e.target.value) || 0) })}
+                                      className="w-20 h-9 py-1.5 text-center"
+                                    />
+                                  </td>
+                                  <td className="px-4 py-2.5">
+                                    <Input
+                                      type="text"
+                                      inputMode="decimal"
+                                      value={displayWeight}
+                                      placeholder="0"
+                                      onFocus={(e) => e.target.select()}
+                                      onChange={(e) => handleWeightInputChange(activeSession, exIdx, setIdx, e.target.value)}
+                                      className="w-24 h-9 py-1.5 text-center"
+                                    />
+                                  </td>
+                                  <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">{(set.reps * set.weight).toFixed(1)}</td>
+                                  <td className="px-4 py-2.5"><button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600'}`}><Check size={16} /></button></td>
+                                  <td className="px-4 py-2.5"><button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1.5 text-gray-300 hover:text-red-500"><X size={14} /></button></td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
 
                       {/* Vista móvil */}
                       <div className="sm:hidden divide-y divide-gray-100 dark:divide-gray-800">
-                        {ex.sets?.map((set, setIdx) => (
-                          <div key={setIdx} className={`p-3.5 space-y-2.5 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs font-bold uppercase text-gray-400 break-words">Serie {set.setNumber}</span>
-                              <div className="flex items-center gap-2">
-                                <button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}><Check size={16} /></button>
-                                <button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1.5 text-gray-300 hover:text-red-500"><X size={14} /></button>
+                        {ex.sets?.map((set, setIdx) => {
+                          const key = `${exIdx}-${setIdx}`;
+                          const displayWeight = weightInputs[key] ?? (set.weight ? String(set.weight) : '');
+
+                          return (
+                            <div key={setIdx} className={`p-3.5 space-y-2.5 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-bold uppercase text-gray-400 break-words">Serie {set.setNumber}</span>
+                                <div className="flex items-center gap-2">
+                                  <button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}><Check size={16} /></button>
+                                  <button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1.5 text-gray-300 hover:text-red-500"><X size={14} /></button>
+                                </div>
+                              </div>
+                              <div className="flex gap-2.5">
+                                <div className="flex-1 min-w-0">
+                                  <Label>Reps</Label>
+                                  <Input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={set.reps || ''}
+                                    placeholder="0"
+                                    onFocus={(e) => e.target.select()}
+                                    onChange={(e) => updateSet(activeSession, exIdx, setIdx, { reps: Math.max(0, parseInt(e.target.value) || 0) })}
+                                    className="h-10 text-base text-center"
+                                  />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <Label>Peso (kg)</Label>
+                                  <Input
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={displayWeight}
+                                    placeholder="0"
+                                    onFocus={(e) => e.target.select()}
+                                    onChange={(e) => handleWeightInputChange(activeSession, exIdx, setIdx, e.target.value)}
+                                    className="h-10 text-base text-center"
+                                  />
+                                </div>
+                                <div className="flex flex-col justify-end min-w-0">
+                                  <Label>Vol.</Label>
+                                  <div className="h-10 flex items-center justify-center text-sm font-semibold text-gray-500 dark:text-gray-400 break-words whitespace-nowrap">{(set.reps * set.weight).toFixed(1)}</div>
+                                </div>
                               </div>
                             </div>
-                            <div className="flex gap-2.5">
-                              <div className="flex-1 min-w-0">
-                                <Label>Reps</Label>
-                                <Input
-                                  type="number"
-                                  inputMode="decimal"
-                                  step="any"
-                                  min={0}
-                                  value={set.reps || ''}
-                                  placeholder="0"
-                                  onFocus={(e) => e.target.select()}
-                                  onChange={(e) => updateSet(activeSession, exIdx, setIdx, { reps: Math.max(0, Number(e.target.value)) })}
-                                  className="h-10 text-base text-center"
-                                />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <Label>Peso (kg)</Label>
-                                <Input
-                                  type="number"
-                                  inputMode="decimal"
-                                  step="any"
-                                  min={0}
-                                  value={set.weight || ''}
-                                  placeholder="0"
-                                  onFocus={(e) => e.target.select()}
-                                  onChange={(e) => updateSet(activeSession, exIdx, setIdx, { weight: Math.max(0, Number(e.target.value)) })}
-                                  className="h-10 text-base text-center"
-                                />
-                              </div>
-                              <div className="flex flex-col justify-end min-w-0">
-                                <Label>Vol.</Label>
-                                <div className="h-10 flex items-center justify-center text-sm font-semibold text-gray-500 dark:text-gray-400 break-words whitespace-nowrap">{(set.reps * set.weight).toFixed(1)}</div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </>
                   )}
@@ -453,7 +468,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                 </div>
                 <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400 break-words">
                   <span>{completedSets(s)}/{totalSets(s)} bloques</span>
-                  <span>{totalVolume(s).toFixed(0)} kg vol.</span>
+                  <span>{totalVolume(s).toFixed(1)} kg vol.</span>
                 </div>
                 <div className="flex gap-2 pt-1">
                   <Button size="sm" onClick={() => onActiveSessionChange(s.id)} className="flex-1"><Play size={14} />Abrir</Button>
