@@ -84,7 +84,10 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
       if (i !== exIdx || !ex.sets) return ex;
       const nextNum = ex.sets.length + 1;
       const last = ex.sets[ex.sets.length - 1];
-      return { ...ex, sets: [...ex.sets, { setNumber: nextNum, reps: last?.reps ?? 10, weight: last?.weight ?? 0, completed: false }] };
+      return { 
+        ...ex, 
+        sets: [...ex.sets, { setNumber: nextNum, reps: last?.reps ?? 10, weight: last?.weight ?? 0, rir: last?.rir ?? 2, completed: false }] 
+      };
     });
     await updateSession({ ...s, exercises: exercisesCopy });
   };
@@ -164,7 +167,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
           }
           return {
             exerciseId: re.exerciseId,
-            sets: Array.from({ length: re.sets ?? 3 }, (_, i) => ({ setNumber: i + 1, reps: re.targetReps ?? 10, weight: 0, completed: false })),
+            sets: Array.from({ length: re.sets ?? 3 }, (_, i) => ({ setNumber: i + 1, reps: re.targetReps ?? 10, weight: 0, rir: 2, completed: false })),
           };
         });
       }
@@ -180,10 +183,8 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   // Manejador flexible de peso
   const handleWeightInputChange = (s: TrainingSession, exIdx: number, setIdx: number, rawVal: string) => {
     const key = `${exIdx}-${setIdx}`;
-    // Reemplaza comas por puntos para homologar decimales
     const sanitized = rawVal.replace(',', '.');
     
-    // Si es un valor numérico válido o está escribiendo un decimal parcialmente (ej: "32.")
     if (sanitized === '' || /^\d*\.?\d*$/.test(sanitized)) {
       setWeightInputs((prev) => ({ ...prev, [key]: rawVal }));
       const parsed = parseFloat(sanitized);
@@ -324,6 +325,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                               <th className="text-left px-4 py-2.5 font-semibold">#</th>
                               <th className="text-left px-4 py-2.5 font-semibold">Reps</th>
                               <th className="text-left px-4 py-2.5 font-semibold">Peso (kg)</th>
+                              <th className="text-left px-4 py-2.5 font-semibold">RIR</th>
                               <th className="text-left px-4 py-2.5 font-semibold">Volumen</th>
                               <th className="px-4 py-2.5"></th>
                               <th className="px-4 py-2.5"></th>
@@ -358,6 +360,24 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                       onChange={(e) => handleWeightInputChange(activeSession, exIdx, setIdx, e.target.value)}
                                       className="w-24 h-9 py-1.5 text-center"
                                     />
+                                  </td>
+                                  <td className="px-4 py-2.5">
+                                    <div className="flex gap-1">
+                                      {[0, 1, 2, 3].map((val) => (
+                                        <button
+                                          key={val}
+                                          type="button"
+                                          onClick={() => updateSet(activeSession, exIdx, setIdx, { rir: set.rir === val ? undefined : val })}
+                                          className={`px-2 py-1 text-xs font-semibold rounded-md border transition-colors ${
+                                            set.rir === val
+                                              ? 'bg-brand-500 text-white border-brand-500'
+                                              : 'bg-gray-50 dark:bg-gray-800 text-gray-500 border-gray-200 dark:border-gray-700 hover:border-brand-300'
+                                          }`}
+                                        >
+                                          {val === 3 ? '3+' : val}
+                                        </button>
+                                      ))}
+                                    </div>
                                   </td>
                                   <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">{(set.reps * set.weight).toFixed(1)}</td>
                                   <td className="px-4 py-2.5"><button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600'}`}><Check size={16} /></button></td>
@@ -412,6 +432,27 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                 <div className="flex flex-col justify-end min-w-0">
                                   <Label>Vol.</Label>
                                   <div className="h-10 flex items-center justify-center text-sm font-semibold text-gray-500 dark:text-gray-400 break-words whitespace-nowrap">{(set.reps * set.weight).toFixed(1)}</div>
+                                </div>
+                              </div>
+                              
+                              {/* Selector RIR Móvil */}
+                              <div>
+                                <Label className="text-[11px] text-gray-400 mb-1 block">RIR (Reps en recámara)</Label>
+                                <div className="grid grid-cols-4 gap-1.5">
+                                  {[0, 1, 2, 3].map((val) => (
+                                    <button
+                                      key={val}
+                                      type="button"
+                                      onClick={() => updateSet(activeSession, exIdx, setIdx, { rir: set.rir === val ? undefined : val })}
+                                      className={`h-8 text-xs font-semibold rounded-lg border transition-colors ${
+                                        set.rir === val
+                                          ? 'bg-brand-500 text-white border-brand-500'
+                                          : 'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                                      }`}
+                                    >
+                                      {val === 3 ? '3+' : `RIR ${val}`}
+                                    </button>
+                                  ))}
                                 </div>
                               </div>
                             </div>
