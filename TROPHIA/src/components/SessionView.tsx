@@ -17,18 +17,49 @@ import { SessionTimer } from '@/components/ui/SessionTimer';
 function fmtDate(ts: number): string { return new Date(ts).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); }
 
 export function SessionView({ activeSessionId, onActiveSessionChange }: { activeSessionId: string | null; onActiveSessionChange: (id: string | null) => void }) {
-  const allSessions = useLiveQuery(() => db.sessions.orderBy('date').reverse().toArray(), [], [] as TrainingSession[]);
+  const rawSessions = useLiveQuery(() => db.sessions.orderBy('date').reverse().toArray(), [], [] as TrainingSession[]);
+  
+  // Sanitización de seguridad para proteger sesiones antiguas sin migrar
+  const allSessions = rawSessions.map((s) => ({
+    ...s,
+    exercises: (s.exercises || []).map((ex) => ({
+      ...ex,
+      sets: ex.sets ? ex.sets.map((st) => ({
+        ...st,
+        reps: st.reps ?? 0,
+        weight: st.weight ?? 0,
+        completed: !!st.completed,
+        rir: st.rir !== undefined ? st.rir : undefined,
+      })) : undefined,
+    })),
+  }));
+
   const sessions = allSessions.filter((s) => !(s as TrainingSession & { deletedAt?: number }).deletedAt);
   const trashSessions = allSessions.filter((s) => (s as TrainingSession & { deletedAt?: number }).deletedAt);
 
   const exercises = useLiveQuery(() => db.exercises.orderBy('name').toArray(), [], [] as Exercise[]);
   const routines = useLiveQuery(() => db.routines.orderBy('name').toArray(), [], [] as Routine[]);
-  const activeSession = useLiveQuery<TrainingSession | undefined>(
+  const activeSessionRaw = useLiveQuery<TrainingSession | undefined>(
     () => (activeSessionId ? db.sessions.get(activeSessionId) : undefined),
     [activeSessionId],
     undefined,
   );
-  
+
+  // Asegurar integridad de la sesión activa recuperada
+  const activeSession: TrainingSession | undefined = activeSessionRaw ? {
+    ...activeSessionRaw,
+    exercises: (activeSessionRaw.exercises || []).map((ex) => ({
+      ...ex,
+      sets: ex.sets ? ex.sets.map((st) => ({
+        ...st,
+        reps: st.reps ?? 0,
+        weight: st.weight ?? 0,
+        completed: !!st.completed,
+        rir: st.rir !== undefined ? st.rir : undefined,
+      })) : undefined,
+    })),
+  } : undefined;
+
   const [createOpen, setCreateOpen] = useState(false);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
   const [localNotes, setLocalNotes] = useState('');
@@ -45,16 +76,16 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   const isCardio = (id: string) => getExercise(id)?.muscleGroup?.toLowerCase() === 'cardio';
 
   const totalVolume = (s: TrainingSession) =>
-    s.exercises.reduce((sum, ex) => sum + (ex.sets ? ex.sets.reduce((a, set) => a + (set.completed ? set.reps * set.weight : 0), 0) : 0), 0);
+    (s.exercises || []).reduce((sum, ex) => sum + (ex.sets ? ex.sets.reduce((a, set) => a + (set.completed ? (set.reps || 0) * (set.weight || 0) : 0), 0) : 0), 0);
 
   const completedSets = (s: TrainingSession) =>
-    s.exercises.reduce((sum, ex) => {
+    (s.exercises || []).reduce((sum, ex) => {
       if (ex.cardioDetails) return sum + (ex.cardioDetails.completed ? 1 : 0);
       return sum + (ex.sets ? ex.sets.filter((set) => set.completed).length : 0);
     }, 0);
 
   const totalSets = (s: TrainingSession) =>
-    s.exercises.reduce((sum, ex) => {
+    (s.exercises || []).reduce((sum, ex) => {
       if (ex.cardioDetails) return sum + 1;
       return sum + (ex.sets ? ex.sets.length : 0);
     }, 0);
@@ -81,12 +112,13 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
 
   const addSet = async (s: TrainingSession, exIdx: number) => {
     const exercisesCopy = s.exercises.map((ex, i) => {
-      if (i !== exIdx || !ex.sets) return ex;
-      const nextNum = ex.sets.length + 1;
-      const last = ex.sets[ex.sets.length - 1];
+      if (i !== exIdx) return ex;
+      const currentSets = ex.sets || [];
+      const nextNum = currentSets.length + 1;
+      const last = currentSets[currentSets.length - 1];
       return { 
         ...ex, 
-        sets: [...ex.sets, { setNumber: nextNum, reps: last?.reps ?? 10, weight: last?.weight ?? 0, rir: last?.rir ?? 2, completed: false }] 
+        sets: [...currentSets, { setNumber: nextNum, reps: last?.reps ?? 10, weight: last?.weight ?? 0, rir: last?.rir ?? 2, completed: false }] 
       };
     });
     await updateSession({ ...s, exercises: exercisesCopy });
@@ -380,7 +412,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                         ))}
                                       </div>
                                     </td>
-                                    <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">{(set.reps * set.weight).toFixed(1)}</td>
+                                    <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">{((set.reps || 0) * (set.weight || 0)).toFixed(1)}</td>
                                     <td className="px-4 py-2.5"><button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600'}`}><Check size={16} /></button></td>
                                     <td className="px-4 py-2.5"><button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1.5 text-gray-300 hover:text-red-500"><X size={14} /></button></td>
                                   </tr>
@@ -432,7 +464,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                   </div>
                                   <div className="flex flex-col justify-end min-w-0">
                                     <Label>Vol.</Label>
-                                    <div className="h-10 flex items-center justify-center text-sm font-semibold text-gray-500 dark:text-gray-400 break-words whitespace-nowrap">{(set.reps * set.weight).toFixed(1)}</div>
+                                    <div className="h-10 flex items-center justify-center text-sm font-semibold text-gray-500 dark:text-gray-400 break-words whitespace-nowrap">{((set.reps || 0) * (set.weight || 0)).toFixed(1)}</div>
                                   </div>
                                 </div>
                                 
