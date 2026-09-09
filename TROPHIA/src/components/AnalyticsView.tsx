@@ -78,6 +78,13 @@ export function AnalyticsView() {
     setExpandedSessions({});
   };
 
+  const handleExportPDF = () => {
+    // Solución específica para iOS Safari: retraso pequeño para permitir renderizado
+    setTimeout(() => {
+      window.print();
+    }, 100);
+  };
+
   const dailyVolume = useMemo<DayVolume[]>(() => {
     const map = new Map<number, DayVolume>();
     completedSessions.forEach((s) => {
@@ -227,7 +234,29 @@ export function AnalyticsView() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 print:space-y-4">
+      {/* Estilos CSS específicos para la vista previa de impresión en iOS/Mobile */}
+      <style>{`
+        @media print {
+          body {
+            background: white !important;
+            color: black !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .print\\:hidden {
+            display: none !important;
+          }
+          .print\\:block {
+            display: block !important;
+          }
+          .recharts-responsive-container {
+            width: 100% !important;
+            height: 250px !important;
+          }
+        }
+      `}</style>
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="font-condensed text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
@@ -237,7 +266,8 @@ export function AnalyticsView() {
         </div>
         
         <button
-          onClick={() => window.print()}
+          onClick={handleExportPDF}
+          type="button"
           className="flex items-center gap-2 px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-xl transition-all shadow-lg shadow-brand-500/20 text-sm cursor-pointer active:scale-95 shrink-0 print:hidden"
         >
           <FileDown size={18} />
@@ -302,7 +332,7 @@ export function AnalyticsView() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
               <CardTitle>{isSelectedCardio ? 'Progreso de Cardio' : 'Progreso de Fuerza y RIR'}</CardTitle>
               
-              <div className="relative w-full sm:w-64" ref={dropdownRef}>
+              <div className="relative w-full sm:w-64 print:hidden" ref={dropdownRef}>
                 <button
                   type="button"
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -385,7 +415,7 @@ export function AnalyticsView() {
                 <Dumbbell size={20} className="text-brand-500" />
                 Historial Detallado de Sesiones
               </CardTitle>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 print:hidden">
                 Mostrando {Math.min(visibleCount, completedSessions.length)} de {completedSessions.length} sesiones completadas.
               </p>
             </div>
