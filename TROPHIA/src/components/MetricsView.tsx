@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { useAuth } from '@/lib/auth';
 import { useTheme } from '@/lib/theme';
-import { Scale, Calendar, Plus, Edit2, Check, ArrowUpRight, ArrowDownRight, Minus, Trash2 } from 'lucide-react';
+import { Scale, Calendar, Plus, Edit2, Check, ArrowUpRight, ArrowDownRight, Minus, Trash2, Info, Target } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from 'recharts';
 
 interface UserProfile {
@@ -202,7 +202,7 @@ export function MetricsView() {
       {/* HEADER TÍTULO Y PERFIL */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Métricas</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Métricas Corporales</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Control de composición corporal y avance de peso en el tiempo.
           </p>
@@ -214,6 +214,17 @@ export function MetricsView() {
           {editingProfile ? <Check size={16} /> : <Edit2 size={16} />}
           <span>{editingProfile ? 'Guardar Perfil' : 'Editar Datos Base'}</span>
         </button>
+      </div>
+
+      {/* TARJETA INFORMATIVA / GUÍA DEL USUARIO */}
+      <div className="rounded-2xl border border-brand-500/20 bg-brand-500/5 p-4 flex items-start gap-3.5">
+        <div className="p-2 bg-brand-500/10 rounded-xl text-brand-500 shrink-0">
+          <Info size={20} />
+        </div>
+        <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+          <p className="font-semibold text-gray-900 dark:text-gray-100 mb-0.5">¿Por qué registrar estos datos?</p>
+          Configura tus parámetros base (estatura, edad y objetivo) para calcular tus requerimientos calóricos e interpretar con precisión la evolución de tu peso corporal en el tiempo.
+        </div>
       </div>
 
       {/* TARJETA DE DATOS DEL PERFIL */}
@@ -230,7 +241,10 @@ export function MetricsView() {
                 className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             ) : (
-              <p className="mt-1 text-xl font-bold">{profile.height ? `${profile.height} cm` : '--'}</p>
+              <div>
+                <p className="mt-1 text-xl font-bold">{profile.height ? `${profile.height} cm` : '--'}</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">Usada para calcular IMC y GEB</p>
+              </div>
             )}
           </div>
 
@@ -245,7 +259,10 @@ export function MetricsView() {
                 className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             ) : (
-              <p className="mt-1 text-xl font-bold">{profile.age ? `${profile.age} años` : '--'}</p>
+              <div>
+                <p className="mt-1 text-xl font-bold">{profile.age ? `${profile.age} años` : '--'}</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">Para ajuste metabólico</p>
+              </div>
             )}
           </div>
 
@@ -261,7 +278,10 @@ export function MetricsView() {
                 className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             ) : (
-              <p className="mt-1 text-xl font-bold">{profile.initial_weight ? `${profile.initial_weight} kg` : '--'}</p>
+              <div>
+                <p className="mt-1 text-xl font-bold">{profile.initial_weight ? `${profile.initial_weight} kg` : '--'}</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">Punto de partida del proceso</p>
+              </div>
             )}
           </div>
 
@@ -279,7 +299,12 @@ export function MetricsView() {
                 <option value="Recomposición Corporal">Recomposición Corporal</option>
               </select>
             ) : (
-              <p className="mt-1 text-base font-bold text-brand-500">{profile.goal}</p>
+              <div>
+                <p className="mt-1 text-base font-bold text-brand-500">{profile.goal}</p>
+                <p className="text-[11px] text-gray-400 mt-0.5 flex items-center gap-1">
+                  <Target size={12} /> Meta principal actual
+                </p>
+              </div>
             )}
           </div>
         </div>
@@ -319,10 +344,13 @@ export function MetricsView() {
 
       {/* FORMULARIO DE REGISTRO RÁPIDO */}
       <form onSubmit={handleAddWeight} className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#161618] p-5 shadow-sm">
-        <h3 className="text-base font-bold mb-4 flex items-center gap-2">
-          <Scale size={18} className="text-brand-500" />
-          <span>Registrar Nuevo Peso</span>
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base font-bold flex items-center gap-2">
+            <Scale size={18} className="text-brand-500" />
+            <span>Registrar Nuevo Peso</span>
+          </h3>
+          <span className="text-xs text-gray-400 hidden sm:inline">Recomendado: Pesarse en ayunas</span>
+        </div>
         <div className="flex flex-col sm:flex-row items-end gap-4">
           <div className="w-full sm:w-1/2">
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Peso (kg)</label>

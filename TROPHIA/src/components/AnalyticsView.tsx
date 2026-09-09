@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
-import { BarChart3, TrendingUp, Activity, Calendar, FileDown, Dumbbell, ChevronDown, ChevronUp, Flame, ChevronsDown, ChevronsUp, Zap } from 'lucide-react';
+import { BarChart3, TrendingUp, Activity, Calendar, FileDown, Dumbbell, ChevronDown, ChevronUp, Flame, ChevronsDown, ChevronsUp, Zap, HelpCircle } from 'lucide-react';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
 import type { TrainingSession, Exercise } from '@/lib/types';
@@ -292,6 +292,19 @@ export function AnalyticsView() {
         </Card>
 
         <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><Flame size={18} className="text-blue-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{dailyVolume.reduce((sum, d) => sum + d.cardioMinutes, 0)} <span className="text-xs font-normal">min</span></p><p className="text-xs text-gray-400 mt-0.5 break-words">Cardio Total</p></CardBody></Card>
+      </div>
+
+      {/* TARJETA INFORMATIVA: CONCEPTO RIR E HIPERTROFIA */}
+      <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-4 flex items-start gap-3.5 print:hidden">
+        <div className="p-2 bg-purple-500/10 rounded-xl text-purple-500 shrink-0 mt-0.5">
+          <HelpCircle size={20} />
+        </div>
+        <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+          <p className="font-semibold text-gray-900 dark:text-gray-100 mb-1 flex items-center gap-1.5">
+            ¿Qué es el RIR y cómo ayuda a la Hipertrofia?
+          </p>
+          El <strong>RIR (Repeticiones En Recámara)</strong> indica cuántas repeticiones adicionales podrías haber completado antes del fallo muscular. Para maximizar la ganancia muscular (hipertrofia), el rango óptimo es un <strong>RIR entre 1 y 3</strong>. Un RIR de 0 es fallo total, mientras que un RIR mayor a 4 puede resultar en un estímulo insuficiente para el crecimiento.
+        </div>
       </div>
 
       <Card>
