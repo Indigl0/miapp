@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
-import { BarChart3, TrendingUp, Activity, Calendar, FileDown, Dumbbell, ChevronDown, ChevronUp, Flame, ChevronsDown, ChevronsUp } from 'lucide-react';
+import { BarChart3, TrendingUp, Activity, Calendar, FileDown, Dumbbell, ChevronDown, ChevronUp, Flame, ChevronsDown, ChevronsUp, Zap } from 'lucide-react';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
 import type { TrainingSession, Exercise } from '@/lib/types';
@@ -11,7 +11,7 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tool
 function fmtDate(ts: number): string { return new Date(ts).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); }
 
 interface DayVolume { date: string; timestamp: number; volume: number; sets: number; cardioMinutes: number; }
-interface ExerciseProgress { date: string; timestamp: number; weight: number; volume: number; durationMinutes?: number; distanceKm?: number; }
+interface ExerciseProgress { date: string; timestamp: number; weight: number; volume: number; avgRir?: number; durationMinutes?: number; distanceKm?: number; }
 interface MuscleDistribution { group: string; volume: number; }
 
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
@@ -19,7 +19,11 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
   return (
     <div className="rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-xl px-3.5 py-2.5">
       <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 break-words">{label}</p>
-      {payload.map((p, i) => <p key={i} className="text-sm font-bold break-words" style={{ color: p.color }}>{p.name}: {p.value.toLocaleString('es-ES')}</p>)}
+      {payload.map((p, i) => (
+        <p key={i} className="text-sm font-bold break-words" style={{ color: p.color }}>
+          {p.name}: {typeof p.value === 'number' && p.name.includes('RIR') ? p.value.toFixed(1) : p.value.toLocaleString('es-ES')}
+        </p>
+      ))}
     </div>
   );
 }
@@ -106,6 +110,23 @@ export function AnalyticsView() {
     return Array.from(map.values()).sort((a, b) => a.timestamp - b.timestamp);
   }, [completedSessions]);
 
+  // Cálculo global de RIR Promedio
+  const globalAvgRir = useMemo(() => {
+    let totalRir = 0;
+    let count = 0;
+    completedSessions.forEach((s) => s.exercises.forEach((ex) => {
+      if (ex.sets) {
+        ex.sets.forEach((set) => {
+          if (set.completed && typeof set.rir === 'number') {
+            totalRir += set.rir;
+            count++;
+          }
+        });
+      }
+    }));
+    return count > 0 ? (totalRir / count) : null;
+  }, [completedSessions]);
+
   const muscleDistribution = useMemo<MuscleDistribution[]>(() => {
     const map = new Map<string, number>();
     completedSessions.forEach((s) => s.exercises.forEach((ex) => {
@@ -123,7 +144,8 @@ export function AnalyticsView() {
   }, [completedSessions, exercises]);
 
   const exerciseProgress = useMemo<ExerciseProgress[]>(() => {
-    const map = new Map<number, ExerciseProgress>();
+    const map = new Map<number, { weight: number; volume: number; durationMinutes: number; distanceKm: number; rirSum: number; rirCount: number }>();
+    
     completedSessions.forEach((s) => s.exercises.forEach((ex) => {
       if (selectedExercise !== 'all' && ex.exerciseId !== selectedExercise) return;
       
@@ -136,31 +158,54 @@ export function AnalyticsView() {
         const mins = ex.cardioDetails.durationMinutes || 0;
         const dist = ex.cardioDetails.distanceKm || 0;
         if (existing) {
-          existing.durationMinutes = (existing.durationMinutes || 0) + mins;
-          existing.distanceKm = (existing.distanceKm || 0) + dist;
+          existing.durationMinutes += mins;
+          existing.distanceKm += dist;
         } else {
-          map.set(ts, { date: fmtDate(ts), timestamp: ts, weight: 0, volume: 0, durationMinutes: mins, distanceKm: dist });
+          map.set(ts, { weight: 0, volume: 0, durationMinutes: mins, distanceKm: dist, rirSum: 0, rirCount: 0 });
         }
       } else if (ex.sets) {
-        const topWeight = Math.max(...ex.sets.filter((set) => set.completed).map((set) => set.weight), 0);
-        const vol = ex.sets.reduce((a, set) => a + (set.completed ? set.reps * set.weight : 0), 0);
+        const completedSets = ex.sets.filter((set) => set.completed);
+        const topWeight = Math.max(...completedSets.map((set) => set.weight), 0);
+        const vol = completedSets.reduce((a, set) => a + set.reps * set.weight, 0);
+        
+        let rirSum = 0;
+        let rirCount = 0;
+        completedSets.forEach((set) => {
+          if (typeof set.rir === 'number') {
+            rirSum += set.rir;
+            rirCount++;
+          }
+        });
+
         if (topWeight === 0 && vol === 0) return;
         
         const existing = map.get(ts);
         if (existing) { 
           existing.weight = Math.max(existing.weight, topWeight); 
           existing.volume += vol; 
+          existing.rirSum += rirSum;
+          existing.rirCount += rirCount;
         } else {
-          map.set(ts, { date: fmtDate(ts), timestamp: ts, weight: topWeight, volume: Math.round(vol) });
+          map.set(ts, { weight: topWeight, volume: Math.round(vol), durationMinutes: 0, distanceKm: 0, rirSum, rirCount });
         }
       }
     }));
-    return Array.from(map.values()).sort((a, b) => a.timestamp - b.timestamp);
+
+    return Array.from(map.entries())
+      .map(([ts, data]) => ({
+        date: fmtDate(ts),
+        timestamp: ts,
+        weight: data.weight,
+        volume: data.volume,
+        durationMinutes: data.durationMinutes || undefined,
+        distanceKm: data.distanceKm || undefined,
+        avgRir: data.rirCount > 0 ? Number((data.rirSum / data.rirCount).toFixed(1)) : undefined
+      }))
+      .sort((a, b) => a.timestamp - b.timestamp);
   }, [completedSessions, selectedExercise]);
 
   const totalVolume = dailyVolume.reduce((sum, d) => sum + d.volume, 0);
   const totalSets = dailyVolume.reduce((sum, d) => sum + d.sets, 0);
-  const totalCardioMins = dailyVolume.reduce((sum, d) => sum + d.cardioMinutes, 0);
 
   const currentExercise = exercises.find((e) => e.id === selectedExercise);
   const isSelectedCardio = currentExercise?.muscleGroup?.toLowerCase() === 'cardio';
@@ -188,7 +233,7 @@ export function AnalyticsView() {
           <h2 className="font-condensed text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
             <BarChart3 size={24} className="text-brand-500" />Análisis de Rendimiento
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 break-words">Visualiza tu progreso de volumen, fuerza y cardio a lo largo del tiempo.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 break-words">Visualiza tu progreso de volumen, fuerza e intensidad a lo largo del tiempo.</p>
         </div>
         
         <button
@@ -200,11 +245,23 @@ export function AnalyticsView() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
         <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><Activity size={18} className="text-brand-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{completedSessions.length}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Sesiones</p></CardBody></Card>
         <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><TrendingUp size={18} className="text-brand-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{totalVolume.toLocaleString('es-ES')}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Volumen kg</p></CardBody></Card>
         <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><Dumbbell size={18} className="text-brand-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{totalSets}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Series Fuerza</p></CardBody></Card>
-        <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><Flame size={18} className="text-blue-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{totalCardioMins} <span className="text-xs font-normal">min</span></p><p className="text-xs text-gray-400 mt-0.5 break-words">Cardio Total</p></CardBody></Card>
+        
+        {/* Nueva Tarjeta de RIR Promedio */}
+        <Card>
+          <CardBody className="text-center py-3 sm:py-4">
+            <div className="flex items-center justify-center mb-1"><Zap size={18} className="text-purple-500" /></div>
+            <p className="text-lg sm:text-2xl font-bold break-words">
+              {globalAvgRir !== null ? globalAvgRir.toFixed(1) : 'N/A'}
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5 break-words">RIR Promedio</p>
+          </CardBody>
+        </Card>
+
+        <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><Flame size={18} className="text-blue-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{dailyVolume.reduce((sum, d) => sum + d.cardioMinutes, 0)} <span className="text-xs font-normal">min</span></p><p className="text-xs text-gray-400 mt-0.5 break-words">Cardio Total</p></CardBody></Card>
       </div>
 
       <Card>
@@ -243,7 +300,7 @@ export function AnalyticsView() {
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
-              <CardTitle>{isSelectedCardio ? 'Progreso de Cardio' : 'Progreso de Fuerza'}</CardTitle>
+              <CardTitle>{isSelectedCardio ? 'Progreso de Cardio' : 'Progreso de Fuerza y RIR'}</CardTitle>
               
               <div className="relative w-full sm:w-64" ref={dropdownRef}>
                 <button
@@ -300,14 +357,18 @@ export function AnalyticsView() {
             ) : (
               <ResponsiveContainer width="100%" height={280}>
                 <AreaChart data={exerciseProgress} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <defs><linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10b981" stopOpacity={0.35} /><stop offset="100%" stopColor="#10b981" stopOpacity={0} /></linearGradient></defs>
+                  <defs>
+                    <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10b981" stopOpacity={0.35} /><stop offset="100%" stopColor="#10b981" stopOpacity={0} /></linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
                   <XAxis dataKey="date" tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <YAxis yAxisId="left" tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <YAxis yAxisId="right" orientation="right" domain={[0, 3]} tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Area type="monotone" dataKey="weight" name="Peso máx (kg)" stroke="#10b981" strokeWidth={2.5} fill="url(#weightGradient)" dot={{ fill: '#10b981', r: 3 }} activeDot={{ r: 5 }} />
-                  <Area type="monotone" dataKey="volume" name="Volumen (kg)" stroke="#f97316" strokeWidth={2} fillOpacity={0} dot={false} />
+                  <Area yAxisId="left" type="monotone" dataKey="weight" name="Peso máx (kg)" stroke="#10b981" strokeWidth={2.5} fill="url(#weightGradient)" dot={{ fill: '#10b981', r: 3 }} activeDot={{ r: 5 }} />
+                  <Area yAxisId="left" type="monotone" dataKey="volume" name="Volumen (kg)" stroke="#f97316" strokeWidth={2} fillOpacity={0} dot={false} />
+                  <Area yAxisId="right" type="monotone" dataKey="avgRir" name="RIR Promedio" stroke="#a855f7" strokeWidth={2} strokeDasharray="4 4" fillOpacity={0} dot={{ fill: '#a855f7', r: 3 }} />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -329,7 +390,6 @@ export function AnalyticsView() {
               </p>
             </div>
 
-            {/* Acciones Rápidas Desplegar/Colapsar con el Diseño Oficial Trophia */}
             <div className="flex items-center gap-2 print:hidden w-full sm:w-auto justify-end">
               <button
                 type="button"
@@ -355,13 +415,11 @@ export function AnalyticsView() {
         </CardHeader>
 
         <CardBody>
-          {/* LISTA EN PANTALLA */}
           <div className="space-y-3 print:hidden">
             {visibleSessions.map((session) => {
               const isOpen = !!expandedSessions[session.id];
               return (
                 <div key={session.id} className="border border-gray-200 dark:border-gray-800/80 rounded-2xl overflow-hidden transition-all duration-200 bg-white dark:bg-gray-900/40 hover:border-brand-500/30">
-                  {/* Cabecera Desplegable de la Sesión */}
                   <button
                     type="button"
                     onClick={() => toggleSession(session.id)}
@@ -396,7 +454,6 @@ export function AnalyticsView() {
                     </div>
                   </button>
 
-                  {/* Contenido Detallado al Desplegar */}
                   {isOpen && (
                     <div className="p-3.5 sm:p-4 pt-0 border-t border-gray-100 dark:border-gray-800/60 bg-gray-50/50 dark:bg-gray-950/20 space-y-2.5 animate-fade-in">
                       {session.exercises.map((exItem, idx) => {
@@ -418,7 +475,7 @@ export function AnalyticsView() {
                                 {exItem.sets?.map((set, setIdx) => (
                                   set.completed ? (
                                     <span key={setIdx} className="text-xs bg-gray-50 dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/60 px-2.5 py-1 rounded-lg text-gray-700 dark:text-gray-300">
-                                      Serie {setIdx + 1}: <strong className="text-brand-500">{set.weight} kg</strong> × {set.reps} reps
+                                      Serie {setIdx + 1}: <strong className="text-brand-500">{set.weight} kg</strong> × {set.reps} reps {typeof set.rir === 'number' ? <span className="text-purple-500 font-semibold ml-1">({set.rir === 3 ? '3+' : set.rir} RIR)</span> : null}
                                     </span>
                                   ) : null
                                 ))}
@@ -434,7 +491,6 @@ export function AnalyticsView() {
             })}
           </div>
 
-          {/* BOTONES DE PAGINACIÓN ("Cargar más / Ver todas") */}
           {completedSessions.length > visibleCount && (
             <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 print:hidden">
               <button
@@ -469,7 +525,7 @@ export function AnalyticsView() {
             </div>
           )}
 
-          {/* VISTA DE IMPRESIÓN (PDF Exclusivo: Muestra Absolutamente TODO Abierto) */}
+          {/* VISTA DE IMPRESIÓN */}
           <div className="hidden print:block space-y-4">
             {completedSessions.map((session) => (
               <div key={session.id} className="border-b border-gray-300 pb-4 break-inside-avoid">
@@ -502,7 +558,7 @@ export function AnalyticsView() {
                             {exItem.sets?.map((set, setIdx) => (
                               set.completed ? (
                                 <span key={setIdx} className="text-xs text-gray-700">
-                                  Serie {setIdx + 1}: <strong>{set.weight} kg</strong> × {set.reps} reps
+                                  Serie {setIdx + 1}: <strong>{set.weight} kg</strong> × {set.reps} reps {typeof set.rir === 'number' ? `(${set.rir === 3 ? '3+' : set.rir} RIR)` : ''}
                                 </span>
                               ) : null
                             ))}
