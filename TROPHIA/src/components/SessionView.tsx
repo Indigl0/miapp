@@ -222,9 +222,9 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
         </div>
 
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          <Card><CardBody className="text-center py-3 sm:py-4"><p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">{done}/{total}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Bloques</p></CardBody></Card>
-          <Card><CardBody className="text-center py-3 sm:py-4"><p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">{vol.toFixed(1)}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Volumen kg</p></CardBody></Card>
-          <Card><CardBody className="text-center py-3 sm:py-4"><p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">{activeSession.exercises.length}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Ejercicios</p></CardBody></Card>
+          <Card><CardBody><div className="text-center py-3 sm:py-4"><p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">{done}/{total}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Bloques</p></div></CardBody></Card>
+          <Card><CardBody><div className="text-center py-3 sm:py-4"><p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">{vol.toFixed(1)}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Volumen kg</p></div></CardBody></Card>
+          <Card><CardBody><div className="text-center py-3 sm:py-4"><p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">{activeSession.exercises.length}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Ejercicios</p></div></CardBody></Card>
         </div>
 
         <Card>
@@ -263,83 +263,151 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                     )}
                   </div>
                 </CardHeader>
-                <CardBody className={isExCardio ? 'p-4' : 'p-0'}>
-                  {isExCardio ? (
-                    <div className="flex flex-col sm:flex-row sm:items-end gap-3 p-3 rounded-xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30">
-                      <div className="flex-1">
-                        <Label>Tipo de Cardio</Label>
-                        <Select
-                          value={cardioData.cardioType}
-                          onChange={(e) => updateCardioDetails(activeSession, exIdx, { cardioType: e.target.value })}
+                <CardBody>
+                  <div className={isExCardio ? 'p-4' : 'p-0'}>
+                    {isExCardio ? (
+                      <div className="flex flex-col sm:flex-row sm:items-end gap-3 p-3 rounded-xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30">
+                        <div className="flex-1">
+                          <Label>Tipo de Cardio</Label>
+                          <Select
+                            value={cardioData.cardioType}
+                            onChange={(e) => updateCardioDetails(activeSession, exIdx, { cardioType: e.target.value })}
+                          >
+                            <option value="Cinta">Cinta / Trote</option>
+                            <option value="Bicicleta">Bicicleta</option>
+                            <option value="Elíptica">Elíptica</option>
+                            <option value="Caminata">Caminata</option>
+                            <option value="Remo">Remo</option>
+                            <option value="Otro">Otro</option>
+                          </Select>
+                        </div>
+
+                        <div className="w-full sm:w-32">
+                          <Label>Tiempo (min)</Label>
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={cardioData.durationMinutes || ''}
+                            placeholder="0"
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => updateCardioDetails(activeSession, exIdx, { durationMinutes: Math.max(0, Number(e.target.value)) })}
+                          />
+                        </div>
+
+                        <div className="w-full sm:w-32">
+                          <Label>Distancia (km)</Label>
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="0"
+                            value={cardioData.distanceKm ?? ''}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => updateCardioDetails(activeSession, exIdx, { distanceKm: e.target.value ? Number(e.target.value.replace(',', '.')) : undefined })}
+                          />
+                        </div>
+
+                        <button
+                          onClick={() => updateCardioDetails(activeSession, exIdx, { completed: !cardioData.completed })}
+                          className={`h-10 px-4 rounded-xl flex items-center justify-center gap-2 font-medium text-sm transition-colors ${
+                            cardioData.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+                          }`}
                         >
-                          <option value="Cinta">Cinta / Trote</option>
-                          <option value="Bicicleta">Bicicleta</option>
-                          <option value="Elíptica">Elíptica</option>
-                          <option value="Caminata">Caminata</option>
-                          <option value="Remo">Remo</option>
-                          <option value="Otro">Otro</option>
-                        </Select>
+                          <Check size={16} />
+                          {cardioData.completed ? 'Completado' : 'Marcar'}
+                        </button>
                       </div>
+                    ) : (
+                      <>
+                        {/* Vista escritorio */}
+                        <div className="hidden sm:block overflow-x-auto scrollbar-thin">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="text-xs uppercase text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                                <th className="text-left px-4 py-2.5 font-semibold">#</th>
+                                <th className="text-left px-4 py-2.5 font-semibold">Reps</th>
+                                <th className="text-left px-4 py-2.5 font-semibold">Peso (kg)</th>
+                                <th className="text-left px-4 py-2.5 font-semibold">RIR</th>
+                                <th className="text-left px-4 py-2.5 font-semibold">Volumen</th>
+                                <th className="px-4 py-2.5"></th>
+                                <th className="px-4 py-2.5"></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {ex.sets?.map((set, setIdx) => {
+                                const key = `${exIdx}-${setIdx}`;
+                                const displayWeight = weightInputs[key] ?? (set.weight ? String(set.weight) : '');
 
-                      <div className="w-full sm:w-32">
-                        <Label>Tiempo (min)</Label>
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          value={cardioData.durationMinutes || ''}
-                          placeholder="0"
-                          onFocus={(e) => e.target.select()}
-                          onChange={(e) => updateCardioDetails(activeSession, exIdx, { durationMinutes: Math.max(0, Number(e.target.value)) })}
-                        />
-                      </div>
+                                return (
+                                  <tr key={setIdx} className={`border-b border-gray-50 dark:border-gray-800/50 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
+                                    <td className="px-4 py-2.5 font-semibold whitespace-nowrap">{set.setNumber}</td>
+                                    <td className="px-4 py-2.5">
+                                      <Input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={set.reps || ''}
+                                        placeholder="0"
+                                        onFocus={(e) => e.target.select()}
+                                        onChange={(e) => updateSet(activeSession, exIdx, setIdx, { reps: Math.max(0, parseInt(e.target.value) || 0) })}
+                                        className="w-20 h-9 py-1.5 text-center"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2.5">
+                                      <Input
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={displayWeight}
+                                        placeholder="0"
+                                        onFocus={(e) => e.target.select()}
+                                        onChange={(e) => handleWeightInputChange(activeSession, exIdx, setIdx, e.target.value)}
+                                        className="w-24 h-9 py-1.5 text-center"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2.5">
+                                      <div className="flex gap-1">
+                                        {[0, 1, 2, 3].map((val) => (
+                                          <button
+                                            key={val}
+                                            type="button"
+                                            onClick={() => updateSet(activeSession, exIdx, setIdx, { rir: set.rir === val ? undefined : val })}
+                                            className={`px-2 py-1 text-xs font-semibold rounded-md border transition-colors ${
+                                              set.rir === val
+                                                ? 'bg-brand-500 text-white border-brand-500'
+                                                : 'bg-gray-50 dark:bg-gray-800 text-gray-500 border-gray-200 dark:border-gray-700 hover:border-brand-300'
+                                            }`}
+                                          >
+                                            {val === 3 ? '3+' : val}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">{(set.reps * set.weight).toFixed(1)}</td>
+                                    <td className="px-4 py-2.5"><button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600'}`}><Check size={16} /></button></td>
+                                    <td className="px-4 py-2.5"><button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1.5 text-gray-300 hover:text-red-500"><X size={14} /></button></td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
 
-                      <div className="w-full sm:w-32">
-                        <Label>Distancia (km)</Label>
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          placeholder="0"
-                          value={cardioData.distanceKm ?? ''}
-                          onFocus={(e) => e.target.select()}
-                          onChange={(e) => updateCardioDetails(activeSession, exIdx, { distanceKm: e.target.value ? Number(e.target.value.replace(',', '.')) : undefined })}
-                        />
-                      </div>
+                        {/* Vista móvil */}
+                        <div className="sm:hidden divide-y divide-gray-100 dark:divide-gray-800">
+                          {ex.sets?.map((set, setIdx) => {
+                            const key = `${exIdx}-${setIdx}`;
+                            const displayWeight = weightInputs[key] ?? (set.weight ? String(set.weight) : '');
 
-                      <button
-                        onClick={() => updateCardioDetails(activeSession, exIdx, { completed: !cardioData.completed })}
-                        className={`h-10 px-4 rounded-xl flex items-center justify-center gap-2 font-medium text-sm transition-colors ${
-                          cardioData.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
-                        }`}
-                      >
-                        <Check size={16} />
-                        {cardioData.completed ? 'Completado' : 'Marcar'}
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Vista escritorio */}
-                      <div className="hidden sm:block overflow-x-auto scrollbar-thin">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="text-xs uppercase text-gray-400 border-b border-gray-100 dark:border-gray-800">
-                              <th className="text-left px-4 py-2.5 font-semibold">#</th>
-                              <th className="text-left px-4 py-2.5 font-semibold">Reps</th>
-                              <th className="text-left px-4 py-2.5 font-semibold">Peso (kg)</th>
-                              <th className="text-left px-4 py-2.5 font-semibold">RIR</th>
-                              <th className="text-left px-4 py-2.5 font-semibold">Volumen</th>
-                              <th className="px-4 py-2.5"></th>
-                              <th className="px-4 py-2.5"></th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {ex.sets?.map((set, setIdx) => {
-                              const key = `${exIdx}-${setIdx}`;
-                              const displayWeight = weightInputs[key] ?? (set.weight ? String(set.weight) : '');
-
-                              return (
-                                <tr key={setIdx} className={`border-b border-gray-50 dark:border-gray-800/50 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
-                                  <td className="px-4 py-2.5 font-semibold whitespace-nowrap">{set.setNumber}</td>
-                                  <td className="px-4 py-2.5">
+                            return (
+                              <div key={setIdx} className={`p-3.5 space-y-2.5 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-xs font-bold uppercase text-gray-400 break-words">Serie {set.setNumber}</span>
+                                  <div className="flex items-center gap-2">
+                                    <button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}><Check size={16} /></button>
+                                    <button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1.5 text-gray-300 hover:text-red-500"><X size={14} /></button>
+                                  </div>
+                                </div>
+                                <div className="flex gap-2.5">
+                                  <div className="flex-1 min-w-0">
+                                    <Label>Reps</Label>
                                     <Input
                                       type="text"
                                       inputMode="numeric"
@@ -347,10 +415,11 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                       placeholder="0"
                                       onFocus={(e) => e.target.select()}
                                       onChange={(e) => updateSet(activeSession, exIdx, setIdx, { reps: Math.max(0, parseInt(e.target.value) || 0) })}
-                                      className="w-20 h-9 py-1.5 text-center"
+                                      className="h-10 text-base text-center"
                                     />
-                                  </td>
-                                  <td className="px-4 py-2.5">
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <Label>Peso (kg)</Label>
                                     <Input
                                       type="text"
                                       inputMode="decimal"
@@ -358,109 +427,42 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                       placeholder="0"
                                       onFocus={(e) => e.target.select()}
                                       onChange={(e) => handleWeightInputChange(activeSession, exIdx, setIdx, e.target.value)}
-                                      className="w-24 h-9 py-1.5 text-center"
+                                      className="h-10 text-base text-center"
                                     />
-                                  </td>
-                                  <td className="px-4 py-2.5">
-                                    <div className="flex gap-1">
-                                      {[0, 1, 2, 3].map((val) => (
-                                        <button
-                                          key={val}
-                                          type="button"
-                                          onClick={() => updateSet(activeSession, exIdx, setIdx, { rir: set.rir === val ? undefined : val })}
-                                          className={`px-2 py-1 text-xs font-semibold rounded-md border transition-colors ${
-                                            set.rir === val
-                                              ? 'bg-brand-500 text-white border-brand-500'
-                                              : 'bg-gray-50 dark:bg-gray-800 text-gray-500 border-gray-200 dark:border-gray-700 hover:border-brand-300'
-                                          }`}
-                                        >
-                                          {val === 3 ? '3+' : val}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">{(set.reps * set.weight).toFixed(1)}</td>
-                                  <td className="px-4 py-2.5"><button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600'}`}><Check size={16} /></button></td>
-                                  <td className="px-4 py-2.5"><button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1.5 text-gray-300 hover:text-red-500"><X size={14} /></button></td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Vista móvil */}
-                      <div className="sm:hidden divide-y divide-gray-100 dark:divide-gray-800">
-                        {ex.sets?.map((set, setIdx) => {
-                          const key = `${exIdx}-${setIdx}`;
-                          const displayWeight = weightInputs[key] ?? (set.weight ? String(set.weight) : '');
-
-                          return (
-                            <div key={setIdx} className={`p-3.5 space-y-2.5 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs font-bold uppercase text-gray-400 break-words">Serie {set.setNumber}</span>
-                                <div className="flex items-center gap-2">
-                                  <button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}><Check size={16} /></button>
-                                  <button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1.5 text-gray-300 hover:text-red-500"><X size={14} /></button>
+                                  </div>
+                                  <div className="flex flex-col justify-end min-w-0">
+                                    <Label>Vol.</Label>
+                                    <div className="h-10 flex items-center justify-center text-sm font-semibold text-gray-500 dark:text-gray-400 break-words whitespace-nowrap">{(set.reps * set.weight).toFixed(1)}</div>
+                                  </div>
+                                </div>
+                                
+                                {/* Selector RIR Móvil */}
+                                <div>
+                                  <Label className="text-[11px] text-gray-400 mb-1 block">RIR (Reps en recámara)</Label>
+                                  <div className="grid grid-cols-4 gap-1.5">
+                                    {[0, 1, 2, 3].map((val) => (
+                                      <button
+                                        key={val}
+                                        type="button"
+                                        onClick={() => updateSet(activeSession, exIdx, setIdx, { rir: set.rir === val ? undefined : val })}
+                                        className={`h-8 text-xs font-semibold rounded-lg border transition-colors ${
+                                          set.rir === val
+                                            ? 'bg-brand-500 text-white border-brand-500'
+                                            : 'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                                        }`}
+                                      >
+                                        {val === 3 ? '3+' : `RIR ${val}`}
+                                      </button>
+                                    ))}
+                                  </div>
                                 </div>
                               </div>
-                              <div className="flex gap-2.5">
-                                <div className="flex-1 min-w-0">
-                                  <Label>Reps</Label>
-                                  <Input
-                                    type="text"
-                                    inputMode="numeric"
-                                    value={set.reps || ''}
-                                    placeholder="0"
-                                    onFocus={(e) => e.target.select()}
-                                    onChange={(e) => updateSet(activeSession, exIdx, setIdx, { reps: Math.max(0, parseInt(e.target.value) || 0) })}
-                                    className="h-10 text-base text-center"
-                                  />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <Label>Peso (kg)</Label>
-                                  <Input
-                                    type="text"
-                                    inputMode="decimal"
-                                    value={displayWeight}
-                                    placeholder="0"
-                                    onFocus={(e) => e.target.select()}
-                                    onChange={(e) => handleWeightInputChange(activeSession, exIdx, setIdx, e.target.value)}
-                                    className="h-10 text-base text-center"
-                                  />
-                                </div>
-                                <div className="flex flex-col justify-end min-w-0">
-                                  <Label>Vol.</Label>
-                                  <div className="h-10 flex items-center justify-center text-sm font-semibold text-gray-500 dark:text-gray-400 break-words whitespace-nowrap">{(set.reps * set.weight).toFixed(1)}</div>
-                                </div>
-                              </div>
-                              
-                              {/* Selector RIR Móvil */}
-                              <div>
-                                <Label className="text-[11px] text-gray-400 mb-1 block">RIR (Reps en recámara)</Label>
-                                <div className="grid grid-cols-4 gap-1.5">
-                                  {[0, 1, 2, 3].map((val) => (
-                                    <button
-                                      key={val}
-                                      type="button"
-                                      onClick={() => updateSet(activeSession, exIdx, setIdx, { rir: set.rir === val ? undefined : val })}
-                                      className={`h-8 text-xs font-semibold rounded-lg border transition-colors ${
-                                        set.rir === val
-                                          ? 'bg-brand-500 text-white border-brand-500'
-                                          : 'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
-                                      }`}
-                                    >
-                                      {val === 3 ? '3+' : `RIR ${val}`}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </CardBody>
               </Card>
             );
@@ -491,29 +493,31 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {sessions.map((s) => (
             <Card key={s.id} className="hover:shadow-md transition-shadow">
-              <CardBody className="space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <h3 className="font-semibold break-words leading-tight">{s.routineName}</h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mt-1 flex-wrap">
-                      <Calendar size={12} className="shrink-0" />
-                      {fmtDate(s.date)}
-                      {s.notes && (
-                        <span className="inline-flex items-center gap-1 text-brand-500 bg-brand-50 dark:bg-brand-500/10 px-1.5 py-0.5 rounded text-[10px] font-medium">
-                          📝 Con notas
-                        </span>
-                      )}
-                    </p>
+              <CardBody>
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold break-words leading-tight">{s.routineName}</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mt-1 flex-wrap">
+                        <Calendar size={12} className="shrink-0" />
+                        {fmtDate(s.date)}
+                        {s.notes && (
+                          <span className="inline-flex items-center gap-1 text-brand-500 bg-brand-50 dark:bg-brand-500/10 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                            📝 Con notas
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <Badge color={s.completed ? 'green' : 'amber'}>{s.completed ? 'Completada' : 'En progreso'}</Badge>
                   </div>
-                  <Badge color={s.completed ? 'green' : 'amber'}>{s.completed ? 'Completada' : 'En progreso'}</Badge>
-                </div>
-                <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400 break-words">
-                  <span>{completedSets(s)}/{totalSets(s)} bloques</span>
-                  <span>{totalVolume(s).toFixed(1)} kg vol.</span>
-                </div>
-                <div className="flex gap-2 pt-1">
-                  <Button size="sm" onClick={() => onActiveSessionChange(s.id)} className="flex-1"><Play size={14} />Abrir</Button>
-                  <Button size="sm" variant="danger" onClick={() => moveToTrash(s.id)}><Trash2 size={14} /></Button>
+                  <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400 break-words">
+                    <span>{completedSets(s)}/{totalSets(s)} bloques</span>
+                    <span>{totalVolume(s).toFixed(1)} kg vol.</span>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button size="sm" onClick={() => onActiveSessionChange(s.id)} className="flex-1"><Play size={14} />Abrir</Button>
+                    <Button size="sm" variant="danger" onClick={() => moveToTrash(s.id)}><Trash2 size={14} /></Button>
+                  </div>
                 </div>
               </CardBody>
             </Card>
