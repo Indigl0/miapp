@@ -36,6 +36,7 @@ export interface SessionSet {
   setNumber: number;
   reps: number;
   weight: number;
+  rir?: number; // Reps en recámara (0, 1, 2, 3+)
   completed: boolean;
 }
 
