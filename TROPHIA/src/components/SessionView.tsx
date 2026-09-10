@@ -14,7 +14,20 @@ import { EmptyState } from '@/components/ui/Feedback';
 import { Calendar as CalendarPicker } from '@/components/ui/Calendar';
 import { SessionTimer } from '@/components/ui/SessionTimer';
 
-function fmtDate(ts: number): string { return new Date(ts).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); }
+function fmtDate(ts: number): string { 
+  return new Date(ts).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); 
+}
+
+// Función auxiliar para convertir segundos a un formato amigable de minutos y segundos
+function formatRestTime(seconds?: number): string | null {
+  if (!seconds || seconds <= 0) return null;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+
+  if (mins > 0 && secs > 0) return `${mins} min ${secs} s`;
+  if (mins > 0) return `${mins} min`;
+  return `${secs} s`;
+}
 
 export function SessionView({ activeSessionId, onActiveSessionChange }: { activeSessionId: string | null; onActiveSessionChange: (id: string | null) => void }) {
   const rawSessions = useLiveQuery(() => db.sessions.orderBy('date').reverse().toArray(), [], [] as TrainingSession[]);
@@ -59,6 +72,9 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
       })) : undefined,
     })),
   } : undefined;
+
+  // Obtener la rutina correspondiente a la sesión activa si aplica
+  const currentRoutine = routines.find((r) => r.id === activeSession?.routineId);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
@@ -282,14 +298,29 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
             const isExCardio = isCardio(ex.exerciseId) || !!ex.cardioDetails;
             const cardioData = ex.cardioDetails ?? { cardioType: 'Cinta', durationMinutes: 30, completed: false };
 
+            // Buscar la configuración de este ejercicio dentro de la rutina de origen para obtener restSeconds
+            const routineEx = currentRoutine?.exercises.find((re) => re.exerciseId === ex.exerciseId);
+            const formattedRest = formatRestTime(routineEx?.restSeconds);
+
             return (
               <Card key={exIdx}>
                 <CardHeader>
-                  <div className="flex items-center justify-between gap-2">
-                    <CardTitle className="break-words whitespace-normal leading-tight flex items-center gap-2">
-                      {isExCardio && <Activity size={18} className="text-blue-500 shrink-0" />}
-                      {exName(ex.exerciseId)}
-                    </CardTitle>
+                  <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                      <CardTitle className="break-words whitespace-normal leading-tight flex items-center gap-2">
+                        {isExCardio && <Activity size={18} className="text-blue-500 shrink-0" />}
+                        {exName(ex.exerciseId)}
+                      </CardTitle>
+                      
+                      {/* Badge con el tiempo de descanso en minutos/segundos */}
+                      {formattedRest && (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/50 shrink-0">
+                          <Clock size={12} className="shrink-0" />
+                          Descanso: {formattedRest}
+                        </span>
+                      )}
+                    </div>
+
                     {!isExCardio && (
                       <Button size="sm" variant="ghost" onClick={() => addSet(activeSession, exIdx)} className="shrink-0"><Plus size={14} />Serie</Button>
                     )}
