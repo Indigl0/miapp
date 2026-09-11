@@ -6,13 +6,12 @@ import type { TrainingSession, Exercise } from '@/lib/types';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
 import { useTheme } from '@/lib/theme';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 function fmtDate(ts: number): string { return new Date(ts).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); }
 
 interface DayVolume { date: string; timestamp: number; volume: number; sets: number; cardioMinutes: number; }
 interface ExerciseProgress { date: string; timestamp: number; weight: number; volume: number; avgRir?: number; durationMinutes?: number; distanceKm?: number; }
-interface MuscleDistribution { group: string; volume: number; }
 
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
   if (!active || !payload || payload.length === 0) return null;
@@ -79,7 +78,6 @@ export function AnalyticsView() {
   };
 
   const handleExportPDF = () => {
-    // Solución específica para iOS Safari: retraso pequeño para permitir renderizado
     setTimeout(() => {
       window.print();
     }, 100);
@@ -134,20 +132,23 @@ export function AnalyticsView() {
     return count > 0 ? (totalRir / count) : null;
   }, [completedSessions]);
 
-  const muscleDistribution = useMemo<MuscleDistribution[]>(() => {
+  // Distribución por Grupo Muscular para el gráfico de barras
+  const muscleGroupVolume = useMemo(() => {
     const map = new Map<string, number>();
     completedSessions.forEach((s) => s.exercises.forEach((ex) => {
       const exercise = exercises.find((e) => e.id === ex.exerciseId);
-      if (!exercise) return;
+      if (!exercise || !exercise.muscleGroup) return;
 
+      const group = exercise.muscleGroup;
       if (ex.sets) {
         const vol = ex.sets.reduce((a, set) => a + (set.completed ? set.reps * set.weight : 0), 0);
-        map.set(exercise.muscleGroup, (map.get(exercise.muscleGroup) ?? 0) + vol);
-      } else if (ex.cardioDetails && ex.cardioDetails.completed) {
-        map.set(exercise.muscleGroup, (map.get(exercise.muscleGroup) ?? 0) + (ex.cardioDetails.durationMinutes || 0));
+        map.set(group, (map.get(group) || 0) + vol);
       }
     }));
-    return Array.from(map.entries()).map(([group, volume]) => ({ group, volume: Math.round(volume) })).filter((d) => d.volume > 0).sort((a, b) => b.volume - a.volume);
+
+    return Array.from(map.entries())
+      .map(([group, volume]) => ({ group, volume: Math.round(volume) }))
+      .sort((a, b) => b.volume - a.volume);
   }, [completedSessions, exercises]);
 
   const exerciseProgress = useMemo<ExerciseProgress[]>(() => {
@@ -235,7 +236,6 @@ export function AnalyticsView() {
 
   return (
     <div className="space-y-6 print:space-y-4">
-      {/* Estilos CSS específicos para la vista previa de impresión en iOS/Mobile */}
       <style>{`
         @media print {
           body {
@@ -280,7 +280,6 @@ export function AnalyticsView() {
         <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><TrendingUp size={18} className="text-brand-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{totalVolume.toLocaleString('es-ES')}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Volumen kg</p></CardBody></Card>
         <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><Dumbbell size={18} className="text-brand-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{totalSets}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Series Fuerza</p></CardBody></Card>
         
-        {/* Nueva Tarjeta de RIR Promedio */}
         <Card>
           <CardBody className="text-center py-3 sm:py-4">
             <div className="flex items-center justify-center mb-1"><Zap size={18} className="text-purple-500" /></div>
@@ -294,7 +293,6 @@ export function AnalyticsView() {
         <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><Flame size={18} className="text-blue-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{dailyVolume.reduce((sum, d) => sum + d.cardioMinutes, 0)} <span className="text-xs font-normal">min</span></p><p className="text-xs text-gray-400 mt-0.5 break-words">Cardio Total</p></CardBody></Card>
       </div>
 
-      {/* TARJETA INFORMATIVA: CONCEPTO RIR E HIPERTROFIA */}
       <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-4 flex items-start gap-3.5 print:hidden">
         <div className="p-2 bg-purple-500/10 rounded-xl text-purple-500 shrink-0 mt-0.5">
           <HelpCircle size={20} />
@@ -303,7 +301,7 @@ export function AnalyticsView() {
           <p className="font-semibold text-gray-900 dark:text-gray-100 mb-1 flex items-center gap-1.5">
             ¿Qué es el RIR y cómo ayuda a la Hipertrofia?
           </p>
-          El <strong>RIR (Repeticiones En Recámara)</strong> indica cuántas repeticiones adicionales podrías haber completado antes del fallo muscular. Para maximizar la ganancia muscular (hipertrofia), el rango óptimo es un <strong>RIR entre 1 y 3</strong>. Un RIR de 0 es fallo total, mientras que un RIR mayor a 4 puede resultar en un estímulo insuficiente para el crecimiento.
+          El <strong>RIR (Repeticiones En Recámara)</strong> indica cuántas repeticiones adicionales podrías haber completado antes del fallo muscular. Para maximizar la ganancia muscular (hipertrofia), el rango óptimo es un <strong>RIR entre 1 y 3</strong>.
         </div>
       </div>
 
@@ -325,16 +323,17 @@ export function AnalyticsView() {
 
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader><CardTitle>Distribución por Grupo Muscular</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Distribución por Grupo Muscular</CardTitle>
+          </CardHeader>
           <CardBody>
             <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={muscleDistribution} margin={{ top: 10, right: 10, left: 0, bottom: 0 }} layout="vertical">
-                <defs><linearGradient id="barGradient" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#fb923c" /><stop offset="100%" stopColor="#f97316" /></linearGradient></defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} horizontal={false} />
-                <XAxis type="number" tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="group" tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} width={70} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: isDark ? '#ffffff08' : '#00000005' }} />
-                <Bar dataKey="volume" name="Carga / Minutos" fill="url(#barGradient)" radius={[0, 8, 8, 0]} barSize={22} />
+              <BarChart data={muscleGroupVolume} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+                <XAxis dataKey="group" tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="volume" name="Volumen Total (kg)" fill="#f97316" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardBody>
@@ -419,7 +418,7 @@ export function AnalyticsView() {
         </Card>
       </div>
 
-      {/* HISTORIAL DETALLADO CON PAGINACIÓN Y DESPLEGABLES */}
+      {/* HISTORIAL DETALLADO */}
       <Card className="break-before-page">
         <CardHeader>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
@@ -567,54 +566,6 @@ export function AnalyticsView() {
               </button>
             </div>
           )}
-
-          {/* VISTA DE IMPRESIÓN */}
-          <div className="hidden print:block space-y-4">
-            {completedSessions.map((session) => (
-              <div key={session.id} className="border-b border-gray-300 pb-4 break-inside-avoid">
-                <div className="flex justify-between items-center mb-2">
-                  <h4 className="font-bold text-base text-black">
-                    {session.routineName} — {fmtDate(session.date)}
-                  </h4>
-                  <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                    {fmtDate(session.date)}
-                  </span>
-                </div>
-                
-                <div className="space-y-2 mt-2">
-                  {session.exercises.map((exItem, idx) => {
-                    const exerciseMeta = exercises.find((e) => e.id === exItem.exerciseId);
-                    return (
-                      <div key={idx} className="text-xs bg-gray-50 p-2 rounded border border-gray-200">
-                        <span className="font-bold text-black block mb-1">
-                          {exerciseMeta ? exerciseMeta.name : 'Ejercicio desconocido'}
-                        </span>
-                        
-                        {exItem.cardioDetails ? (
-                          <div className="flex flex-wrap gap-2">
-                            <span className="text-xs font-medium text-blue-700">
-                              {exItem.cardioDetails.cardioType} · {exItem.cardioDetails.durationMinutes} min {exItem.cardioDetails.distanceKm ? `· ${exItem.cardioDetails.distanceKm} km` : ''}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="flex flex-wrap gap-2">
-                            {exItem.sets?.map((set, setIdx) => (
-                              set.completed ? (
-                                <span key={setIdx} className="text-xs text-gray-700">
-                                  Serie {setIdx + 1}: <strong>{set.weight} kg</strong> × {set.reps} reps {typeof set.rir === 'number' ? `(${set.rir === 3 ? '3+' : set.rir} RIR)` : ''}
-                                </span>
-                              ) : null
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-
         </CardBody>
       </Card>
     </div>
