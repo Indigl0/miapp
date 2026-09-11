@@ -13,7 +13,7 @@ function fmtDate(ts: number): string { return new Date(ts).toLocaleDateString('e
 interface DayVolume { date: string; timestamp: number; volume: number; sets: number; cardioMinutes: number; }
 interface ExerciseProgress { date: string; timestamp: number; weight: number; volume: number; avgRir?: number; durationMinutes?: number; distanceKm?: number; }
 
-// Tooltip Ultra Pro con Glassmorphism y Badges
+// Tooltip con Glassmorphism para gráficos generales
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
   if (!active || !payload || payload.length === 0) return null;
   return (
@@ -46,8 +46,9 @@ export function AnalyticsView() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Estado para resaltar la barra enfocada
+  // Estado para resaltar la barra enfocada y mostrar la cabecera dinámica
   const [activeBarIndex, setActiveBarIndex] = useState<number | null>(null);
+  const [activeGroupData, setActiveGroupData] = useState<{ group: string; volume: number } | null>(null);
 
   // Estados para control de historial
   const [visibleCount, setVisibleCount] = useState<number>(5);
@@ -349,10 +350,27 @@ export function AnalyticsView() {
 
       {/* FILA DE GRÁFICOS SECUNDARIOS */}
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-        {/* GRÁFICO 2: DISTRIBUCIÓN POR GRUPO MUSCULAR (ULTRA PRO) */}
+        {/* GRÁFICO 2: DISTRIBUCIÓN POR GRUPO MUSCULAR */}
         <Card>
           <CardHeader>
-            <CardTitle>Distribución por Grupo Muscular</CardTitle>
+            <div className="flex items-center justify-between w-full min-h-[42px]">
+              <div>
+                <CardTitle>Distribución por Grupo Muscular</CardTitle>
+                <p className="text-[11px] text-gray-400 mt-0.5">Pasa el cursor o toca sobre las barras para consultar</p>
+              </div>
+
+              {/* Indicador Fijo */}
+              {activeGroupData ? (
+                <div className="text-right bg-brand-500/10 border border-brand-500/20 px-3 py-1 rounded-xl animate-fade-in shrink-0">
+                  <span className="text-[10px] font-bold text-brand-500 uppercase block leading-none">{activeGroupData.group}</span>
+                  <span className="text-xs sm:text-sm font-extrabold text-gray-900 dark:text-white leading-tight">
+                    {activeGroupData.volume.toLocaleString('es-ES')} <span className="text-[10px] font-medium text-gray-400">kg</span>
+                  </span>
+                </div>
+              ) : (
+                <div className="text-[11px] text-gray-400 italic shrink-0">Pasa el cursor para ver datos</div>
+              )}
+            </div>
           </CardHeader>
           <CardBody>
             <ResponsiveContainer width="100%" height={280}>
@@ -360,31 +378,42 @@ export function AnalyticsView() {
                 layout="vertical" 
                 data={muscleGroupVolume} 
                 margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                onMouseLeave={() => {
+                  setActiveBarIndex(null);
+                  setActiveGroupData(null);
+                }}
               >
                 <CartesianGrid strokeDasharray="4 4" stroke={gridColor} horizontal={false} />
                 <XAxis type="number" tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dy={5} />
                 <YAxis dataKey="group" type="category" tick={{ fill: axisColor, fontSize: 12, fontWeight: 500 }} axisLine={false} tickLine={false} width={75} />
-                <Tooltip content={<CustomTooltip />} cursor={false} />
+                <Tooltip content={() => null} cursor={{ fill: 'rgba(249, 115, 22, 0.08)' }} />
                 <Bar 
                   dataKey="volume" 
                   name="Volumen Total (kg)" 
                   radius={[0, 4, 4, 0]}
                   barSize={18}
-                  onMouseLeave={() => setActiveBarIndex(null)}
+                  isAnimationActive={false}
                 >
-                  {muscleGroupVolume.map((_, index) => {
+                  {muscleGroupVolume.map((entry, index) => {
                     const isHovered = activeBarIndex === index;
                     const isAnyHovered = activeBarIndex !== null;
                     return (
                       <Cell
                         key={`cell-${index}`}
                         fill="#f97316"
-                        fillOpacity={!isAnyHovered || isHovered ? 1 : 0.25}
-                        className="transition-all duration-300 cursor-pointer"
-                        style={{
-                          filter: isHovered ? 'drop-shadow(0px 0px 6px rgba(249, 115, 22, 0.4))' : 'none',
+                        fillOpacity={!isAnyHovered || isHovered ? 1 : 0.35}
+                        className="transition-all duration-150 cursor-pointer"
+                        onMouseEnter={() => {
+                          setActiveBarIndex(index);
+                          setActiveGroupData({ group: entry.group, volume: entry.volume });
                         }}
-                        onMouseEnter={() => setActiveBarIndex(index)}
+                        onTouchStart={() => {
+                          setActiveBarIndex(index);
+                          setActiveGroupData({ group: entry.group, volume: entry.volume });
+                        }}
+                        style={{
+                          filter: isHovered ? 'drop-shadow(0px 0px 6px rgba(249, 115, 22, 0.6))' : 'none',
+                        }}
                       />
                     );
                   })}
