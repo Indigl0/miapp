@@ -332,7 +332,7 @@ export function AnalyticsView() {
                 <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
                 <XAxis dataKey="group" tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<CustomTooltip />} cursor={false} />
                 <Bar dataKey="volume" name="Volumen Total (kg)" fill="#f97316" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
