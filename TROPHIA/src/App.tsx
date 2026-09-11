@@ -12,7 +12,8 @@ import { FullPageSpinner } from '@/components/ui/Feedback';
 
 function AppContent() {
   const { user, ready } = useAuth();
-  const [view, setView] = useState<View>('metrics');
+  // Cambiamos la vista inicial por defecto a 'exercises'
+  const [view, setView] = useState<View>('exercises');
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
   if (!ready) return <FullPageSpinner />;
@@ -25,11 +26,11 @@ function AppContent() {
 
   return (
     <Layout view={view} onView={setView}>
-      {view === 'metrics' && <MetricsView />}
-      {view === 'routines' && <RoutinesView onStartSession={handleStartSession} />}
       {view === 'exercises' && <ExercisesView />}
+      {view === 'routines' && <RoutinesView onStartSession={handleStartSession} />}
       {view === 'session' && <SessionView activeSessionId={activeSessionId} onActiveSessionChange={setActiveSessionId} />}
       {view === 'analytics' && <AnalyticsView />}
+      {view === 'metrics' && <MetricsView />}
       {view === 'admin' && <AdminPanel />}
     </Layout>
   );

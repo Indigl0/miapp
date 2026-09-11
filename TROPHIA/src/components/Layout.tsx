@@ -1,10 +1,10 @@
-import { TrendingUp, BarChart3, ClipboardList, ListChecks, LogOut, Moon, Sun, Shield, CloudOff, Cloud, Menu, X, UserCheck } from 'lucide-react';
+import { TrendingUp, BarChart3, ClipboardList, ListChecks, LogOut, Moon, Sun, Shield, CloudOff, Cloud, Menu, X, UserCheck, Dumbbell } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useTheme } from '@/lib/theme';
 import { APP_VERSION } from '../version';
 
-export type View = 'metrics' | 'routines' | 'exercises' | 'session' | 'analytics' | 'admin';
+export type View = 'exercises' | 'routines' | 'session' | 'analytics' | 'metrics' | 'admin';
 
 interface LayoutProps {
   view: View;
@@ -14,11 +14,11 @@ interface LayoutProps {
 }
 
 const NAV: Array<{ id: View; label: string; icon: typeof TrendingUp }> = [
-  { id: 'metrics', label: 'Métricas', icon: UserCheck },
+  { id: 'exercises', label: 'Ejercicios', icon: Dumbbell },
   { id: 'routines', label: 'Rutinas', icon: ClipboardList },
-  { id: 'exercises', label: 'Ejercicios', icon: TrendingUp },
   { id: 'session', label: 'Sesión', icon: ListChecks },
   { id: 'analytics', label: 'Análisis', icon: BarChart3 },
+  { id: 'metrics', label: 'Métricas', icon: UserCheck },
 ];
 
 export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
