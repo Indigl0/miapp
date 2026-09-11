@@ -23,7 +23,7 @@ interface WeightLog {
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
   if (!active || !payload || payload.length === 0) return null;
   return (
-    <div className="rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-xl px-3.5 py-2.5">
+    <div className="rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-xl px-3.5 py-2.5">
       <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 break-words">{label}</p>
       {payload.map((p, i) => (
         <p key={i} className="text-sm font-bold break-words" style={{ color: p.color }}>
@@ -228,7 +228,7 @@ export function MetricsView() {
       </div>
 
       {/* TARJETA DE DATOS DEL PERFIL */}
-      <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#161618] p-6 shadow-sm">
+      <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
           <div>
             <label className="text-xs font-semibold uppercase tracking-wider text-gray-400">Estatura</label>
@@ -291,7 +291,7 @@ export function MetricsView() {
               <select
                 value={profile.goal}
                 onChange={(e) => setProfile({ ...profile, goal: e.target.value })}
-                className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#161618] px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
               >
                 <option value="Perder Peso">Perder Peso / Definición</option>
                 <option value="Ganar Masa Muscular">Ganar Masa Muscular</option>
@@ -312,7 +312,7 @@ export function MetricsView() {
 
       {/* KPIS DE PROGRESO DE PESO */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#161618] p-5">
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
           <p className="text-xs font-semibold text-gray-400 uppercase">Peso Inicial</p>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-3xl font-extrabold">{initialWeight || '--'}</span>
@@ -320,7 +320,7 @@ export function MetricsView() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#161618] p-5">
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
           <p className="text-xs font-semibold text-gray-400 uppercase">Peso Actual</p>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-3xl font-extrabold text-brand-500">{latestWeight || '--'}</span>
@@ -328,7 +328,7 @@ export function MetricsView() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#161618] p-5">
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
           <p className="text-xs font-semibold text-gray-400 uppercase">Variación Total</p>
           <div className="mt-2 flex items-center gap-2">
             <span className="text-3xl font-extrabold">
@@ -343,7 +343,7 @@ export function MetricsView() {
       </div>
 
       {/* FORMULARIO DE REGISTRO RÁPIDO */}
-      <form onSubmit={handleAddWeight} className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#161618] p-5 shadow-sm">
+      <form onSubmit={handleAddWeight} className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-bold flex items-center gap-2">
             <Scale size={18} className="text-brand-500" />
@@ -387,7 +387,7 @@ export function MetricsView() {
       {/* GRÁFICO DE EVOLUCIÓN Y TABLA DE REGISTROS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Gráfico */}
-        <div className="lg:col-span-2 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#161618] p-6 shadow-sm flex flex-col justify-between">
+        <div className="lg:col-span-2 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm flex flex-col justify-between">
           <div className="mb-4">
             <h3 className="text-base font-bold">Evolución en el Tiempo</h3>
             <p className="text-xs text-gray-500">Línea punteada muestra tu Peso Inicial de referencia.</p>
@@ -430,12 +430,12 @@ export function MetricsView() {
         </div>
 
         {/* Lista/Historial */}
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#161618] p-6 shadow-sm">
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
           <h3 className="text-base font-bold mb-4">Historial de Pesajes</h3>
           {logs.length > 0 ? (
             <div className="space-y-3 max-h-64 overflow-y-auto pr-1 no-scrollbar">
               {logs.slice().reverse().map((item) => (
-                <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/60">
+                <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800">
                   <div className="flex items-center gap-3">
                     <Calendar size={16} className="text-gray-400" />
                     <div>

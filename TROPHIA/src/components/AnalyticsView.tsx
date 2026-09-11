@@ -6,23 +6,34 @@ import type { TrainingSession, Exercise } from '@/lib/types';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
 import { useTheme } from '@/lib/theme';
-import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell } from 'recharts';
 
 function fmtDate(ts: number): string { return new Date(ts).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); }
 
 interface DayVolume { date: string; timestamp: number; volume: number; sets: number; cardioMinutes: number; }
 interface ExerciseProgress { date: string; timestamp: number; weight: number; volume: number; avgRir?: number; durationMinutes?: number; distanceKm?: number; }
 
+// Tooltip Ultra Pro con Glassmorphism y Badges
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
   if (!active || !payload || payload.length === 0) return null;
   return (
-    <div className="rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-xl px-3.5 py-2.5">
-      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 break-words">{label}</p>
-      {payload.map((p, i) => (
-        <p key={i} className="text-sm font-bold break-words" style={{ color: p.color }}>
-          {p.name}: {typeof p.value === 'number' && p.name.includes('RIR') ? p.value.toFixed(1) : p.value.toLocaleString('es-ES')}
-        </p>
-      ))}
+    <div className="rounded-xl bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-gray-200/80 dark:border-gray-800 shadow-2xl p-3 min-w-[160px] transition-all duration-150">
+      <p className="text-[11px] font-medium tracking-wider uppercase text-gray-400 dark:text-gray-500 mb-2 border-b border-gray-100 dark:border-gray-800/80 pb-1">
+        {label}
+      </p>
+      <div className="space-y-1.5">
+        {payload.map((p, i) => (
+          <div key={i} className="flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+              <span className="text-gray-600 dark:text-gray-300 font-medium truncate">{p.name}</span>
+            </div>
+            <span className="font-mono font-bold text-gray-900 dark:text-gray-100">
+              {typeof p.value === 'number' && p.name.includes('RIR') ? p.value.toFixed(1) : p.value.toLocaleString('es-ES')}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -35,13 +46,16 @@ export function AnalyticsView() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Estado para resaltar la barra enfocada
+  const [activeBarIndex, setActiveBarIndex] = useState<number | null>(null);
+
   // Estados para control de historial
   const [visibleCount, setVisibleCount] = useState<number>(5);
   const [expandedSessions, setExpandedSessions] = useState<Record<string, boolean>>({});
 
   const isDark = theme === 'dark';
-  const axisColor = isDark ? '#6b7280' : '#9ca3af';
-  const gridColor = isDark ? '#1f2937' : '#f3f4f6';
+  const axisColor = isDark ? '#64748b' : '#94a3b8';
+  const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)';
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -115,7 +129,6 @@ export function AnalyticsView() {
     return Array.from(map.values()).sort((a, b) => a.timestamp - b.timestamp);
   }, [completedSessions]);
 
-  // Cálculo global de RIR Promedio
   const globalAvgRir = useMemo(() => {
     let totalRir = 0;
     let count = 0;
@@ -132,7 +145,6 @@ export function AnalyticsView() {
     return count > 0 ? (totalRir / count) : null;
   }, [completedSessions]);
 
-  // Distribución por Grupo Muscular para el gráfico de barras
   const muscleGroupVolume = useMemo(() => {
     const map = new Map<string, number>();
     completedSessions.forEach((s) => s.exercises.forEach((ex) => {
@@ -275,11 +287,11 @@ export function AnalyticsView() {
         </button>
       </div>
 
+      {/* KPI METRICS */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
         <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><Activity size={18} className="text-brand-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{completedSessions.length}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Sesiones</p></CardBody></Card>
         <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><TrendingUp size={18} className="text-brand-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{totalVolume.toLocaleString('es-ES')}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Volumen kg</p></CardBody></Card>
         <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><Dumbbell size={18} className="text-brand-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{totalSets}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Series Fuerza</p></CardBody></Card>
-        
         <Card>
           <CardBody className="text-center py-3 sm:py-4">
             <div className="flex items-center justify-center mb-1"><Zap size={18} className="text-purple-500" /></div>
@@ -289,7 +301,6 @@ export function AnalyticsView() {
             <p className="text-xs text-gray-400 mt-0.5 break-words">RIR Promedio</p>
           </CardBody>
         </Card>
-
         <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><Flame size={18} className="text-blue-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{dailyVolume.reduce((sum, d) => sum + d.cardioMinutes, 0)} <span className="text-xs font-normal">min</span></p><p className="text-xs text-gray-400 mt-0.5 break-words">Cardio Total</p></CardBody></Card>
       </div>
 
@@ -305,40 +316,85 @@ export function AnalyticsView() {
         </div>
       </div>
 
+      {/* GRÁFICO 1: VOLUMEN DE ENTRENAMIENTO */}
       <Card>
         <CardHeader><CardTitle>Volumen de Entrenamiento</CardTitle></CardHeader>
         <CardBody>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={dailyVolume} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <defs><linearGradient id="volGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f97316" stopOpacity={0.4} /><stop offset="100%" stopColor="#f97316" stopOpacity={0} /></linearGradient></defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-              <XAxis dataKey="date" tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
-              <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="volume" name="Volumen (kg)" stroke="#f97316" strokeWidth={2.5} fill="url(#volGradient)" dot={{ fill: '#f97316', r: 4 }} activeDot={{ r: 6 }} />
+              <defs>
+                <linearGradient id="volGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#f97316" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#f97316" stopOpacity={0.0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="4 4" stroke={gridColor} vertical={false} />
+              <XAxis dataKey="date" tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dy={5} />
+              <YAxis tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dx={-5} />
+              <Tooltip content={<CustomTooltip />} cursor={{ stroke: axisColor, strokeWidth: 1, strokeDasharray: '3 3' }} />
+              <Area 
+                type="monotone" 
+                dataKey="volume" 
+                name="Volumen (kg)" 
+                stroke="#f97316" 
+                strokeWidth={2.5} 
+                fill="url(#volGradient)" 
+                dot={{ fill: '#f97316', r: 3, strokeWidth: 2, stroke: isDark ? '#111827' : '#ffffff' }} 
+                activeDot={{ r: 6, strokeWidth: 0, fill: '#f97316' }} 
+              />
             </AreaChart>
           </ResponsiveContainer>
         </CardBody>
       </Card>
 
+      {/* FILA DE GRÁFICOS SECUNDARIOS */}
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+        {/* GRÁFICO 2: DISTRIBUCIÓN POR GRUPO MUSCULAR (ULTRA PRO) */}
         <Card>
           <CardHeader>
             <CardTitle>Distribución por Grupo Muscular</CardTitle>
           </CardHeader>
           <CardBody>
             <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={muscleGroupVolume} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-                <XAxis dataKey="group" tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
+              <BarChart 
+                layout="vertical" 
+                data={muscleGroupVolume} 
+                margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="4 4" stroke={gridColor} horizontal={false} />
+                <XAxis type="number" tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dy={5} />
+                <YAxis dataKey="group" type="category" tick={{ fill: axisColor, fontSize: 12, fontWeight: 500 }} axisLine={false} tickLine={false} width={75} />
                 <Tooltip content={<CustomTooltip />} cursor={false} />
-                <Bar dataKey="volume" name="Volumen Total (kg)" fill="#f97316" radius={[6, 6, 0, 0]} />
+                <Bar 
+                  dataKey="volume" 
+                  name="Volumen Total (kg)" 
+                  radius={[0, 4, 4, 0]}
+                  barSize={18}
+                  onMouseLeave={() => setActiveBarIndex(null)}
+                >
+                  {muscleGroupVolume.map((_, index) => {
+                    const isHovered = activeBarIndex === index;
+                    const isAnyHovered = activeBarIndex !== null;
+                    return (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill="#f97316"
+                        fillOpacity={!isAnyHovered || isHovered ? 1 : 0.25}
+                        className="transition-all duration-300 cursor-pointer"
+                        style={{
+                          filter: isHovered ? 'drop-shadow(0px 0px 6px rgba(249, 115, 22, 0.4))' : 'none',
+                        }}
+                        onMouseEnter={() => setActiveBarIndex(index)}
+                      />
+                    );
+                  })}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </CardBody>
         </Card>
         
+        {/* GRÁFICO 3: PROGRESO DE FUERZA Y RIR */}
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
@@ -386,12 +442,17 @@ export function AnalyticsView() {
             ) : isSelectedCardio ? (
               <ResponsiveContainer width="100%" height={280}>
                 <AreaChart data={exerciseProgress} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <defs><linearGradient id="cardioGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b82f6" stopOpacity={0.35} /><stop offset="100%" stopColor="#3b82f6" stopOpacity={0} /></linearGradient></defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-                  <XAxis dataKey="date" tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <defs>
+                    <linearGradient id="cardioGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="4 4" stroke={gridColor} vertical={false} />
+                  <XAxis dataKey="date" tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dy={5} />
+                  <YAxis tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dx={-5} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ stroke: axisColor, strokeWidth: 1, strokeDasharray: '3 3' }} />
+                  <Legend wrapperStyle={{ fontSize: 12, paddingTop: '10px' }} />
                   <Area type="monotone" dataKey="durationMinutes" name="Tiempo (min)" stroke="#3b82f6" strokeWidth={2.5} fill="url(#cardioGradient)" dot={{ fill: '#3b82f6', r: 3 }} activeDot={{ r: 5 }} />
                   <Area type="monotone" dataKey="distanceKm" name="Distancia (km)" stroke="#10b981" strokeWidth={2} fillOpacity={0} dot={false} />
                 </AreaChart>
@@ -400,14 +461,17 @@ export function AnalyticsView() {
               <ResponsiveContainer width="100%" height={280}>
                 <AreaChart data={exerciseProgress} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10b981" stopOpacity={0.35} /><stop offset="100%" stopColor="#10b981" stopOpacity={0} /></linearGradient>
+                    <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#10b981" stopOpacity={0.0} />
+                    </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-                  <XAxis dataKey="date" tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <YAxis yAxisId="left" tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <YAxis yAxisId="right" orientation="right" domain={[0, 3]} tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <CartesianGrid strokeDasharray="4 4" stroke={gridColor} vertical={false} />
+                  <XAxis dataKey="date" tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dy={5} />
+                  <YAxis yAxisId="left" tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dx={-5} />
+                  <YAxis yAxisId="right" orientation="right" domain={[0, 3]} tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dx={5} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ stroke: axisColor, strokeWidth: 1, strokeDasharray: '3 3' }} />
+                  <Legend wrapperStyle={{ fontSize: 12, paddingTop: '10px' }} />
                   <Area yAxisId="left" type="monotone" dataKey="weight" name="Peso máx (kg)" stroke="#10b981" strokeWidth={2.5} fill="url(#weightGradient)" dot={{ fill: '#10b981', r: 3 }} activeDot={{ r: 5 }} />
                   <Area yAxisId="left" type="monotone" dataKey="volume" name="Volumen (kg)" stroke="#f97316" strokeWidth={2} fillOpacity={0} dot={false} />
                   <Area yAxisId="right" type="monotone" dataKey="avgRir" name="RIR Promedio" stroke="#a855f7" strokeWidth={2} strokeDasharray="4 4" fillOpacity={0} dot={{ fill: '#a855f7', r: 3 }} />
