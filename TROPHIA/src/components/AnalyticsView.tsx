@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
-import { BarChart3, TrendingUp, Activity, Calendar, FileDown, Dumbbell, ChevronDown, ChevronUp, Flame, ChevronsDown, ChevronsUp, Zap, HelpCircle } from 'lucide-react';
+import { BarChart3, TrendingUp, Activity, Calendar, FileDown, Dumbbell, ChevronDown, ChevronUp, Flame, ChevronsDown, ChevronsUp, Zap, HelpCircle, Filter } from 'lucide-react';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
 import type { TrainingSession, Exercise } from '@/lib/types';
@@ -8,7 +8,11 @@ import { EmptyState } from '@/components/ui/Feedback';
 import { useTheme } from '@/lib/theme';
 import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell } from 'recharts';
 
-function fmtDate(ts: number): string { return new Date(ts).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); }
+function fmtDate(ts: number): string { 
+  return new Date(ts).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); 
+}
+
+type TimeRange = '1M' | '3M' | '6M' | '1Y' | 'ALL';
 
 interface DayVolume { date: string; timestamp: number; volume: number; sets: number; cardioMinutes: number; }
 interface ExerciseProgress { date: string; timestamp: number; weight: number; volume: number; avgRir?: number; durationMinutes?: number; distanceKm?: number; }
@@ -41,12 +45,15 @@ export function AnalyticsView() {
   const sessions = useLiveQuery(() => db.sessions.toArray(), [], [] as TrainingSession[]);
   const exercises = useLiveQuery(() => db.exercises.toArray(), [], [] as Exercise[]);
   const [theme] = useTheme();
+  
+  const [timeRange, setTimeRange] = useState<TimeRange>('3M');
   const [selectedExercise, setSelectedExercise] = useState<string>('all');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const [activeBarIndex, setActiveBarIndex] = useState<number | null>(null);
   const [activeGroupData, setActiveGroupData] = useState<{ group: string; volume: number } | null>(null);
+  const [activeExPoint, setActiveExPoint] = useState<ExerciseProgress | null>(null);
 
   const [visibleCount, setVisibleCount] = useState<number>(5);
   const [expandedSessions, setExpandedSessions] = useState<Record<string, boolean>>({});
@@ -64,10 +71,23 @@ export function AnalyticsView() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Filtrado de fecha según rango temporal
+  const rangeCutoff = useMemo(() => {
+    if (timeRange === 'ALL') return 0;
+    const now = new Date();
+    if (timeRange === '1M') now.setMonth(now.getMonth() - 1);
+    if (timeRange === '3M') now.setMonth(now.getMonth() - 3);
+    if (timeRange === '6M') now.setMonth(now.getMonth() - 6);
+    if (timeRange === '1Y') now.setFullYear(now.getFullYear() - 1);
+    return now.getTime();
+  }, [timeRange]);
   
   const completedSessions = useMemo(() => 
-    sessions.filter((s) => s.completed).sort((a, b) => b.date - a.date), 
-    [sessions]
+    sessions
+      .filter((s) => s.completed && s.date >= rangeCutoff)
+      .sort((a, b) => b.date - a.date), 
+    [sessions, rangeCutoff]
   );
 
   const visibleSessions = useMemo(() => 
@@ -107,10 +127,9 @@ export function AnalyticsView() {
 
       s.exercises.forEach((ex) => {
         if (ex.sets) {
-          vol += ex.sets.reduce((a, set) => a + (set.completed ? set.reps * set.weight : 0), 0);
+          vol += ex.sets.reduce((a, set) => a + (set.completed ? (set.reps || 0) * (set.weight || 0) : 0), 0);
           sets += ex.sets.filter((set) => set.completed).length;
         }
-        // Solo sumamos minutos de cardio si está explicitamente completado
         if (ex.cardioDetails && ex.cardioDetails.completed) {
           cardioMinutes += ex.cardioDetails.durationMinutes || 0;
         }
@@ -152,7 +171,7 @@ export function AnalyticsView() {
 
       const group = exercise.muscleGroup;
       if (ex.sets) {
-        const vol = ex.sets.reduce((a, set) => a + (set.completed ? set.reps * set.weight : 0), 0);
+        const vol = ex.sets.reduce((a, set) => a + (set.completed ? (set.reps || 0) * (set.weight || 0) : 0), 0);
         map.set(group, (map.get(group) || 0) + vol);
       }
     }));
@@ -172,7 +191,6 @@ export function AnalyticsView() {
       const ts = day.getTime();
 
       if (ex.cardioDetails) {
-        // Validación estricta: solo contar si está marcado como completado
         if (!ex.cardioDetails.completed) return;
         const existing = map.get(ts);
         const mins = ex.cardioDetails.durationMinutes || 0;
@@ -185,8 +203,8 @@ export function AnalyticsView() {
         }
       } else if (ex.sets) {
         const completedSets = ex.sets.filter((set) => set.completed);
-        const topWeight = Math.max(...completedSets.map((set) => set.weight), 0);
-        const vol = completedSets.reduce((a, set) => a + set.reps * set.weight, 0);
+        const topWeight = Math.max(...completedSets.map((set) => set.weight || 0), 0);
+        const vol = completedSets.reduce((a, set) => a + (set.reps || 0) * (set.weight || 0), 0);
         
         let rirSum = 0;
         let rirCount = 0;
@@ -243,7 +261,7 @@ export function AnalyticsView() {
     }
   }, []);
 
-  if (completedSessions.length === 0) {
+  if (completedSessions.length === 0 && timeRange === 'ALL') {
     return (
       <div className="space-y-6">
         <div>
@@ -279,27 +297,48 @@ export function AnalyticsView() {
         }
       `}</style>
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="font-condensed text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
             <BarChart3 size={24} className="text-brand-500" />Análisis de Rendimiento
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 break-words">Visualiza tu progreso de volumen, fuerza e intensidad a lo largo del tiempo.</p>
         </div>
-        
-        <button
-          onClick={handleExportPDF}
-          type="button"
-          className="flex items-center gap-2 px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-xl transition-all shadow-lg shadow-brand-500/20 text-sm cursor-pointer active:scale-95 shrink-0 print:hidden"
-        >
-          <FileDown size={18} />
-          Exportar PDF
-        </button>
+
+        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end flex-wrap print:hidden">
+          {/* Selector de Rango Temporal estilo Pill Toggle */}
+          <div className="flex items-center p-1 bg-gray-100 dark:bg-gray-800/80 rounded-xl border border-gray-200 dark:border-gray-700/60 shadow-inner">
+            <Filter size={14} className="text-gray-400 mx-2 shrink-0 hidden sm:block" />
+            {(['1M', '3M', '6M', '1Y', 'ALL'] as TimeRange[]).map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setTimeRange(r)}
+                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  timeRange === r
+                    ? 'bg-brand-500 text-white shadow-md'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                {r === '1Y' ? '1A' : r === 'ALL' ? 'Todo' : r}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={handleExportPDF}
+            type="button"
+            className="flex items-center gap-2 px-3.5 py-2 bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-xl transition-all shadow-lg shadow-brand-500/20 text-xs sm:text-sm cursor-pointer active:scale-95 shrink-0"
+          >
+            <FileDown size={16} />
+            Exportar PDF
+          </button>
+        </div>
       </div>
 
       {/* METRICAS KPI */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
-        <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><Activity size={18} className="text-brand-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{completedSessions.length}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Sesiones</p></CardBody></Card>
+        <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><Activity size={18} className="text-brand-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{completedSessions.length}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Sesiones ({timeRange})</p></CardBody></Card>
         <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><TrendingUp size={18} className="text-brand-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{totalVolume.toLocaleString('es-ES')}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Volumen kg</p></CardBody></Card>
         <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><Dumbbell size={18} className="text-brand-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{totalSets}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Series Fuerza</p></CardBody></Card>
         <Card>
@@ -328,33 +367,42 @@ export function AnalyticsView() {
 
       {/* GRÁFICO 1: VOLUMEN DE ENTRENAMIENTO */}
       <Card>
-        <CardHeader><CardTitle>Volumen de Entrenamiento</CardTitle></CardHeader>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Volumen de Entrenamiento</CardTitle>
+            <span className="text-xs text-gray-400 font-medium">Filtro: {timeRange === 'ALL' ? 'Todo el historial' : `Últimos ${timeRange}`}</span>
+          </div>
+        </CardHeader>
         <CardBody>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={dailyVolume} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="volGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#f97316" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#f97316" stopOpacity={0.0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="4 4" stroke={gridColor} vertical={false} />
-              <XAxis dataKey="date" tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dy={5} />
-              <YAxis tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dx={-5} />
-              <Tooltip content={<CustomTooltip />} cursor={{ stroke: axisColor, strokeWidth: 1, strokeDasharray: '3 3' }} />
-              <Area 
-                type="monotone" 
-                dataKey="volume" 
-                name="Volumen (kg)" 
-                stroke="#f97316" 
-                strokeWidth={2.5} 
-                fill="url(#volGradient)" 
-                isAnimationActive={false}
-                dot={{ fill: '#f97316', r: 3, strokeWidth: 2, stroke: isDark ? '#111827' : '#ffffff' }} 
-                activeDot={{ r: 6, strokeWidth: 0, fill: '#f97316' }} 
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          {dailyVolume.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-12">No hay sesiones registradas en este período.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={dailyVolume} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="volGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#f97316" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#f97316" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="4 4" stroke={gridColor} vertical={false} />
+                <XAxis dataKey="date" tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dy={5} />
+                <YAxis tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dx={-5} />
+                <Tooltip content={<CustomTooltip />} cursor={{ stroke: axisColor, strokeWidth: 1, strokeDasharray: '3 3' }} />
+                <Area 
+                  type="monotone" 
+                  dataKey="volume" 
+                  name="Volumen (kg)" 
+                  stroke="#f97316" 
+                  strokeWidth={2.5} 
+                  fill="url(#volGradient)" 
+                  isAnimationActive={false}
+                  dot={{ fill: '#f97316', r: 3, strokeWidth: 2, stroke: isDark ? '#111827' : '#ffffff' }} 
+                  activeDot={{ r: 6, strokeWidth: 0, fill: '#f97316' }} 
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </CardBody>
       </Card>
 
@@ -382,50 +430,61 @@ export function AnalyticsView() {
             </div>
           </CardHeader>
           <CardBody>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart 
-                layout="vertical" 
-                data={muscleGroupVolume} 
-                margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
-                onMouseLeave={() => handleBarHover(null)}
-              >
-                <CartesianGrid strokeDasharray="4 4" stroke={gridColor} horizontal={false} />
-                <XAxis type="number" tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dy={5} />
-                <YAxis dataKey="group" type="category" tick={{ fill: axisColor, fontSize: 12, fontWeight: 500 }} axisLine={false} tickLine={false} width={75} />
-                <Tooltip content={() => null} cursor={{ fill: 'rgba(249, 115, 22, 0.08)' }} />
-                <Bar 
-                  dataKey="volume" 
-                  name="Volumen Total (kg)" 
-                  radius={[0, 4, 4, 0]}
-                  barSize={18}
-                  isAnimationActive={false}
+            {muscleGroupVolume.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-16">Sin datos musculares en este rango.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart 
+                  layout="vertical" 
+                  data={muscleGroupVolume} 
+                  margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                  onMouseLeave={() => handleBarHover(null)}
                 >
-                  {muscleGroupVolume.map((entry, index) => {
-                    const isHovered = activeBarIndex === index;
-                    const isAnyHovered = activeBarIndex !== null;
-                    return (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill="#f97316"
-                        fillOpacity={!isAnyHovered || isHovered ? 1 : 0.35}
-                        className="transition-all duration-150 cursor-pointer"
-                        onMouseEnter={() => handleBarHover(index, entry.group, entry.volume)}
-                        onTouchStart={() => handleBarHover(index, entry.group, entry.volume)}
-                      />
-                    );
-                  })}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+                  <CartesianGrid strokeDasharray="4 4" stroke={gridColor} horizontal={false} />
+                  <XAxis type="number" tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dy={5} />
+                  <YAxis dataKey="group" type="category" tick={{ fill: axisColor, fontSize: 12, fontWeight: 500 }} axisLine={false} tickLine={false} width={75} />
+                  <Tooltip content={() => null} cursor={{ fill: 'rgba(249, 115, 22, 0.08)' }} />
+                  <Bar 
+                    dataKey="volume" 
+                    name="Volumen Total (kg)" 
+                    radius={[0, 4, 4, 0]}
+                    barSize={18}
+                    isAnimationActive={false}
+                  >
+                    {muscleGroupVolume.map((entry, index) => {
+                      const isHovered = activeBarIndex === index;
+                      const isAnyHovered = activeBarIndex !== null;
+                      return (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill="#f97316"
+                          fillOpacity={!isAnyHovered || isHovered ? 1 : 0.35}
+                          className="transition-all duration-150 cursor-pointer"
+                          onMouseEnter={() => handleBarHover(index, entry.group, entry.volume)}
+                          onTouchStart={() => handleBarHover(index, entry.group, entry.volume)}
+                        />
+                      );
+                    })}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardBody>
         </Card>
-        
+
         {/* GRÁFICO 3: PROGRESO DE FUERZA Y RIR */}
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
-              <CardTitle>{isSelectedCardio ? 'Progreso de Cardio' : 'Progreso de Fuerza y RIR'}</CardTitle>
-              
+              <div>
+                <CardTitle>{isSelectedCardio ? 'Progreso de Cardio' : 'Progreso de Fuerza y RIR'}</CardTitle>
+                {activeExPoint && (
+                  <p className="text-xs text-brand-500 font-semibold mt-0.5 animate-fade-in">
+                    {activeExPoint.date}: {isSelectedCardio ? `${activeExPoint.durationMinutes || 0} min` : `${activeExPoint.weight} kg (Vol: ${activeExPoint.volume} kg)`} {activeExPoint.avgRir !== undefined ? `· RIR ${activeExPoint.avgRir}` : ''}
+                  </p>
+                )}
+              </div>
+
               <div className="relative w-full sm:w-64 print:hidden" ref={dropdownRef}>
                 <button
                   type="button"
@@ -464,10 +523,19 @@ export function AnalyticsView() {
           </CardHeader>
           <CardBody>
             {exerciseProgress.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-16 break-words">Sin datos para este ejercicio.</p>
+              <p className="text-sm text-gray-400 text-center py-16 break-words">Sin datos para este ejercicio en el rango seleccionado.</p>
             ) : isSelectedCardio ? (
               <ResponsiveContainer width="100%" height={280}>
-                <AreaChart data={exerciseProgress} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <AreaChart 
+                  data={exerciseProgress} 
+                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                  onMouseMove={(e: any) => {
+                    if (e && e.activePayload && e.activePayload.length > 0) {
+                      setActiveExPoint(e.activePayload[0].payload as ExerciseProgress);
+                    }
+                  }}
+                  onMouseLeave={() => setActiveExPoint(null)}
+                >
                   <defs>
                     <linearGradient id="cardioGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} />
@@ -485,7 +553,16 @@ export function AnalyticsView() {
               </ResponsiveContainer>
             ) : (
               <ResponsiveContainer width="100%" height={280}>
-                <AreaChart data={exerciseProgress} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <AreaChart 
+                  data={exerciseProgress} 
+                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                  onMouseMove={(e: any) => {
+                    if (e && e.activePayload && e.activePayload.length > 0) {
+                      setActiveExPoint(e.activePayload[0].payload as ExerciseProgress);
+                    }
+                  }}
+                  onMouseLeave={() => setActiveExPoint(null)}
+                >
                   <defs>
                     <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#10b981" stopOpacity={0.35} />
@@ -591,7 +668,6 @@ export function AnalyticsView() {
                       {session.exercises.map((exItem, idx) => {
                         const exerciseMeta = exercises.find((e) => e.id === exItem.exerciseId);
                         
-                        // Si es cardio pero no fue completado, no se muestra en el detalle del historial
                         if (exItem.cardioDetails && !exItem.cardioDetails.completed) {
                           return null;
                         }
