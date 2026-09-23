@@ -18,7 +18,6 @@ function fmtDate(ts: number): string {
   return new Date(ts).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); 
 }
 
-// Función auxiliar para convertir segundos a un formato amigable de minutos y segundos
 function formatRestTime(seconds?: number): string | null {
   if (!seconds || seconds <= 0) return null;
   const mins = Math.floor(seconds / 60);
@@ -32,7 +31,6 @@ function formatRestTime(seconds?: number): string | null {
 export function SessionView({ activeSessionId, onActiveSessionChange }: { activeSessionId: string | null; onActiveSessionChange: (id: string | null) => void }) {
   const rawSessions = useLiveQuery(() => db.sessions.orderBy('date').reverse().toArray(), [], [] as TrainingSession[]);
   
-  // Sanitización de seguridad para proteger sesiones antiguas sin migrar
   const allSessions = rawSessions.map((s) => ({
     ...s,
     exercises: (s.exercises || []).map((ex) => ({
@@ -58,7 +56,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     undefined,
   );
 
-  // Asegurar integridad de la sesión activa recuperada
   const activeSession: TrainingSession | undefined = activeSessionRaw ? {
     ...activeSessionRaw,
     exercises: (activeSessionRaw.exercises || []).map((ex) => ({
@@ -73,15 +70,15 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     })),
   } : undefined;
 
-  // Obtener la rutina correspondiente a la sesión activa si aplica
   const currentRoutine = routines.find((r) => r.id === activeSession?.routineId);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
   const [localNotes, setLocalNotes] = useState('');
 
-  // Estados locales para permitir la escritura fluida de decimales como "32." o "32,5"
+  // Estados locales para entrada continua de decimales
   const [weightInputs, setWeightInputs] = useState<Record<string, string>>({});
+  const [distanceInputs, setDistanceInputs] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setLocalNotes(activeSession?.notes ?? '');
@@ -160,7 +157,15 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   };
 
   const finishSession = async (s: TrainingSession) => { 
-    await updateSession({ ...s, completed: true, notes: localNotes }); 
+    // Filtramos para eliminar bloques de cardio que no fueron marcados como completados
+    const filteredExercises = (s.exercises || []).filter((ex) => {
+      if (ex.cardioDetails) {
+        return ex.cardioDetails.completed === true;
+      }
+      return true;
+    });
+
+    await updateSession({ ...s, exercises: filteredExercises, completed: true, notes: localNotes }); 
     onActiveSessionChange(null); 
   };
 
@@ -228,7 +233,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     setCreateOpen(false);
   };
 
-  // Manejador flexible de peso
   const handleWeightInputChange = (s: TrainingSession, exIdx: number, setIdx: number, rawVal: string) => {
     const key = `${exIdx}-${setIdx}`;
     const sanitized = rawVal.replace(',', '.');
@@ -237,6 +241,18 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
       setWeightInputs((prev) => ({ ...prev, [key]: rawVal }));
       const parsed = parseFloat(sanitized);
       updateSet(s, exIdx, setIdx, { weight: isNaN(parsed) ? 0 : parsed });
+    }
+  };
+
+  // Manejador flexible de decimales para la distancia de Cardio
+  const handleDistanceInputChange = (s: TrainingSession, exIdx: number, rawVal: string) => {
+    const key = `cardio-${exIdx}`;
+    const sanitized = rawVal.replace(',', '.');
+
+    if (sanitized === '' || /^\d*\.?\d*$/.test(sanitized)) {
+      setDistanceInputs((prev) => ({ ...prev, [key]: rawVal }));
+      const parsed = parseFloat(sanitized);
+      updateCardioDetails(s, exIdx, { distanceKm: isNaN(parsed) ? undefined : parsed });
     }
   };
 
@@ -298,9 +314,11 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
             const isExCardio = isCardio(ex.exerciseId) || !!ex.cardioDetails;
             const cardioData = ex.cardioDetails ?? { cardioType: 'Cinta', durationMinutes: 30, completed: false };
 
-            // Buscar la configuración de este ejercicio dentro de la rutina de origen para obtener restSeconds
             const routineEx = currentRoutine?.exercises.find((re) => re.exerciseId === ex.exerciseId);
             const formattedRest = formatRestTime(routineEx?.restSeconds);
+
+            const distanceKey = `cardio-${exIdx}`;
+            const displayDistance = distanceInputs[distanceKey] ?? (cardioData.distanceKm !== undefined ? String(cardioData.distanceKm) : '');
 
             return (
               <Card key={exIdx}>
@@ -312,7 +330,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                         {exName(ex.exerciseId)}
                       </CardTitle>
                       
-                      {/* Badge con el tiempo de descanso en minutos/segundos */}
                       {formattedRest && (
                         <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/50 shrink-0">
                           <Clock size={12} className="shrink-0" />
@@ -349,11 +366,11 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                           <Label>Tiempo (min)</Label>
                           <Input
                             type="text"
-                            inputMode="decimal"
+                            inputMode="numeric"
                             value={cardioData.durationMinutes || ''}
                             placeholder="0"
                             onFocus={(e) => e.target.select()}
-                            onChange={(e) => updateCardioDetails(activeSession, exIdx, { durationMinutes: Math.max(0, Number(e.target.value)) })}
+                            onChange={(e) => updateCardioDetails(activeSession, exIdx, { durationMinutes: Math.max(0, parseInt(e.target.value) || 0) })}
                           />
                         </div>
 
@@ -362,16 +379,16 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                           <Input
                             type="text"
                             inputMode="decimal"
-                            placeholder="0"
-                            value={cardioData.distanceKm ?? ''}
+                            placeholder="0.0"
+                            value={displayDistance}
                             onFocus={(e) => e.target.select()}
-                            onChange={(e) => updateCardioDetails(activeSession, exIdx, { distanceKm: e.target.value ? Number(e.target.value.replace(',', '.')) : undefined })}
+                            onChange={(e) => handleDistanceInputChange(activeSession, exIdx, e.target.value)}
                           />
                         </div>
 
                         <button
                           onClick={() => updateCardioDetails(activeSession, exIdx, { completed: !cardioData.completed })}
-                          className={`h-10 px-4 rounded-xl flex items-center justify-center gap-2 font-medium text-sm transition-colors ${
+                          className={`h-10 px-4 rounded-xl flex items-center justify-center gap-2 font-medium text-sm transition-colors cursor-pointer ${
                             cardioData.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
                           }`}
                         >
@@ -499,7 +516,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                   </div>
                                 </div>
                                 
-                                {/* Selector RIR Móvil */}
                                 <div>
                                   <Label className="text-[11px] text-gray-400 mb-1 block">RIR (Reps en recámara)</Label>
                                   <div className="grid grid-cols-4 gap-1.5">

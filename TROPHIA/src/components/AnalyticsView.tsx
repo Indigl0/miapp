@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { BarChart3, TrendingUp, Activity, Calendar, FileDown, Dumbbell, ChevronDown, ChevronUp, Flame, ChevronsDown, ChevronsUp, Zap, HelpCircle } from 'lucide-react';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
@@ -13,7 +13,6 @@ function fmtDate(ts: number): string { return new Date(ts).toLocaleDateString('e
 interface DayVolume { date: string; timestamp: number; volume: number; sets: number; cardioMinutes: number; }
 interface ExerciseProgress { date: string; timestamp: number; weight: number; volume: number; avgRir?: number; durationMinutes?: number; distanceKm?: number; }
 
-// Tooltip con Glassmorphism para gráficos generales
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
   if (!active || !payload || payload.length === 0) return null;
   return (
@@ -46,11 +45,9 @@ export function AnalyticsView() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Estado para resaltar la barra enfocada y mostrar la cabecera dinámica
   const [activeBarIndex, setActiveBarIndex] = useState<number | null>(null);
   const [activeGroupData, setActiveGroupData] = useState<{ group: string; volume: number } | null>(null);
 
-  // Estados para control de historial
   const [visibleCount, setVisibleCount] = useState<number>(5);
   const [expandedSessions, setExpandedSessions] = useState<Record<string, boolean>>({});
 
@@ -78,19 +75,19 @@ export function AnalyticsView() {
     [completedSessions, visibleCount]
   );
 
-  const toggleSession = (id: string) => {
+  const toggleSession = useCallback((id: string) => {
     setExpandedSessions((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
+  }, []);
 
-  const expandAll = () => {
+  const expandAll = useCallback(() => {
     const allExpanded: Record<string, boolean> = {};
     completedSessions.forEach((s) => { allExpanded[s.id] = true; });
     setExpandedSessions(allExpanded);
-  };
+  }, [completedSessions]);
 
-  const collapseAll = () => {
+  const collapseAll = useCallback(() => {
     setExpandedSessions({});
-  };
+  }, []);
 
   const handleExportPDF = () => {
     setTimeout(() => {
@@ -113,6 +110,7 @@ export function AnalyticsView() {
           vol += ex.sets.reduce((a, set) => a + (set.completed ? set.reps * set.weight : 0), 0);
           sets += ex.sets.filter((set) => set.completed).length;
         }
+        // Solo sumamos minutos de cardio si está explicitamente completado
         if (ex.cardioDetails && ex.cardioDetails.completed) {
           cardioMinutes += ex.cardioDetails.durationMinutes || 0;
         }
@@ -174,6 +172,7 @@ export function AnalyticsView() {
       const ts = day.getTime();
 
       if (ex.cardioDetails) {
+        // Validación estricta: solo contar si está marcado como completado
         if (!ex.cardioDetails.completed) return;
         const existing = map.get(ts);
         const mins = ex.cardioDetails.durationMinutes || 0;
@@ -225,14 +224,24 @@ export function AnalyticsView() {
       .sort((a, b) => a.timestamp - b.timestamp);
   }, [completedSessions, selectedExercise]);
 
-  const totalVolume = dailyVolume.reduce((sum, d) => sum + d.volume, 0);
-  const totalSets = dailyVolume.reduce((sum, d) => sum + d.sets, 0);
+  const totalVolume = useMemo(() => dailyVolume.reduce((sum, d) => sum + d.volume, 0), [dailyVolume]);
+  const totalSets = useMemo(() => dailyVolume.reduce((sum, d) => sum + d.sets, 0), [dailyVolume]);
+  const totalCardioMinutes = useMemo(() => dailyVolume.reduce((sum, d) => sum + d.cardioMinutes, 0), [dailyVolume]);
 
-  const currentExercise = exercises.find((e) => e.id === selectedExercise);
+  const currentExercise = useMemo(() => exercises.find((e) => e.id === selectedExercise), [exercises, selectedExercise]);
   const isSelectedCardio = currentExercise?.muscleGroup?.toLowerCase() === 'cardio';
   const currentExerciseName = selectedExercise === 'all' 
     ? 'Todos los ejercicios' 
     : currentExercise?.name ?? 'Seleccionar ejercicio';
+
+  const handleBarHover = useCallback((index: number | null, group?: string, volume?: number) => {
+    setActiveBarIndex(index);
+    if (group !== undefined && volume !== undefined) {
+      setActiveGroupData({ group, volume });
+    } else {
+      setActiveGroupData(null);
+    }
+  }, []);
 
   if (completedSessions.length === 0) {
     return (
@@ -288,7 +297,7 @@ export function AnalyticsView() {
         </button>
       </div>
 
-      {/* KPI METRICS */}
+      {/* METRICAS KPI */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
         <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><Activity size={18} className="text-brand-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{completedSessions.length}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Sesiones</p></CardBody></Card>
         <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><TrendingUp size={18} className="text-brand-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{totalVolume.toLocaleString('es-ES')}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Volumen kg</p></CardBody></Card>
@@ -302,7 +311,7 @@ export function AnalyticsView() {
             <p className="text-xs text-gray-400 mt-0.5 break-words">RIR Promedio</p>
           </CardBody>
         </Card>
-        <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><Flame size={18} className="text-blue-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{dailyVolume.reduce((sum, d) => sum + d.cardioMinutes, 0)} <span className="text-xs font-normal">min</span></p><p className="text-xs text-gray-400 mt-0.5 break-words">Cardio Total</p></CardBody></Card>
+        <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><Flame size={18} className="text-blue-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{totalCardioMinutes} <span className="text-xs font-normal">min</span></p><p className="text-xs text-gray-400 mt-0.5 break-words">Cardio Total</p></CardBody></Card>
       </div>
 
       <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-4 flex items-start gap-3.5 print:hidden">
@@ -340,6 +349,7 @@ export function AnalyticsView() {
                 stroke="#f97316" 
                 strokeWidth={2.5} 
                 fill="url(#volGradient)" 
+                isAnimationActive={false}
                 dot={{ fill: '#f97316', r: 3, strokeWidth: 2, stroke: isDark ? '#111827' : '#ffffff' }} 
                 activeDot={{ r: 6, strokeWidth: 0, fill: '#f97316' }} 
               />
@@ -359,7 +369,6 @@ export function AnalyticsView() {
                 <p className="text-[11px] text-gray-400 mt-0.5">Pasa el cursor o toca sobre las barras para consultar</p>
               </div>
 
-              {/* Indicador Fijo */}
               {activeGroupData ? (
                 <div className="text-right bg-brand-500/10 border border-brand-500/20 px-3 py-1 rounded-xl animate-fade-in shrink-0">
                   <span className="text-[10px] font-bold text-brand-500 uppercase block leading-none">{activeGroupData.group}</span>
@@ -378,10 +387,7 @@ export function AnalyticsView() {
                 layout="vertical" 
                 data={muscleGroupVolume} 
                 margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
-                onMouseLeave={() => {
-                  setActiveBarIndex(null);
-                  setActiveGroupData(null);
-                }}
+                onMouseLeave={() => handleBarHover(null)}
               >
                 <CartesianGrid strokeDasharray="4 4" stroke={gridColor} horizontal={false} />
                 <XAxis type="number" tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dy={5} />
@@ -403,17 +409,8 @@ export function AnalyticsView() {
                         fill="#f97316"
                         fillOpacity={!isAnyHovered || isHovered ? 1 : 0.35}
                         className="transition-all duration-150 cursor-pointer"
-                        onMouseEnter={() => {
-                          setActiveBarIndex(index);
-                          setActiveGroupData({ group: entry.group, volume: entry.volume });
-                        }}
-                        onTouchStart={() => {
-                          setActiveBarIndex(index);
-                          setActiveGroupData({ group: entry.group, volume: entry.volume });
-                        }}
-                        style={{
-                          filter: isHovered ? 'drop-shadow(0px 0px 6px rgba(249, 115, 22, 0.6))' : 'none',
-                        }}
+                        onMouseEnter={() => handleBarHover(index, entry.group, entry.volume)}
+                        onTouchStart={() => handleBarHover(index, entry.group, entry.volume)}
                       />
                     );
                   })}
@@ -482,8 +479,8 @@ export function AnalyticsView() {
                   <YAxis tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dx={-5} />
                   <Tooltip content={<CustomTooltip />} cursor={{ stroke: axisColor, strokeWidth: 1, strokeDasharray: '3 3' }} />
                   <Legend wrapperStyle={{ fontSize: 12, paddingTop: '10px' }} />
-                  <Area type="monotone" dataKey="durationMinutes" name="Tiempo (min)" stroke="#3b82f6" strokeWidth={2.5} fill="url(#cardioGradient)" dot={{ fill: '#3b82f6', r: 3 }} activeDot={{ r: 5 }} />
-                  <Area type="monotone" dataKey="distanceKm" name="Distancia (km)" stroke="#10b981" strokeWidth={2} fillOpacity={0} dot={false} />
+                  <Area type="monotone" dataKey="durationMinutes" name="Tiempo (min)" stroke="#3b82f6" strokeWidth={2.5} fill="url(#cardioGradient)" isAnimationActive={false} dot={{ fill: '#3b82f6', r: 3 }} activeDot={{ r: 5 }} />
+                  <Area type="monotone" dataKey="distanceKm" name="Distancia (km)" stroke="#10b981" strokeWidth={2} fillOpacity={0} isAnimationActive={false} dot={false} />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
@@ -501,9 +498,9 @@ export function AnalyticsView() {
                   <YAxis yAxisId="right" orientation="right" domain={[0, 3]} tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dx={5} />
                   <Tooltip content={<CustomTooltip />} cursor={{ stroke: axisColor, strokeWidth: 1, strokeDasharray: '3 3' }} />
                   <Legend wrapperStyle={{ fontSize: 12, paddingTop: '10px' }} />
-                  <Area yAxisId="left" type="monotone" dataKey="weight" name="Peso máx (kg)" stroke="#10b981" strokeWidth={2.5} fill="url(#weightGradient)" dot={{ fill: '#10b981', r: 3 }} activeDot={{ r: 5 }} />
-                  <Area yAxisId="left" type="monotone" dataKey="volume" name="Volumen (kg)" stroke="#f97316" strokeWidth={2} fillOpacity={0} dot={false} />
-                  <Area yAxisId="right" type="monotone" dataKey="avgRir" name="RIR Promedio" stroke="#a855f7" strokeWidth={2} strokeDasharray="4 4" fillOpacity={0} dot={{ fill: '#a855f7', r: 3 }} />
+                  <Area yAxisId="left" type="monotone" dataKey="weight" name="Peso máx (kg)" stroke="#10b981" strokeWidth={2.5} fill="url(#weightGradient)" isAnimationActive={false} dot={{ fill: '#10b981', r: 3 }} activeDot={{ r: 5 }} />
+                  <Area yAxisId="left" type="monotone" dataKey="volume" name="Volumen (kg)" stroke="#f97316" strokeWidth={2} fillOpacity={0} isAnimationActive={false} dot={false} />
+                  <Area yAxisId="right" type="monotone" dataKey="avgRir" name="RIR Promedio" stroke="#a855f7" strokeWidth={2} strokeDasharray="4 4" fillOpacity={0} isAnimationActive={false} dot={{ fill: '#a855f7', r: 3 }} />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -511,7 +508,7 @@ export function AnalyticsView() {
         </Card>
       </div>
 
-      {/* HISTORIAL DETALLADO */}
+      {/* HISTORIAL DETALLADO DE SESIONES */}
       <Card className="break-before-page">
         <CardHeader>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
@@ -593,6 +590,12 @@ export function AnalyticsView() {
                     <div className="p-3.5 sm:p-4 pt-0 border-t border-gray-100 dark:border-gray-800/60 bg-gray-50/50 dark:bg-gray-950/20 space-y-2.5 animate-fade-in">
                       {session.exercises.map((exItem, idx) => {
                         const exerciseMeta = exercises.find((e) => e.id === exItem.exerciseId);
+                        
+                        // Si es cardio pero no fue completado, no se muestra en el detalle del historial
+                        if (exItem.cardioDetails && !exItem.cardioDetails.completed) {
+                          return null;
+                        }
+
                         return (
                           <div key={idx} className="text-sm bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-gray-800/80 p-3 rounded-xl shadow-2xs">
                             <span className="font-bold text-gray-800 dark:text-gray-200 block mb-2 text-xs sm:text-sm">
