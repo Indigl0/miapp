@@ -5,7 +5,6 @@ import type { MutationOp, MutationQueueEntry, Exercise, Routine, TrainingSession
 
 type SyncTable = 'exercises' | 'routines' | 'sessions';
 
-// Obtener el ID del usuario actual desde el localStorage de la sesión
 function getCurrentUserId(): string | null {
   try {
     const stored = localStorage.getItem('ironlog-session');
@@ -29,8 +28,6 @@ export async function pendingCount(): Promise<number> {
 export function isOnline(): boolean {
   return typeof navigator !== 'undefined' ? navigator.onLine : true;
 }
-
-// ─── Push: send local pending mutations to Supabase ───
 
 function localToRemote(table: SyncTable, record: Record<string, unknown>, userId: string | null): Record<string, unknown> {
   const baseData = {
@@ -61,7 +58,6 @@ function localToRemote(table: SyncTable, record: Record<string, unknown>, userId
       updated_at: new Date(r.updatedAt).toISOString(),
     };
   }
-  // sessions
   const s = record as unknown as TrainingSession;
   return {
     ...baseData,
@@ -99,7 +95,6 @@ function remoteToLocal(table: SyncTable, row: Record<string, unknown>): Record<s
       updatedAt: new Date(row.updated_at as string).getTime(),
     } as Record<string, unknown>;
   }
-  // sessions
   const exercises = typeof row.exercises === 'string' ? JSON.parse(row.exercises as string) : (row.exercises ?? []);
   return {
     id: row.id,
@@ -140,27 +135,21 @@ async function pushPending(): Promise<number> {
   return pushed;
 }
 
-// ─── Pull: download remote changes into local Dexie ───
-
 async function pullTable(table: SyncTable): Promise<number> {
   const userId = getCurrentUserId();
   if (!userId) return 0;
 
-  // Filtrar exclusivamente los registros del usuario actual
   const { data, error } = await supabase.from(table).select('*').eq('user_id', userId);
   if (error || !data) return 0;
 
-  // Obtener todas las mutaciones no sincronizadas para verificar bloqueos
   const pendingMutations = await db.mutations.where('synced').equals(0).toArray();
   
-  // Set de IDs con eliminación pendiente
   const pendingDeleteIds = new Set(
     pendingMutations
       .filter((m) => m.op.kind === 'delete' && m.op.table === table)
       .map((m) => (m.op as Extract<MutationOp, { kind: 'delete' }>).id)
   );
 
-  // Set de IDs con inserción/actualización pendiente
   const pendingUpsertIds = new Set(
     pendingMutations
       .filter((m) => m.op.kind === 'upsert' && m.op.table === table)
@@ -174,13 +163,19 @@ async function pullTable(table: SyncTable): Promise<number> {
     const localRecord = remoteToLocal(table, row as Record<string, unknown>);
     const id = localRecord.id as string;
 
-    // Si este registro tiene un borrado pendiente local, NUNCA lo reinsertamos desde la nube
     if (pendingDeleteIds.has(id)) {
       continue;
     }
 
-    const remoteUpdatedAt = localRecord.updatedAt as number;
     const existing = await dexieTable.get(id);
+    const localDeletedAt = existing ? (existing as { deletedAt?: number }).deletedAt : undefined;
+
+    // Si el registro está en la papelera localmente, protegemos el estado y la nube no lo sobrescribe
+    if (localDeletedAt) {
+      continue;
+    }
+
+    const remoteUpdatedAt = localRecord.updatedAt as number;
 
     if (!existing) {
       await dexieTable.put(localRecord);
@@ -194,15 +189,16 @@ async function pullTable(table: SyncTable): Promise<number> {
     }
   }
 
-  // Detect remote deletes: find local rows not in remote data
   const remoteIds = new Set(data.map((r) => (r as { id: string }).id));
   const allLocal = await dexieTable.toArray();
 
   for (const localRow of allLocal) {
     const localId = (localRow as { id: string }).id;
+    const localDeletedAt = (localRow as { deletedAt?: number }).deletedAt;
+    
     if (!remoteIds.has(localId)) {
-      // Si el elemento local no está en Supabase y tampoco tiene cambios locales pendientes, lo eliminamos localmente
-      if (!pendingUpsertIds.has(localId)) {
+      // Si no está en remoto y no tiene cambios pendientes NI está en la papelera, se elimina localmente
+      if (!pendingUpsertIds.has(localId) && !localDeletedAt) {
         await dexieTable.delete(localId);
         pulled++;
       }
@@ -219,8 +215,6 @@ async function pullAll(): Promise<number> {
   total += await pullTable('sessions');
   return total;
 }
-
-// ─── Full sync cycle: push then pull ───
 
 export async function flush(): Promise<{ pushed: number; pulled: number }> {
   if (!isOnline()) return { pushed: 0, pulled: 0 };

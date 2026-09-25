@@ -13,11 +13,9 @@ export interface Exercise {
 
 export interface RoutineExercise {
   exerciseId: ID;
-  // Campos de Fuerza (opcionales para cardio)
   sets?: number;
   targetReps?: number;
   restSeconds?: number;
-  // Campos de Cardio (opcionales para fuerza)
   cardioType?: string;
   durationMinutes?: number;
   distanceKm?: number;
@@ -36,7 +34,7 @@ export interface SessionSet {
   setNumber: number;
   reps: number;
   weight: number;
-  rir?: number; // Reps en recámara (0, 1, 2, 3+)
+  rir?: number;
   completed: boolean;
 }
 
@@ -63,6 +61,7 @@ export interface TrainingSession {
   completed: boolean;
   createdAt: number;
   updatedAt: number;
+  deletedAt?: number; // <-- Añadido para proteger la papelera
 }
 
 export type MutationOp =
