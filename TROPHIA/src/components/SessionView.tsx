@@ -253,7 +253,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     if (!target) return;
     const updated = { ...target, deletedAt: now(), updatedAt: now() };
     await db.sessions.put(updated);
-    await enqueue({ kind: 'upsert', table: 'sessions', record: updated as unknown as Record<string, unknown> });
+    await enqueue({ kind: 'delete', table: 'sessions', id });
     showToast('Sesión movida a la papelera');
     if (activeSessionId === id) onActiveSessionChange(null);
   };
