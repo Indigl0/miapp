@@ -12,7 +12,6 @@ import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/Feedback';
 import { Calendar as CalendarPicker } from '@/components/ui/Calendar';
-import { SessionTimer } from '@/components/ui/SessionTimer';
 
 function fmtDate(ts: number): string { 
   return new Date(ts).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); 
@@ -394,8 +393,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
 
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <CalendarPicker value={activeSession.date} onChange={(ts) => updateDate(activeSession, ts)} />
-                {/* AQUÍ ESTÁ LA CORRECCIÓN: Le pasamos el startTime de la sesión activa */}
-                <SessionTimer startTime={activeSession.createdAt || activeSession.date} />
               </div>
 
               <div className="grid grid-cols-3 gap-2 sm:gap-3">
