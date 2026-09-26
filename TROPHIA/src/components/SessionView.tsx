@@ -27,7 +27,7 @@ function formatRestTime(seconds?: number): string | null {
   return `${secs} s`;
 }
 
-// Variable global para mantener vivo el AudioContext desbloqueado por el usuario
+// AudioContext global reutilizable desbloqueado tras interacción en iOS
 let globalAudioCtx: AudioContext | null = null;
 
 function unlockAudioContext() {
@@ -44,7 +44,7 @@ function unlockAudioContext() {
   }
 }
 
-// Reproductor de Beep elegante compatible con iOS + Android
+// Reproductor de sonido elegante de alta definición
 function playTimerBeep() {
   try {
     unlockAudioContext();
@@ -53,7 +53,6 @@ function playTimerBeep() {
     const ctx = globalAudioCtx;
     const nowTime = ctx.currentTime;
 
-    // Tono elegante de alta definición (Acorde C-Major limpio)
     const playChord = (freq: number, delay: number, duration: number) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -71,12 +70,12 @@ function playTimerBeep() {
       osc.stop(nowTime + delay + duration);
     };
 
-    // Secuencia sonora elegante estilo gong deportivo
-    playChord(523.25, 0, 0.25);   // C5
-    playChord(659.25, 0.15, 0.25); // E5
-    playChord(783.99, 0.30, 0.6);  // G5
+    // Secuencia armónica elegante (C5 -> E5 -> G5)
+    playChord(523.25, 0, 0.25);
+    playChord(659.25, 0.15, 0.25);
+    playChord(783.99, 0.30, 0.6);
 
-    // Vibración para Android
+    // Vibración para dispositivos Android compatibles
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       navigator.vibrate([300, 100, 300, 100, 500]);
     }
@@ -243,7 +242,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     );
     await updateSession({ ...s, exercises: exercisesCopy });
 
-    // Lanzar temporizador si se completa la serie y hay descanso configurado
     if (isNowCompleted) {
       const routineEx = currentRoutine?.exercises.find((re) => re.exerciseId === s.exercises[exIdx].exerciseId);
       if (routineEx?.restSeconds) {
@@ -438,12 +436,12 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
 
   return (
     <>
-      {/* Destello de pantalla (Simulación de Flash para iOS/Android) */}
+      {/* Flash visual de pantalla completa para avisar fin del tiempo */}
       {screenFlash && (
         <div className="fixed inset-0 z-[100] bg-white opacity-90 transition-opacity duration-100 pointer-events-none" />
       )}
 
-      {/* Banner flotante Toast solo para notificaciones del sistema */}
+      {/* Toast informativo */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-gray-900 text-white dark:bg-white dark:text-gray-900 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-bounce">
           <span className="text-sm font-medium">{toastMessage}</span>
