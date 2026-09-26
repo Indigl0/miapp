@@ -1,4 +1,4 @@
-import { TrendingUp, BarChart3, ClipboardList, ListChecks, LogOut, Moon, Sun, Shield, CloudOff, Cloud, Menu, X, UserCheck, Dumbbell } from 'lucide-react';
+import { TrendingUp, BarChart3, ClipboardList, ListChecks, LogOut, Moon, Sun, Shield, CloudOff, Cloud, Menu, X, UserCheck, Dumbbell, Info } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useTheme } from '@/lib/theme';
@@ -21,11 +21,40 @@ const NAV: Array<{ id: View; label: string; icon: typeof TrendingUp }> = [
   { id: 'metrics', label: 'Métricas', icon: UserCheck },
 ];
 
+const VIEW_INFO: Record<View, { title: string; description: string }> = {
+  exercises: {
+    title: 'Catálogo e Inicio',
+    description: 'Biblioteca general de ejercicios estructurados por grupo muscular. Configura el nombre, la zona objetivo y la categoría para utilizarlos en el armado de tus rutinas o registrar ejecuciones libres.'
+  },
+  routines: {
+    title: 'Plantillas de Entrenamiento',
+    description: 'Planificación y diseño de sesiones de entrenamiento reutilizables. Define la estructura de tu programa organizando los ejercicios, series objetivo, rangos de repeticiones y tiempos de descanso esperados.'
+  },
+  session: {
+    title: 'Ejecución en Tiempo Real',
+    description: 'Bitácora de entrenamiento en el gimnasio. Inicia una sesión basada en tus rutinas o de formato libre para registrar de forma activa el peso levantado, repeticiones efectivas y esfuerzo percibido en cada serie.'
+  },
+  analytics: {
+    title: 'Rendimiento y Sobrecarga Progresiva',
+    description: 'Métricas avanzadas de progreso. Evalúa la evolución del volumen total de carga, la distribución del trabajo muscular y el indicador de RIR (Repeticiones en Recámara) para maximizar la hipertrofia y prevenir el sobreentrenamiento.'
+  },
+  metrics: {
+    title: 'Composición Corporal',
+    description: 'Seguimiento y control morfofisiológico. Registra la evolución de tu peso corporal, analiza las tendencias en el tiempo y ajusta tus parámetros nutricionales o metabólicos en función de tus objetivos.'
+  },
+  admin: {
+    title: 'Panel de Administración',
+    description: 'Gestión global de usuarios, permisos y configuración del sistema TROPHIA.'
+  }
+};
+
 export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
   const { user, logout, pendingMutations } = useAuth();
   const [theme, toggleTheme] = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const isAdmin = user?.role === 'admin';
+
+  const currentInfo = VIEW_INFO[view];
 
   const navItems = (
     <>
@@ -115,7 +144,24 @@ export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
         )}
       </header>
 
-      <main className="flex-1 mx-auto max-w-7xl w-full px-4 sm:px-6 py-6 sm:py-8 animate-fade-in">{children}</main>
+      <main className="flex-1 mx-auto max-w-7xl w-full px-4 sm:px-6 py-6 sm:py-8 animate-fade-in">
+        {currentInfo && (
+          <div className="mb-6 p-4 rounded-2xl bg-brand-500/5 border border-brand-500/15 flex items-start gap-3.5 transition-all">
+            <div className="p-2 rounded-xl bg-brand-500/10 text-brand-500 shrink-0 mt-0.5">
+              <Info size={18} />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                {currentInfo.title}
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mt-0.5 leading-relaxed">
+                {currentInfo.description}
+              </p>
+            </div>
+          </div>
+        )}
+        {children}
+      </main>
 
       <footer className="border-t border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-[#0f0f10]/50">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-2">
