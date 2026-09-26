@@ -286,30 +286,74 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   const createBlankSession = async (routineId?: string) => {
     let routineName = 'Sesión Libre';
     let sessionExercises: SessionExercise[] = [];
+
+    // Buscar la última sesión completada que haya usado esta misma rutina para heredar pesos y reps
+    const lastSessionWithRoutine = routineId 
+      ? sessions.find((s) => s.routineId === routineId && s.completed)
+      : null;
+
     if (routineId) {
       const r = routines.find((rt) => rt.id === routineId);
       if (r) {
         routineName = r.name;
         sessionExercises = r.exercises.map((re) => {
+          // Buscar si este ejercicio específico estaba en la última sesión para copiar sus series, peso y rir
+          const lastExMatch = lastSessionWithRoutine?.exercises.find(
+            (ex) => ex.exerciseId === re.exerciseId
+          );
+
           if (isCardio(re.exerciseId)) {
             return {
               exerciseId: re.exerciseId,
               cardioDetails: {
-                cardioType: re.cardioType ?? 'Cinta',
-                durationMinutes: re.durationMinutes ?? 30,
+                cardioType: lastExMatch?.cardioDetails?.cardioType ?? re.cardioType ?? 'Cinta',
+                durationMinutes: lastExMatch?.cardioDetails?.durationMinutes ?? re.durationMinutes ?? 30,
+                distanceKm: lastExMatch?.cardioDetails?.distanceKm,
                 completed: false,
               },
             };
           }
+
+          // Si hay registros previos, usamos las series de la última vez; si no, los valores por defecto de la rutina
+          if (lastExMatch && lastExMatch.sets && lastExMatch.sets.length > 0) {
+            return {
+              exerciseId: re.exerciseId,
+              sets: lastExMatch.sets.map((st, i) => ({
+                setNumber: i + 1,
+                reps: st.reps ?? 10,
+                weight: st.weight ?? 0,
+                rir: st.rir !== undefined ? st.rir : 2,
+                completed: false,
+              })),
+            };
+          }
+
           return {
             exerciseId: re.exerciseId,
-            sets: Array.from({ length: re.sets ?? 3 }, (_, i) => ({ setNumber: i + 1, reps: re.targetReps ?? 10, weight: 0, rir: 2, completed: false })),
+            sets: Array.from({ length: re.sets ?? 3 }, (_, i) => ({ 
+              setNumber: i + 1, 
+              reps: re.targetReps ?? 10, 
+              weight: 0, 
+              rir: 2, 
+              completed: false 
+            })),
           };
         });
       }
     }
+
     const ts = now();
-    const session: TrainingSession = { id: uuid(), routineId: routineId ?? null, routineName, date: ts, exercises: sessionExercises, completed: false, createdAt: ts, updatedAt: ts };
+    const session: TrainingSession = { 
+      id: uuid(), 
+      routineId: routineId ?? null, 
+      routineName, 
+      date: ts, 
+      exercises: sessionExercises, 
+      completed: false, 
+      createdAt: ts, 
+      updatedAt: ts 
+    };
+
     await db.sessions.add(session);
     await enqueue({ kind: 'upsert', table: 'sessions', record: session as unknown as Record<string, unknown> });
     onActiveSessionChange(session.id);
