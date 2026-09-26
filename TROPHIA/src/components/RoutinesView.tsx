@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { ClipboardList, Plus, Pencil, Trash2, Play, X } from 'lucide-react';
+import { ClipboardList, Plus, Pencil, Trash2, X } from 'lucide-react';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
 import { enqueue } from '@/lib/sync';
 import { uuid, now } from '@/lib/uuid';
-import type { Routine, RoutineExercise, Exercise, TrainingSession, SessionExercise } from '@/lib/types';
+import type { Routine, RoutineExercise, Exercise } from '@/lib/types';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Input, Label, Select, Textarea } from '@/components/ui/Input';
@@ -15,7 +15,7 @@ import { EmptyState } from '@/components/ui/Feedback';
 interface FormState { name: string; description: string; exercises: RoutineExercise[]; }
 const empty: FormState = { name: '', description: '', exercises: [] };
 
-export function RoutinesView({ onStartSession }: { onStartSession: (sessionId: string) => void }) {
+export function RoutinesView() {
   const routines = useLiveQuery(() => db.routines.orderBy('updatedAt').reverse().toArray(), [], [] as Routine[]);
   const exercises = useLiveQuery(() => db.exercises.orderBy('name').toArray(), [], [] as Exercise[]);
   const [modalOpen, setModalOpen] = useState(false);
@@ -81,31 +81,6 @@ export function RoutinesView({ onStartSession }: { onStartSession: (sessionId: s
     await enqueue({ kind: 'delete', table: 'routines', id: r.id });
   };
 
-  const startSession = async (r: Routine) => {
-    const sessionExercises: SessionExercise[] = r.exercises.map((re) => {
-      if (isCardio(re.exerciseId)) {
-        return {
-          exerciseId: re.exerciseId,
-          cardioDetails: {
-            cardioType: re.cardioType ?? 'Cinta',
-            durationMinutes: re.durationMinutes ?? 30,
-            completed: false,
-          },
-        };
-      }
-      return {
-        exerciseId: re.exerciseId,
-        sets: Array.from({ length: re.sets ?? 3 }, (_, i) => ({ setNumber: i + 1, reps: re.targetReps ?? 10, weight: 0, completed: false })),
-      };
-    });
-
-    const ts = now();
-    const session: TrainingSession = { id: uuid(), routineId: r.id, routineName: r.name, date: ts, exercises: sessionExercises, completed: false, createdAt: ts, updatedAt: ts };
-    await db.sessions.add(session);
-    await enqueue({ kind: 'upsert', table: 'sessions', record: session as unknown as Record<string, unknown> });
-    onStartSession(session.id);
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -138,8 +113,7 @@ export function RoutinesView({ onStartSession }: { onStartSession: (sessionId: s
                   </div>
                 </div>
                 <div className="flex gap-2 pt-2 mt-auto">
-                  <Button size="sm" onClick={() => startSession(r)} className="flex-1"><Play size={14} />Iniciar</Button>
-                  <Button size="sm" variant="outline" onClick={() => openEdit(r)}><Pencil size={14} /></Button>
+                  <Button size="sm" variant="outline" onClick={() => openEdit(r)} className="flex-1"><Pencil size={14} className="mr-1" /> Editar</Button>
                   <Button size="sm" variant="danger" onClick={() => remove(r)}><Trash2 size={14} /></Button>
                 </div>
               </CardBody>

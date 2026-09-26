@@ -19,15 +19,10 @@ function AppContent() {
   if (!ready) return <FullPageSpinner />;
   if (!user) return <LoginView />;
 
-  const handleStartSession = (sessionId: string) => {
-    setActiveSessionId(sessionId);
-    setView('session');
-  };
-
   return (
     <Layout view={view} onView={setView}>
       {view === 'exercises' && <ExercisesView />}
-      {view === 'routines' && <RoutinesView onStartSession={handleStartSession} />}
+      {view === 'routines' && <RoutinesView />}
       {view === 'session' && <SessionView activeSessionId={activeSessionId} onActiveSessionChange={setActiveSessionId} />}
       {view === 'analytics' && <AnalyticsView />}
       {view === 'metrics' && <MetricsView />}
