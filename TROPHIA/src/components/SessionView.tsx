@@ -27,31 +27,58 @@ function formatRestTime(seconds?: number): string | null {
   return `${secs} s`;
 }
 
-// Reproductor de Beep con vibración mediante Web Audio API
+// Variable global para mantener vivo el AudioContext desbloqueado por el usuario
+let globalAudioCtx: AudioContext | null = null;
+
+function unlockAudioContext() {
+  try {
+    if (!globalAudioCtx) {
+      const AudioCtxClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      globalAudioCtx = new AudioCtxClass();
+    }
+    if (globalAudioCtx.state === 'suspended') {
+      globalAudioCtx.resume();
+    }
+  } catch (e) {
+    console.error('AudioContext unlock error:', e);
+  }
+}
+
+// Reproductor de Beep elegante compatible con iOS + Android
 function playTimerBeep() {
   try {
-    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    
-    // Generar dos tonos rápidos estilo cronómetro deportivo
-    const playTone = (freq: number, delay: number, duration: number) => {
+    unlockAudioContext();
+    if (!globalAudioCtx) return;
+
+    const ctx = globalAudioCtx;
+    const nowTime = ctx.currentTime;
+
+    // Tono elegante de alta definición (Acorde C-Major limpio)
+    const playChord = (freq: number, delay: number, duration: number) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
+      
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime + delay);
-      gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + delay + duration);
+      osc.frequency.setValueAtTime(freq, nowTime + delay);
+      
+      gain.gain.setValueAtTime(0.4, nowTime + delay);
+      gain.gain.exponentialRampToValueAtTime(0.0001, nowTime + delay + duration);
+
       osc.connect(gain);
       gain.connect(ctx.destination);
-      osc.start(ctx.currentTime + delay);
-      osc.stop(ctx.currentTime + delay + duration);
+
+      osc.start(nowTime + delay);
+      osc.stop(nowTime + delay + duration);
     };
 
-    playTone(880, 0, 0.2);
-    playTone(1174.66, 0.25, 0.5);
+    // Secuencia sonora elegante estilo gong deportivo
+    playChord(523.25, 0, 0.25);   // C5
+    playChord(659.25, 0.15, 0.25); // E5
+    playChord(783.99, 0.30, 0.6);  // G5
 
-    // Patrón de vibración táctil para móviles
+    // Vibración para Android
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-      navigator.vibrate([400, 200, 400, 200, 800]);
+      navigator.vibrate([300, 100, 300, 100, 500]);
     }
   } catch (e) {
     console.error('Audio feedback error:', e);
@@ -116,6 +143,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   const [activeRestSeconds, setActiveRestSeconds] = useState<number | null>(null);
   const [restRemaining, setRestRemaining] = useState<number>(0);
   const [isTimerFinished, setIsTimerFinished] = useState<boolean>(false);
+  const [screenFlash, setScreenFlash] = useState<boolean>(false);
   const restTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const showToast = (msg: string) => {
@@ -125,7 +153,17 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     }, 3000);
   };
 
+  const triggerScreenFlash = () => {
+    setScreenFlash(true);
+    setTimeout(() => setScreenFlash(false), 200);
+    setTimeout(() => setScreenFlash(true), 400);
+    setTimeout(() => setScreenFlash(false), 600);
+    setTimeout(() => setScreenFlash(true), 800);
+    setTimeout(() => setScreenFlash(false), 1000);
+  };
+
   const startRestTimer = (seconds: number) => {
+    unlockAudioContext();
     if (restTimerRef.current) clearInterval(restTimerRef.current);
     setIsTimerFinished(false);
     setActiveRestSeconds(seconds);
@@ -136,14 +174,14 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
         if (prev <= 1) {
           if (restTimerRef.current) clearInterval(restTimerRef.current);
           playTimerBeep();
+          triggerScreenFlash();
           setIsTimerFinished(true);
-          showToast('🔔 ¡Tiempo de descanso finalizado!');
           
-          // Ocultar el banner automáticamente tras 4 segundos de aviso
+          // Ocultar el widget de descanso tras 5 segundos
           setTimeout(() => {
             setActiveRestSeconds(null);
             setIsTimerFinished(false);
-          }, 4000);
+          }, 5000);
 
           return 0;
         }
@@ -198,6 +236,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   };
 
   const toggleSet = async (s: TrainingSession, exIdx: number, setIdx: number) => {
+    unlockAudioContext();
     const isNowCompleted = !s.exercises[exIdx]?.sets?.[setIdx]?.completed;
     const exercisesCopy = s.exercises.map((ex, i) =>
       i !== exIdx || !ex.sets ? ex : { ...ex, sets: ex.sets.map((set, j) => (j === setIdx ? { ...set, completed: !set.completed } : set)) }
@@ -399,7 +438,12 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
 
   return (
     <>
-      {/* Banner flotante Toast para alertas y confirmaciones */}
+      {/* Destello de pantalla (Simulación de Flash para iOS/Android) */}
+      {screenFlash && (
+        <div className="fixed inset-0 z-[100] bg-white opacity-90 transition-opacity duration-100 pointer-events-none" />
+      )}
+
+      {/* Banner flotante Toast solo para notificaciones del sistema */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-gray-900 text-white dark:bg-white dark:text-gray-900 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-bounce">
           <span className="text-sm font-medium">{toastMessage}</span>
@@ -409,7 +453,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
         </div>
       )}
 
-      {/* Temporizador flotante de descanso optimizado (Grande e Impactante) */}
+      {/* Temporizador flotante de descanso */}
       {activeRestSeconds !== null && (
         <div 
           className={`fixed bottom-6 left-6 z-50 px-5 py-4 sm:px-6 sm:py-5 rounded-3xl shadow-2xl flex items-center gap-4 transition-all duration-300 border-2 ${
