@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ListChecks, Plus, Check, Trash2, Play, Calendar, CheckCircle2, Clock, X, Save, RotateCcw, Activity, ChevronDown } from 'lucide-react';
+import { ListChecks, Plus, Check, Trash2, Play, Calendar, CheckCircle2, Clock, X, Save, RotateCcw, Activity, ChevronDown, BellRing } from 'lucide-react';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
 import { enqueue } from '@/lib/sync';
@@ -27,23 +27,31 @@ function formatRestTime(seconds?: number): string | null {
   return `${secs} s`;
 }
 
-// Reproductor de Beep usando Web Audio API para no depender de archivos MP3 externos
+// Reproductor de Beep con vibración mediante Web Audio API
 function playTimerBeep() {
   try {
     const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    gain.gain.setValueAtTime(0.1, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.8);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.8);
+    
+    // Generar dos tonos rápidos estilo cronómetro deportivo
+    const playTone = (freq: number, delay: number, duration: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + delay);
+      gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + delay + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + duration);
+    };
 
-    if (navigator.vibrate) {
-      navigator.vibrate([200, 100, 200]);
+    playTone(880, 0, 0.2);
+    playTone(1174.66, 0.25, 0.5);
+
+    // Patrón de vibración táctil para móviles
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate([400, 200, 400, 200, 800]);
     }
   } catch (e) {
     console.error('Audio feedback error:', e);
@@ -107,6 +115,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   // Temporizador de descanso de ejercicio
   const [activeRestSeconds, setActiveRestSeconds] = useState<number | null>(null);
   const [restRemaining, setRestRemaining] = useState<number>(0);
+  const [isTimerFinished, setIsTimerFinished] = useState<boolean>(false);
   const restTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const showToast = (msg: string) => {
@@ -118,6 +127,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
 
   const startRestTimer = (seconds: number) => {
     if (restTimerRef.current) clearInterval(restTimerRef.current);
+    setIsTimerFinished(false);
     setActiveRestSeconds(seconds);
     setRestRemaining(seconds);
 
@@ -126,8 +136,15 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
         if (prev <= 1) {
           if (restTimerRef.current) clearInterval(restTimerRef.current);
           playTimerBeep();
+          setIsTimerFinished(true);
           showToast('🔔 ¡Tiempo de descanso finalizado!');
-          setActiveRestSeconds(null);
+          
+          // Ocultar el banner automáticamente tras 4 segundos de aviso
+          setTimeout(() => {
+            setActiveRestSeconds(null);
+            setIsTimerFinished(false);
+          }, 4000);
+
           return 0;
         }
         return prev - 1;
@@ -138,6 +155,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   const cancelRestTimer = () => {
     if (restTimerRef.current) clearInterval(restTimerRef.current);
     setActiveRestSeconds(null);
+    setIsTimerFinished(false);
   };
 
   useEffect(() => {
@@ -287,7 +305,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     let routineName = 'Sesión Libre';
     let sessionExercises: SessionExercise[] = [];
 
-    // Buscar la última sesión completada que haya usado esta misma rutina para heredar pesos y reps
     const lastSessionWithRoutine = routineId 
       ? sessions.find((s) => s.routineId === routineId && s.completed)
       : null;
@@ -297,7 +314,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
       if (r) {
         routineName = r.name;
         sessionExercises = r.exercises.map((re) => {
-          // Buscar si este ejercicio específico estaba en la última sesión para copiar sus series, peso y rir
           const lastExMatch = lastSessionWithRoutine?.exercises.find(
             (ex) => ex.exerciseId === re.exerciseId
           );
@@ -314,7 +330,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
             };
           }
 
-          // Si hay registros previos, usamos las series de la última vez; si no, los valores por defecto de la rutina
           if (lastExMatch && lastExMatch.sets && lastExMatch.sets.length > 0) {
             return {
               exerciseId: re.exerciseId,
@@ -394,18 +409,39 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
         </div>
       )}
 
-      {/* Temporizador flotante de descanso para cuando hay cuenta regresiva activa */}
+      {/* Temporizador flotante de descanso optimizado (Grande e Impactante) */}
       {activeRestSeconds !== null && (
-        <div className="fixed bottom-6 left-6 z-50 bg-brand-500 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 animate-pulse">
-          <Clock size={20} />
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider opacity-80">Descanso activo</p>
-            <p className="text-lg font-bold font-mono">
-              {Math.floor(restRemaining / 60)}:{(restRemaining % 60).toString().padStart(2, '0')}
-            </p>
+        <div 
+          className={`fixed bottom-6 left-6 z-50 px-5 py-4 sm:px-6 sm:py-5 rounded-3xl shadow-2xl flex items-center gap-4 transition-all duration-300 border-2 ${
+            isTimerFinished 
+              ? 'bg-emerald-600 border-emerald-400 text-white animate-bounce ring-4 ring-emerald-300/50' 
+              : 'bg-brand-500 border-brand-400 text-white animate-pulse'
+          }`}
+        >
+          {isTimerFinished ? (
+            <BellRing size={28} className="animate-spin text-white shrink-0" />
+          ) : (
+            <Clock size={28} className="shrink-0 animate-spin" style={{ animationDuration: '4s' }} />
+          )}
+
+          <div className="flex flex-col">
+            <span className="text-[11px] font-black uppercase tracking-wider opacity-90">
+              {isTimerFinished ? '¡A ENTRENAR!' : 'DESCANSO ACTIVO'}
+            </span>
+            <span className="text-3xl sm:text-4xl font-black font-mono tracking-tight leading-none mt-0.5">
+              {isTimerFinished 
+                ? '00:00' 
+                : `${Math.floor(restRemaining / 60)}:${(restRemaining % 60).toString().padStart(2, '0')}`
+              }
+            </span>
           </div>
-          <button onClick={cancelRestTimer} className="ml-2 bg-white/20 hover:bg-white/30 p-1.5 rounded-lg">
-            <X size={16} />
+
+          <button 
+            onClick={cancelRestTimer} 
+            className="ml-2 bg-white/20 hover:bg-white/30 text-white p-2.5 rounded-2xl transition-colors shrink-0"
+            title="Cerrar temporizador"
+          >
+            <X size={20} />
           </button>
         </div>
       )}
@@ -761,7 +797,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                 ))}
               </div>
 
-              {/* Botón Cargar más sesiones para mejor rendimiento */}
               {visibleCount < sessions.length && (
                 <div className="text-center pt-2">
                   <Button variant="outline" onClick={() => setVisibleCount((prev) => prev + 6)}>
