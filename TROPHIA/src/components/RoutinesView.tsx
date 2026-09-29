@@ -4,7 +4,7 @@ import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
 import { enqueue } from '@/lib/sync';
 import { uuid, now } from '@/lib/uuid';
-import type { Routine, RoutineExercise, Exercise } from '@/lib/types';
+import type { Routine, RoutineExercise, Exercise, TrainingSession, SessionExercise, SessionSet } from '@/lib/types';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Input, Label, Select, Textarea } from '@/components/ui/Input';
@@ -63,42 +63,52 @@ export function RoutinesView() {
   // Función para sincronizar la rutina actualizada con las sesiones de entrenamiento
   const syncRoutineToSessions = async (routine: Routine) => {
     try {
-      // Buscar todas las sesiones que tengan esta rutina
       const sessions = await db.sessions.toArray();
       const matchingSessions = sessions.filter(
-        (s) => (s as any).routineId === routine.id || s.routineName === routine.name
+        (s) => s.routineId === routine.id || s.routineName === routine.name
       );
 
       for (const session of matchingSessions) {
         const existingEntries = session.exercises || [];
 
-        // Construir la nueva lista de ejercicios para la sesión preservando series registradas
-        const updatedExercises = routine.exercises.map((re) => {
+        // Construir la nueva lista de ejercicios respetando los tipos correctos
+        const updatedExercises: SessionExercise[] = routine.exercises.map((re) => {
           const match = existingEntries.find((e) => e.exerciseId === re.exerciseId);
+          const cardio = isCardio(re.exerciseId);
+
           if (match) {
-            return {
-              ...match,
-              cardioType: re.cardioType || match.cardioType,
-              durationMinutes: re.durationMinutes || match.durationMinutes,
-            };
+            if (cardio || match.cardioDetails) {
+              return {
+                ...match,
+                cardioDetails: {
+                  cardioType: re.cardioType || match.cardioDetails?.cardioType || 'Cinta',
+                  durationMinutes: re.durationMinutes || match.cardioDetails?.durationMinutes || 30,
+                  distanceKm: match.cardioDetails?.distanceKm,
+                  completed: match.cardioDetails?.completed ?? false,
+                },
+              };
+            }
+            return match;
           }
 
-          // Si el ejercicio es nuevo y no existía en la sesión previa
-          const cardio = isCardio(re.exerciseId);
+          // Si el ejercicio es nuevo y no existía previamente en la sesión
           if (cardio) {
             return {
               exerciseId: re.exerciseId,
-              cardioType: re.cardioType || 'Cinta',
-              durationMinutes: re.durationMinutes || 30,
-              sets: [],
+              cardioDetails: {
+                cardioType: re.cardioType || 'Cinta',
+                durationMinutes: re.durationMinutes || 30,
+                completed: false,
+              },
             };
           }
 
           // Ejercicio de fuerza nuevo
-          const defaultSets = Array.from({ length: re.sets || 3 }).map(() => ({
-            id: uuid(),
+          const defaultSets: SessionSet[] = Array.from({ length: re.sets || 3 }).map((_, i) => ({
+            setNumber: i + 1,
             reps: re.targetReps || 10,
-            weightKg: 0,
+            weight: 0,
+            rir: 2,
             completed: false,
           }));
 
@@ -108,7 +118,7 @@ export function RoutinesView() {
           };
         });
 
-        const updatedSession = {
+        const updatedSession: TrainingSession = {
           ...session,
           routineName: routine.name,
           exercises: updatedExercises,
