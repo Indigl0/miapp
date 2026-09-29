@@ -436,7 +436,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     const ts = now();
     const session: TrainingSession = { 
       id: uuid(), 
-      userId: currentUserId, // ASIGNACIÓN OBLIGATORIA DEL USERID
+      userId: currentUserId, 
       routineId: routineId ?? null, 
       routineName, 
       date: ts, 
@@ -672,8 +672,8 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                               </button>
                             </div>
                           ) : (
-                            <div className="overflow-x-auto scrollbar-thin">
-                              <table className="w-full text-sm">
+                            <div className="overflow-x-auto scrollbar-thin -mx-4 sm:mx-0 px-4 sm:px-0">
+                              <table className="w-full text-sm min-w-[600px]">
                                 <thead>
                                   <tr className="text-xs uppercase text-gray-400 border-b border-gray-100 dark:border-gray-800">
                                     <th className="text-left px-3 py-2.5 font-semibold">#</th>
