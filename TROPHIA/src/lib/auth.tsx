@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, useCallback, t
 import { supabase } from './supabase';
 import { seedExercises } from './seed';
 import { startSyncLoop, pendingCount, flush } from './sync';
+import { db } from './db';
 
 export interface SupabaseUser {
   id: string;
@@ -116,8 +117,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user?.id]);
 
   const deleteUser = useCallback(async (id: string) => {
+    // 1. Borrar datos asociados en Supabase
+    await Promise.all([
+      supabase.from('routines').delete().eq('user_id', id),
+      supabase.from('sessions').delete().eq('user_id', id),
+      supabase.from('metrics').delete().eq('user_id', id),
+    ]);
+
+    // 2. Borrar usuario en Supabase
     const { error } = await supabase.from('users').delete().eq('id', id);
     if (error) throw new Error(error.message);
+
+    // 3. Limpiar datos locales en IndexedDB
+    await Promise.all([
+      db.routines.clear(),
+      db.sessions.clear(),
+      db.metrics.clear(),
+    ]);
 
     if (user?.id === id) { 
       setUser(null); 

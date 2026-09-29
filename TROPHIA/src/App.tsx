@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { Layout, type View } from '@/components/Layout';
 import { LoginView } from '@/components/LoginView';
@@ -12,9 +12,18 @@ import { FullPageSpinner } from '@/components/ui/Feedback';
 
 function AppContent() {
   const { user, ready } = useAuth();
-  // Cambiamos la vista inicial por defecto a 'exercises'
-  const [view, setView] = useState<View>('exercises');
+  // Vista inicial por defecto
+  const [view, setView] = useState<View>('routines');
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+
+  // Reinicia la vista según el rol cuando cambia el usuario o su rol
+  useEffect(() => {
+    if (user) {
+      if (user.role !== 'admin' && view === 'admin') {
+        setView('routines');
+      }
+    }
+  }, [user?.id, user?.role, view]);
 
   if (!ready) return <FullPageSpinner />;
   if (!user) return <LoginView />;
@@ -26,7 +35,7 @@ function AppContent() {
       {view === 'session' && <SessionView activeSessionId={activeSessionId} onActiveSessionChange={setActiveSessionId} />}
       {view === 'analytics' && <AnalyticsView />}
       {view === 'metrics' && <MetricsView />}
-      {view === 'admin' && <AdminPanel />}
+      {view === 'admin' && user.role === 'admin' && <AdminPanel />}
     </Layout>
   );
 }
