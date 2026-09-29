@@ -7,8 +7,10 @@ export type SyncTable = 'exercises' | 'routines' | 'sessions' | 'metrics';
 
 async function getCurrentUserId(): Promise<string | null> {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.user?.id ?? null;
+    const stored = localStorage.getItem('ironlog-session');
+    if (!stored) return null;
+    const { id } = JSON.parse(stored) as { id: string };
+    return id ?? null;
   } catch {
     return null;
   }
@@ -17,7 +19,6 @@ async function getCurrentUserId(): Promise<string | null> {
 export async function enqueue(op: MutationOp): Promise<void> {
   const entry: MutationQueueEntry = { id: uuid(), op, createdAt: now(), synced: 0 };
   await db.mutationQueue.add(entry);
-  // Intentar sincronizar de inmediato al encolar
   flush().catch(() => {});
 }
 
@@ -166,21 +167,14 @@ async function pushPending(): Promise<number> {
       if (op.kind === 'upsert') {
         const remoteRow = localToRemote(op.table as SyncTable, op.record, userId);
         const { error } = await supabase.from(op.table).upsert(remoteRow);
-        if (error) {
-          console.error(`Error upserting to ${op.table}:`, error);
-          throw error;
-        }
+        if (error) throw error;
       } else if (op.kind === 'delete') {
         const { error } = await supabase.from(op.table).delete().eq('id', op.id);
-        if (error) {
-          console.error(`Error deleting from ${op.table}:`, error);
-          throw error;
-        }
+        if (error) throw error;
       }
       await db.mutationQueue.update(entry.id, { synced: 1 });
       pushed++;
-    } catch (e) {
-      console.error('Failed to push mutation entry:', entry, e);
+    } catch {
       break;
     }
   }

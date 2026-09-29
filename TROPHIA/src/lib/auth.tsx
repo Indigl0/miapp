@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback, type ReactNode } from 'react';
 import { supabase } from './supabase';
-import { db } from './db';
 import { seedExercises } from './seed';
 import { startSyncLoop, pendingCount, flush } from './sync';
 
@@ -33,16 +32,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [pendingMutations, setPendingMutations] = useState(0);
 
-  // Helper para vaciar la DB local de forma segura
-  const clearLocalData = useCallback(async () => {
-    localStorage.removeItem(SESSION_KEY);
-    await Promise.all([
-      db.exercises.clear(),
-      db.routines.clear(),
-      db.sessions.clear(),
-    ]);
-  }, []);
-
   useEffect(() => {
     let isMounted = true;
 
@@ -53,7 +42,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (stored) {
           const { id } = JSON.parse(stored) as { id: string };
           const { data } = await supabase.from('users').select('*').eq('id', id).maybeSingle();
-          if (data && isMounted) setUser(data as SupabaseUser);
+          if (data && isMounted) {
+            setUser(data as SupabaseUser);
+            await flush().catch(() => {});
+          }
         }
       } catch {
         localStorage.removeItem(SESSION_KEY);
@@ -94,8 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     setUser(null);
-    await clearLocalData();
-  }, [clearLocalData]);
+    localStorage.removeItem(SESSION_KEY);
+  }, []);
 
   const createUser = useCallback(async (data: { name: string; username: string; password: string; role: 'admin' | 'user' }) => {
     const { error } = await supabase.from('users').insert({
@@ -129,9 +121,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (user?.id === id) { 
       setUser(null); 
-      await clearLocalData();
+      localStorage.removeItem(SESSION_KEY);
     }
-  }, [user?.id, clearLocalData]);
+  }, [user?.id]);
 
   const value = useMemo<AuthContextValue>(() => ({
     user,
