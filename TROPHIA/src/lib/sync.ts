@@ -1,38 +1,41 @@
 import { db } from './db';
 import { supabase } from './supabase';
 import { uuid, now } from './uuid';
-import type { MutationOp, MutationQueueEntry, Exercise, Routine, TrainingSession } from './types';
+import type { MutationOp, MutationQueueEntry, Exercise, Routine, TrainingSession, BodyMetric } from './types';
 
-type SyncTable = 'exercises' | 'routines' | 'sessions';
+export type SyncTable = 'exercises' | 'routines' | 'sessions' | 'metrics';
 
-function getCurrentUserId(): string | null {
-  try {
-    const stored = localStorage.getItem('ironlog-session');
-    if (!stored) return null;
-    const parsed = JSON.parse(stored);
-    return parsed?.id ?? null;
-  } catch {
-    return null;
-  }
+async function getCurrentUserId(): Promise<string | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.user?.id ?? null;
 }
 
 export async function enqueue(op: MutationOp): Promise<void> {
   const entry: MutationQueueEntry = { id: uuid(), op, createdAt: now(), synced: 0 };
-  await db.mutations.add(entry);
+  await db.mutationQueue.add(entry);
 }
 
 export async function pendingCount(): Promise<number> {
-  return db.mutations.where('synced').equals(0).count();
+  return db.mutationQueue.where('synced').equals(0).count();
 }
 
 export function isOnline(): boolean {
   return typeof navigator !== 'undefined' ? navigator.onLine : true;
 }
 
+function parseJsonField<T>(field: unknown): T {
+  if (typeof field === 'string') {
+    try {
+      return JSON.parse(field) as T;
+    } catch {
+      return [] as unknown as T;
+    }
+  }
+  return (field ?? []) as T;
+}
+
 function localToRemote(table: SyncTable, record: Record<string, unknown>, userId: string | null): Record<string, unknown> {
-  const baseData = {
-    user_id: userId,
-  };
+  const baseData = { user_id: userId };
 
   if (table === 'exercises') {
     const e = record as unknown as Exercise;
@@ -53,23 +56,43 @@ function localToRemote(table: SyncTable, record: Record<string, unknown>, userId
       id: r.id,
       name: r.name,
       description: r.description ?? null,
-      exercises: JSON.stringify(r.exercises),
+      exercises: r.exercises,
       created_at: new Date(r.createdAt).toISOString(),
       updated_at: new Date(r.updatedAt).toISOString(),
     };
   }
-  const s = record as unknown as TrainingSession;
+  if (table === 'sessions') {
+    const s = record as unknown as TrainingSession;
+    return {
+      ...baseData,
+      id: s.id,
+      routine_id: s.routineId,
+      routine_name: s.routineName,
+      date: s.date,
+      exercises: s.exercises,
+      notes: s.notes ?? null,
+      completed: s.completed,
+      created_at: new Date(s.createdAt).toISOString(),
+      updated_at: new Date(s.updatedAt).toISOString(),
+    };
+  }
+
+  // Manejo para 'metrics' usando las propiedades reales de BodyMetric
+  const m = record as unknown as BodyMetric;
   return {
     ...baseData,
-    id: s.id,
-    routine_id: s.routineId,
-    routine_name: s.routineName,
-    date: s.date,
-    exercises: JSON.stringify(s.exercises),
-    notes: s.notes ?? null,
-    completed: s.completed,
-    created_at: new Date(s.createdAt).toISOString(),
-    updated_at: new Date(s.updatedAt).toISOString(),
+    id: m.id,
+    date: m.date,
+    weight_kg: m.weightKg ?? null,
+    body_fat_percentage: m.bodyFatPercentage ?? null,
+    chest_cm: m.chestCm ?? null,
+    waist_cm: m.waistCm ?? null,
+    hips_cm: m.hipsCm ?? null,
+    biceps_cm: m.bicepsCm ?? null,
+    thighs_cm: m.thighsCm ?? null,
+    notes: m.notes ?? null,
+    created_at: m.createdAt ? new Date(m.createdAt).toISOString() : new Date().toISOString(),
+    updated_at: new Date(m.updatedAt).toISOString(),
   };
 }
 
@@ -82,36 +105,54 @@ function remoteToLocal(table: SyncTable, row: Record<string, unknown>): Record<s
       notes: row.notes ?? undefined,
       createdAt: new Date(row.created_at as string).getTime(),
       updatedAt: new Date(row.updated_at as string).getTime(),
-    } as Record<string, unknown>;
+    };
   }
   if (table === 'routines') {
-    const exercises = typeof row.exercises === 'string' ? JSON.parse(row.exercises as string) : (row.exercises ?? []);
     return {
       id: row.id,
       name: row.name,
       description: row.description ?? undefined,
-      exercises,
+      exercises: parseJsonField(row.exercises),
       createdAt: new Date(row.created_at as string).getTime(),
       updatedAt: new Date(row.updated_at as string).getTime(),
-    } as Record<string, unknown>;
+    };
   }
-  const exercises = typeof row.exercises === 'string' ? JSON.parse(row.exercises as string) : (row.exercises ?? []);
+  if (table === 'sessions') {
+    return {
+      id: row.id,
+      routineId: row.routine_id ?? null,
+      routineName: row.routine_name,
+      date: row.date,
+      exercises: parseJsonField(row.exercises),
+      notes: row.notes ?? undefined,
+      completed: row.completed,
+      createdAt: new Date(row.created_at as string).getTime(),
+      updatedAt: new Date(row.updated_at as string).getTime(),
+    };
+  }
+
+  // Manejo para 'metrics'
   return {
     id: row.id,
-    routineId: row.routine_id ?? null,
-    routineName: row.routine_name,
     date: row.date,
-    exercises,
+    weightKg: row.weight_kg ?? undefined,
+    bodyFatPercentage: row.body_fat_percentage ?? undefined,
+    chestCm: row.chest_cm ?? undefined,
+    waistCm: row.waist_cm ?? undefined,
+    hipsCm: row.hips_cm ?? undefined,
+    bicepsCm: row.biceps_cm ?? undefined,
+    thighsCm: row.thighs_cm ?? undefined,
     notes: row.notes ?? undefined,
-    completed: row.completed,
-    createdAt: new Date(row.created_at as string).getTime(),
+    createdAt: row.created_at ? new Date(row.created_at as string).getTime() : Date.now(),
     updatedAt: new Date(row.updated_at as string).getTime(),
-  } as Record<string, unknown>;
+  };
 }
 
 async function pushPending(): Promise<number> {
-  const userId = getCurrentUserId();
-  const pending = await db.mutations.where('synced').equals(0).toArray();
+  const userId = await getCurrentUserId();
+  if (!userId) return 0;
+
+  const pending = await db.mutationQueue.where('synced').equals(0).toArray();
   if (pending.length === 0) return 0;
   let pushed = 0;
 
@@ -119,14 +160,14 @@ async function pushPending(): Promise<number> {
     const { op } = entry;
     try {
       if (op.kind === 'upsert') {
-        const remoteRow = localToRemote(op.table, op.record, userId);
+        const remoteRow = localToRemote(op.table as SyncTable, op.record, userId);
         const { error } = await supabase.from(op.table).upsert(remoteRow);
         if (error) throw error;
       } else if (op.kind === 'delete') {
         const { error } = await supabase.from(op.table).delete().eq('id', op.id);
         if (error) throw error;
       }
-      await db.mutations.update(entry.id, { synced: 1 });
+      await db.mutationQueue.update(entry.id, { synced: 1 });
       pushed++;
     } catch {
       break;
@@ -136,24 +177,24 @@ async function pushPending(): Promise<number> {
 }
 
 async function pullTable(table: SyncTable): Promise<number> {
-  const userId = getCurrentUserId();
+  const userId = await getCurrentUserId();
   if (!userId) return 0;
 
   const { data, error } = await supabase.from(table).select('*').eq('user_id', userId);
   if (error || !data) return 0;
 
-  const pendingMutations = await db.mutations.where('synced').equals(0).toArray();
-  
+  const pendingMutations = await db.mutationQueue.where('synced').equals(0).toArray();
+
   const pendingDeleteIds = new Set(
     pendingMutations
-      .filter((m) => m.op.kind === 'delete' && m.op.table === table)
-      .map((m) => (m.op as Extract<MutationOp, { kind: 'delete' }>).id)
+      .filter((m: MutationQueueEntry) => m.op.kind === 'delete' && m.op.table === table)
+      .map((m: MutationQueueEntry) => (m.op as Extract<MutationOp, { kind: 'delete' }>).id)
   );
 
   const pendingUpsertIds = new Set(
     pendingMutations
-      .filter((m) => m.op.kind === 'upsert' && m.op.table === table)
-      .map((m) => ((m.op as Extract<MutationOp, { kind: 'upsert' }>).record as { id: string }).id)
+      .filter((m: MutationQueueEntry) => m.op.kind === 'upsert' && m.op.table === table)
+      .map((m: MutationQueueEntry) => ((m.op as Extract<MutationOp, { kind: 'upsert' }>).record as { id: string }).id)
   );
 
   const dexieTable = db.table(table);
@@ -163,14 +204,13 @@ async function pullTable(table: SyncTable): Promise<number> {
     const localRecord = remoteToLocal(table, row as Record<string, unknown>);
     const id = localRecord.id as string;
 
-    if (pendingDeleteIds.has(id)) {
+    if (pendingDeleteIds.has(id) || pendingUpsertIds.has(id)) {
       continue;
     }
 
     const existing = await dexieTable.get(id);
     const localDeletedAt = existing ? (existing as { deletedAt?: number }).deletedAt : undefined;
 
-    // Si el registro está en la papelera localmente, protegemos el estado y la nube no lo sobrescribe
     if (localDeletedAt) {
       continue;
     }
@@ -195,9 +235,8 @@ async function pullTable(table: SyncTable): Promise<number> {
   for (const localRow of allLocal) {
     const localId = (localRow as { id: string }).id;
     const localDeletedAt = (localRow as { deletedAt?: number }).deletedAt;
-    
+
     if (!remoteIds.has(localId)) {
-      // Si no está en remoto y no tiene cambios pendientes NI está en la papelera, se elimina localmente
       if (!pendingUpsertIds.has(localId) && !localDeletedAt) {
         await dexieTable.delete(localId);
         pulled++;
@@ -213,6 +252,7 @@ async function pullAll(): Promise<number> {
   total += await pullTable('exercises');
   total += await pullTable('routines');
   total += await pullTable('sessions');
+  total += await pullTable('metrics');
   return total;
 }
 
