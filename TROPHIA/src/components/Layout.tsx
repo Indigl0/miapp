@@ -1,5 +1,5 @@
 import { TrendingUp, BarChart3, ClipboardList, ListChecks, LogOut, Moon, Sun, Shield, CloudOff, Cloud, Menu, X, UserCheck, Dumbbell, Info } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useTheme } from '@/lib/theme';
 import { APP_VERSION } from '../version';
@@ -54,16 +54,24 @@ export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const isAdmin = user?.role === 'admin';
 
+  // Forzar que el administrador permanezca exclusivamente en la vista de administración
+  useEffect(() => {
+    if (isAdmin && view !== 'admin') {
+      onView('admin');
+    }
+  }, [isAdmin, view, onView]);
+
   const currentInfo = VIEW_INFO[view];
 
   const handleNavClick = (id: View) => {
     onView(id);
-    setMobileOpen(false); // Ensure the menu closes on selection
+    setMobileOpen(false);
   };
 
   const navItems = (
     <>
-      {NAV.map((item) => {
+      {/* Si es admin, ocultamos completamente las pestañas de entrenamiento personales */}
+      {!isAdmin && NAV.map((item) => {
         const Icon = item.icon;
         const active = view === item.id;
         return (
@@ -81,6 +89,7 @@ export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
           </button>
         );
       })}
+      
       {isAdmin && (
         <button
           onClick={() => handleNavClick('admin')}
@@ -175,7 +184,6 @@ export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
         {mobileOpen && (
           <div className="md:hidden absolute top-16 left-0 right-0 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0f0f10] shadow-lg">
              <nav className="flex flex-col px-4 py-3 gap-1.5 animate-fade-in max-h-[calc(100vh-4rem)] overflow-y-auto">
-               {/* Mobile User Info (Optional, but good for context) */}
                <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100 dark:border-gray-800 sm:hidden">
                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-base font-bold shrink-0">
                     {user?.name?.charAt(0).toUpperCase()}
@@ -188,7 +196,6 @@ export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
                
                {navItems}
                
-               {/* Mobile Sync Status */}
                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400 sm:hidden">
                   {pendingMutations > 0 ? (
                     <><CloudOff size={16} className="text-amber-500" /><span>{pendingMutations} pendientes</span></>
