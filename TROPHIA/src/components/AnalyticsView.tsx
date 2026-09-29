@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
-import { BarChart3, TrendingUp, Activity, Calendar, FileDown, Dumbbell, ChevronDown, ChevronUp, Flame, ChevronsDown, ChevronsUp, Zap, HelpCircle, Filter } from 'lucide-react';
+import { BarChart3, TrendingUp, Activity, Calendar, FileDown, Dumbbell, ChevronDown, ChevronUp, Flame, ChevronsDown, ChevronsUp, Zap, HelpCircle, Filter, Award } from 'lucide-react';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
 import type { TrainingSession, Exercise } from '@/lib/types';
@@ -12,10 +12,33 @@ function fmtDate(ts: number): string {
   return new Date(ts).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); 
 }
 
+// Función auxiliar para calcular 1RM estimado (Fórmula de Epley)
+function calculate1RM(weight: number, reps: number): number {
+  if (reps <= 0 || weight <= 0) return 0;
+  if (reps === 1) return weight;
+  return Math.round(weight * (1 + reps / 30));
+}
+
 type TimeRange = '1M' | '3M' | '6M' | '1Y' | 'ALL';
 
-interface DayVolume { date: string; timestamp: number; volume: number; sets: number; cardioMinutes: number; }
-interface ExerciseProgress { date: string; timestamp: number; weight: number; volume: number; avgRir?: number; durationMinutes?: number; distanceKm?: number; }
+interface DayVolume { 
+  date: string; 
+  timestamp: number; 
+  volume: number; 
+  sets: number; 
+  cardioMinutes: number; 
+}
+
+interface ExerciseProgress { 
+  date: string; 
+  timestamp: number; 
+  weight: number; 
+  volume: number; 
+  estimated1RM: number; 
+  avgRir?: number; 
+  durationMinutes?: number; 
+  distanceKm?: number; 
+}
 
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
   if (!active || !payload || payload.length === 0) return null;
@@ -38,6 +61,71 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
         ))}
       </div>
     </div>
+  );
+}
+
+// Componente para el Calendario Heatmap de Consistencia
+function ConsistencyHeatmap({ sessions }: { sessions: TrainingSession[] }) {
+  const datesSet = useMemo(() => {
+    const set = new Set<string>();
+    sessions.forEach(s => {
+      if (s.completed && !s.deletedAt) {
+        const d = new Date(s.date);
+        set.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
+      }
+    });
+    return set;
+  }, [sessions]);
+
+  const daysGrid = useMemo(() => {
+    const days = [];
+    const today = new Date();
+    // Generar los últimos 140 días (~20 semanas)
+    for (let i = 139; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(today.getDate() - i);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      days.push({
+        date: d,
+        key,
+        active: datesSet.has(key),
+        formatted: d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })
+      });
+    }
+    return days;
+  }, [datesSet]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Calendar size={18} className="text-brand-500" />
+          Calendario de Consistencia
+        </CardTitle>
+      </CardHeader>
+      <CardBody>
+        <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
+          {daysGrid.map((day) => (
+            <div
+              key={day.key}
+              title={`${day.formatted}: ${day.active ? 'Entrenamiento completado' : 'Sin registro'}`}
+              className={`w-3.5 h-3.5 rounded-sm transition-transform hover:scale-125 ${
+                day.active 
+                  ? 'bg-brand-500 shadow-sm shadow-brand-500/50' 
+                  : 'bg-gray-100 dark:bg-gray-800/60'
+              }`}
+            />
+          ))}
+        </div>
+        <div className="flex items-center justify-between text-xs text-gray-400 mt-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+          <span>Últimas 20 semanas</span>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-gray-100 dark:bg-gray-800/60 rounded-xs"></span> Descanso</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-brand-500 rounded-xs"></span> Entrenado</span>
+          </div>
+        </div>
+      </CardBody>
+    </Card>
   );
 }
 
@@ -72,7 +160,6 @@ export function AnalyticsView() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Filtrado de fecha según rango temporal
   const rangeCutoff = useMemo(() => {
     if (timeRange === 'ALL') return 0;
     const now = new Date();
@@ -83,9 +170,10 @@ export function AnalyticsView() {
     return now.getTime();
   }, [timeRange]);
   
+  // Filtra sesiones completadas y descarta las que estén en la papelera (deletedAt)
   const completedSessions = useMemo(() => 
     sessions
-      .filter((s) => s.completed && s.date >= rangeCutoff)
+      .filter((s) => s.completed && !s.deletedAt && s.date >= rangeCutoff)
       .sort((a, b) => b.date - a.date), 
     [sessions, rangeCutoff]
   );
@@ -118,7 +206,8 @@ export function AnalyticsView() {
   const dailyVolume = useMemo<DayVolume[]>(() => {
     const map = new Map<number, DayVolume>();
     completedSessions.forEach((s) => {
-      const day = new Date(s.date); day.setHours(0, 0, 0, 0);
+      const day = new Date(s.date); 
+      day.setHours(0, 0, 0, 0);
       const ts = day.getTime();
 
       let vol = 0;
@@ -182,12 +271,13 @@ export function AnalyticsView() {
   }, [completedSessions, exercises]);
 
   const exerciseProgress = useMemo<ExerciseProgress[]>(() => {
-    const map = new Map<number, { weight: number; volume: number; durationMinutes: number; distanceKm: number; rirSum: number; rirCount: number }>();
+    const map = new Map<number, { weight: number; volume: number; durationMinutes: number; distanceKm: number; rirSum: number; rirCount: number; max1RM: number }>();
     
     completedSessions.forEach((s) => s.exercises.forEach((ex) => {
       if (selectedExercise !== 'all' && ex.exerciseId !== selectedExercise) return;
       
-      const day = new Date(s.date); day.setHours(0, 0, 0, 0);
+      const day = new Date(s.date); 
+      day.setHours(0, 0, 0, 0);
       const ts = day.getTime();
 
       if (ex.cardioDetails) {
@@ -199,16 +289,20 @@ export function AnalyticsView() {
           existing.durationMinutes += mins;
           existing.distanceKm += dist;
         } else {
-          map.set(ts, { weight: 0, volume: 0, durationMinutes: mins, distanceKm: dist, rirSum: 0, rirCount: 0 });
+          map.set(ts, { weight: 0, volume: 0, durationMinutes: mins, distanceKm: dist, rirSum: 0, rirCount: 0, max1RM: 0 });
         }
       } else if (ex.sets) {
         const completedSets = ex.sets.filter((set) => set.completed);
         const topWeight = Math.max(...completedSets.map((set) => set.weight || 0), 0);
         const vol = completedSets.reduce((a, set) => a + (set.reps || 0) * (set.weight || 0), 0);
         
+        let dayMax1RM = 0;
         let rirSum = 0;
         let rirCount = 0;
         completedSets.forEach((set) => {
+          const estimated = calculate1RM(set.weight || 0, set.reps || 0);
+          if (estimated > dayMax1RM) dayMax1RM = estimated;
+
           if (typeof set.rir === 'number') {
             rirSum += set.rir;
             rirCount++;
@@ -221,10 +315,11 @@ export function AnalyticsView() {
         if (existing) { 
           existing.weight = Math.max(existing.weight, topWeight); 
           existing.volume += vol; 
+          existing.max1RM = Math.max(existing.max1RM, dayMax1RM);
           existing.rirSum += rirSum;
           existing.rirCount += rirCount;
         } else {
-          map.set(ts, { weight: topWeight, volume: Math.round(vol), durationMinutes: 0, distanceKm: 0, rirSum, rirCount });
+          map.set(ts, { weight: topWeight, volume: Math.round(vol), durationMinutes: 0, distanceKm: 0, rirSum, rirCount, max1RM: dayMax1RM });
         }
       }
     }));
@@ -235,6 +330,7 @@ export function AnalyticsView() {
         timestamp: ts,
         weight: data.weight,
         volume: data.volume,
+        estimated1RM: data.max1RM,
         durationMinutes: data.durationMinutes || undefined,
         distanceKm: data.distanceKm || undefined,
         avgRir: data.rirCount > 0 ? Number((data.rirSum / data.rirCount).toFixed(1)) : undefined
@@ -242,12 +338,17 @@ export function AnalyticsView() {
       .sort((a, b) => a.timestamp - b.timestamp);
   }, [completedSessions, selectedExercise]);
 
+  const maxOverall1RM = useMemo(() => {
+    if (exerciseProgress.length === 0) return 0;
+    return Math.max(...exerciseProgress.map((p) => p.estimated1RM));
+  }, [exerciseProgress]);
+
   const totalVolume = useMemo(() => dailyVolume.reduce((sum, d) => sum + d.volume, 0), [dailyVolume]);
   const totalSets = useMemo(() => dailyVolume.reduce((sum, d) => sum + d.sets, 0), [dailyVolume]);
   const totalCardioMinutes = useMemo(() => dailyVolume.reduce((sum, d) => sum + d.cardioMinutes, 0), [dailyVolume]);
 
   const currentExercise = useMemo(() => exercises.find((e) => e.id === selectedExercise), [exercises, selectedExercise]);
-  const isSelectedCardio = currentExercise?.muscleGroup?.toLowerCase() === 'cardio';
+  const isSelectedCardio = currentExercise?.muscleGroup === 'Cardio';
   const currentExerciseName = selectedExercise === 'all' 
     ? 'Todos los ejercicios' 
     : currentExercise?.name ?? 'Seleccionar ejercicio';
@@ -306,7 +407,6 @@ export function AnalyticsView() {
         </div>
 
         <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end flex-wrap print:hidden">
-          {/* Selector de Rango Temporal estilo Pill Toggle */}
           <div className="flex items-center p-1 bg-gray-100 dark:bg-gray-800/80 rounded-xl border border-gray-200 dark:border-gray-700/60 shadow-inner">
             <Filter size={14} className="text-gray-400 mx-2 shrink-0 hidden sm:block" />
             {(['1M', '3M', '6M', '1Y', 'ALL'] as TimeRange[]).map((r) => (
@@ -337,10 +437,19 @@ export function AnalyticsView() {
       </div>
 
       {/* METRICAS KPI */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-2 sm:gap-3">
         <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><Activity size={18} className="text-brand-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{completedSessions.length}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Sesiones ({timeRange})</p></CardBody></Card>
         <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><TrendingUp size={18} className="text-brand-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{totalVolume.toLocaleString('es-ES')}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Volumen kg</p></CardBody></Card>
         <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><Dumbbell size={18} className="text-brand-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{totalSets}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Series Fuerza</p></CardBody></Card>
+        <Card>
+          <CardBody className="text-center py-3 sm:py-4">
+            <div className="flex items-center justify-center mb-1"><Award size={18} className="text-amber-500" /></div>
+            <p className="text-lg sm:text-2xl font-bold break-words">
+              {maxOverall1RM > 0 ? `${maxOverall1RM} kg` : 'N/A'}
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5 break-words">1RM Estimado Máx</p>
+          </CardBody>
+        </Card>
         <Card>
           <CardBody className="text-center py-3 sm:py-4">
             <div className="flex items-center justify-center mb-1"><Zap size={18} className="text-purple-500" /></div>
@@ -353,15 +462,18 @@ export function AnalyticsView() {
         <Card><CardBody className="text-center py-3 sm:py-4"><div className="flex items-center justify-center mb-1"><Flame size={18} className="text-blue-500" /></div><p className="text-lg sm:text-2xl font-bold break-words">{totalCardioMinutes} <span className="text-xs font-normal">min</span></p><p className="text-xs text-gray-400 mt-0.5 break-words">Cardio Total</p></CardBody></Card>
       </div>
 
+      {/* HEATMAP DE CONSISTENCIA */}
+      <ConsistencyHeatmap sessions={sessions} />
+
       <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-4 flex items-start gap-3.5 print:hidden">
         <div className="p-2 bg-purple-500/10 rounded-xl text-purple-500 shrink-0 mt-0.5">
           <HelpCircle size={20} />
         </div>
         <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
           <p className="font-semibold text-gray-900 dark:text-gray-100 mb-1 flex items-center gap-1.5">
-            ¿Qué es el RIR y cómo ayuda a la Hipertrofia?
+            ¿Qué es el 1RM Estimado y cómo se calcula?
           </p>
-          El <strong>RIR (Repeticiones En Recámara)</strong> indica cuántas repeticiones adicionales podrías haber completado antes del fallo muscular. Para maximizar la ganancia muscular (hipertrofia), el rango óptimo es un <strong>RIR entre 1 y 3</strong>.
+          El <strong>1RM Estimado (Repetición Máxima)</strong> es el peso máximo teórico que podrías levantar para 1 repetición. Se calcula utilizando la fórmula de Epley: Peso × (1 + Reps / 30). Es ideal para evaluar tu progresión de fuerza sin necesidad de llegar al fallo absoluto.
         </div>
       </div>
 
@@ -472,15 +584,15 @@ export function AnalyticsView() {
           </CardBody>
         </Card>
 
-        {/* GRÁFICO 3: PROGRESO DE FUERZA Y RIR */}
+        {/* GRÁFICO 3: PROGRESO DE FUERZA, 1RM Y RIR */}
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
               <div>
-                <CardTitle>{isSelectedCardio ? 'Progreso de Cardio' : 'Progreso de Fuerza y RIR'}</CardTitle>
+                <CardTitle>{isSelectedCardio ? 'Progreso de Cardio' : 'Evolución de 1RM Estimado y Cargas'}</CardTitle>
                 {activeExPoint && (
                   <p className="text-xs text-brand-500 font-semibold mt-0.5 animate-fade-in">
-                    {activeExPoint.date}: {isSelectedCardio ? `${activeExPoint.durationMinutes || 0} min` : `${activeExPoint.weight} kg (Vol: ${activeExPoint.volume} kg)`} {activeExPoint.avgRir !== undefined ? `· RIR ${activeExPoint.avgRir}` : ''}
+                    {activeExPoint.date}: {isSelectedCardio ? `${activeExPoint.durationMinutes || 0} min` : `${activeExPoint.weight} kg (1RM Est: ${activeExPoint.estimated1RM} kg)`} {activeExPoint.avgRir !== undefined ? `· RIR ${activeExPoint.avgRir}` : ''}
                   </p>
                 )}
               </div>
@@ -529,9 +641,10 @@ export function AnalyticsView() {
                 <AreaChart 
                   data={exerciseProgress} 
                   margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                  onMouseMove={(e: any) => {
-                    if (e && e.activePayload && e.activePayload.length > 0) {
-                      setActiveExPoint(e.activePayload[0].payload as ExerciseProgress);
+                  onMouseMove={(e) => {
+                    const state = e as any;
+                    if (state && state.activePayload && state.activePayload.length > 0) {
+                      setActiveExPoint(state.activePayload[0].payload as ExerciseProgress);
                     }
                   }}
                   onMouseLeave={() => setActiveExPoint(null)}
@@ -556,27 +669,28 @@ export function AnalyticsView() {
                 <AreaChart 
                   data={exerciseProgress} 
                   margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                  onMouseMove={(e: any) => {
-                    if (e && e.activePayload && e.activePayload.length > 0) {
-                      setActiveExPoint(e.activePayload[0].payload as ExerciseProgress);
+                  onMouseMove={(e) => {
+                    const state = e as any;
+                    if (state && state.activePayload && state.activePayload.length > 0) {
+                      setActiveExPoint(state.activePayload[0].payload as ExerciseProgress);
                     }
                   }}
                   onMouseLeave={() => setActiveExPoint(null)}
                 >
                   <defs>
-                    <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="#10b981" stopOpacity={0.0} />
+                    <linearGradient id="rmGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="4 4" stroke={gridColor} vertical={false} />
                   <XAxis dataKey="date" tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dy={5} />
                   <YAxis yAxisId="left" tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dx={-5} />
-                  <YAxis yAxisId="right" orientation="right" domain={[0, 3]} tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dx={5} />
+                  <YAxis yAxisId="right" orientation="right" domain={[0, 5]} tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} dx={5} />
                   <Tooltip content={<CustomTooltip />} cursor={{ stroke: axisColor, strokeWidth: 1, strokeDasharray: '3 3' }} />
                   <Legend wrapperStyle={{ fontSize: 12, paddingTop: '10px' }} />
-                  <Area yAxisId="left" type="monotone" dataKey="weight" name="Peso máx (kg)" stroke="#10b981" strokeWidth={2.5} fill="url(#weightGradient)" isAnimationActive={false} dot={{ fill: '#10b981', r: 3 }} activeDot={{ r: 5 }} />
-                  <Area yAxisId="left" type="monotone" dataKey="volume" name="Volumen (kg)" stroke="#f97316" strokeWidth={2} fillOpacity={0} isAnimationActive={false} dot={false} />
+                  <Area yAxisId="left" type="monotone" dataKey="estimated1RM" name="1RM Est. (kg)" stroke="#f59e0b" strokeWidth={2.5} fill="url(#rmGradient)" isAnimationActive={false} dot={{ fill: '#f59e0b', r: 3 }} activeDot={{ r: 5 }} />
+                  <Area yAxisId="left" type="monotone" dataKey="weight" name="Peso máx (kg)" stroke="#10b981" strokeWidth={2} fillOpacity={0} isAnimationActive={false} dot={{ fill: '#10b981', r: 2 }} />
                   <Area yAxisId="right" type="monotone" dataKey="avgRir" name="RIR Promedio" stroke="#a855f7" strokeWidth={2} strokeDasharray="4 4" fillOpacity={0} isAnimationActive={false} dot={{ fill: '#a855f7', r: 3 }} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -689,7 +803,7 @@ export function AnalyticsView() {
                                 {exItem.sets?.map((set, setIdx) => (
                                   set.completed ? (
                                     <span key={setIdx} className="text-xs bg-gray-50 dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/60 px-2.5 py-1 rounded-lg text-gray-700 dark:text-gray-300">
-                                      Serie {setIdx + 1}: <strong className="text-brand-500">{set.weight} kg</strong> × {set.reps} reps {typeof set.rir === 'number' ? <span className="text-purple-500 font-semibold ml-1">({set.rir === 3 ? '3+' : set.rir} RIR)</span> : null}
+                                      Serie {setIdx + 1}: <strong className="text-brand-500">{set.weight} kg</strong> × {set.reps} reps <span className="text-amber-500 font-semibold">(1RM: {calculate1RM(set.weight, set.reps)}kg)</span> {typeof set.rir === 'number' ? <span className="text-purple-500 font-semibold ml-1">({set.rir === 3 ? '3+' : set.rir} RIR)</span> : null}
                                     </span>
                                   ) : null
                                 ))}

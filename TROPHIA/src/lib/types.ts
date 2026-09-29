@@ -61,16 +61,42 @@ export interface TrainingSession {
   completed: boolean;
   createdAt: number;
   updatedAt: number;
-  deletedAt?: number; // <-- Añadido para proteger la papelera
+  deletedAt?: number; // Protege la papelera
 }
 
 export type MutationOp =
-  | { kind: 'upsert'; table: 'exercises' | 'routines' | 'sessions'; record: Record<string, unknown> }
-  | { kind: 'delete'; table: 'exercises' | 'routines' | 'sessions'; id: ID };
+  | { kind: 'upsert'; table: 'exercises' | 'routines' | 'sessions' | 'metrics'; record: Record<string, unknown> }
+  | { kind: 'delete'; table: 'exercises' | 'routines' | 'sessions' | 'metrics'; id: ID };
 
 export interface MutationQueueEntry {
   id: ID;
   op: MutationOp;
   createdAt: number;
   synced: 0 | 1;
+}
+
+// --- TIPOS AÑADIDOS PARA MÉTRICAS Y BACKUP JSON ---
+
+export interface BodyMetric {
+  id: ID;
+  date: number; // Timestamp
+  weightKg?: number;
+  bodyFatPercentage?: number;
+  chestCm?: number;
+  waistCm?: number;
+  hipsCm?: number;
+  bicepsCm?: number;
+  thighsCm?: number;
+  notes?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface BackupData {
+  version: number;
+  exportedAt: number;
+  exercises: Exercise[];
+  routines: Routine[];
+  sessions: TrainingSession[];
+  metrics: BodyMetric[];
 }

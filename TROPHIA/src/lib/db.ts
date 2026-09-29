@@ -1,27 +1,24 @@
 import Dexie, { type Table } from 'dexie';
-import type { Exercise, Routine, TrainingSession, MutationQueueEntry } from './types';
+import type { Exercise, Routine, TrainingSession, MutationQueueEntry, BodyMetric } from './types';
 
-export class IronlogDB extends Dexie {
+export class TrophiaDatabase extends Dexie {
   exercises!: Table<Exercise, string>;
   routines!: Table<Routine, string>;
   sessions!: Table<TrainingSession, string>;
-  mutations!: Table<MutationQueueEntry, string>;
+  metrics!: Table<BodyMetric, string>;
+  mutationQueue!: Table<MutationQueueEntry, string>;
 
   constructor() {
-    super('ironlog-db');
-    this.version(1).stores({
-      exercises: 'id, name, muscleGroup, updatedAt',
-      routines: 'id, name, updatedAt',
-      sessions: 'id, routineId, date, completed, updatedAt',
-      mutations: 'id, synced, createdAt',
-    });
+    super('trophia_db');
+
     this.version(2).stores({
       exercises: 'id, name, muscleGroup, updatedAt',
       routines: 'id, name, updatedAt',
-      sessions: 'id, routineId, date, completed, updatedAt',
-      mutations: 'id, synced, createdAt',
+      sessions: 'id, routineId, date, completed, deletedAt, updatedAt',
+      metrics: 'id, date, updatedAt',
+      mutationQueue: 'id, synced, createdAt',
     });
   }
 }
 
-export const db = new IronlogDB();
+export const db = new TrophiaDatabase();

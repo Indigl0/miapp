@@ -27,7 +27,7 @@ function formatRestTime(seconds?: number): string | null {
   return `${secs} s`;
 }
 
-// AudioContext global reutilizable desbloqueado tras interacción en iOS
+// AudioContext global reutilizable
 let globalAudioCtx: AudioContext | null = null;
 
 function unlockAudioContext() {
@@ -44,7 +44,6 @@ function unlockAudioContext() {
   }
 }
 
-// Reproductor de sonido elegante de alta definición
 function playTimerBeep() {
   try {
     unlockAudioContext();
@@ -70,12 +69,10 @@ function playTimerBeep() {
       osc.stop(nowTime + delay + duration);
     };
 
-    // Secuencia armónica elegante (C5 -> E5 -> G5)
     playChord(523.25, 0, 0.25);
     playChord(659.25, 0.15, 0.25);
     playChord(783.99, 0.30, 0.6);
 
-    // Vibración para dispositivos Android compatibles
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       navigator.vibrate([300, 100, 300, 100, 500]);
     }
@@ -131,14 +128,9 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   const [createOpen, setCreateOpen] = useState(false);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
   const [localNotes, setLocalNotes] = useState('');
-  
-  // Paginación de tarjetas de sesiones
   const [visibleCount, setVisibleCount] = useState(6);
-
-  // Sistema de Toast simple
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Temporizador de descanso de ejercicio
   const [activeRestSeconds, setActiveRestSeconds] = useState<number | null>(null);
   const [restRemaining, setRestRemaining] = useState<number>(0);
   const [isTimerFinished, setIsTimerFinished] = useState<boolean>(false);
@@ -200,7 +192,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     };
   }, []);
 
-  // Estados locales para entrada continua de decimales
   const [weightInputs, setWeightInputs] = useState<Record<string, string>>({});
   const [distanceInputs, setDistanceInputs] = useState<Record<string, string>>({});
 
@@ -212,7 +203,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   const exName = (id: string) => getExercise(id)?.name ?? 'Ejercicio eliminado';
   const isCardio = (id: string) => getExercise(id)?.muscleGroup?.toLowerCase() === 'cardio';
 
-  // Función helper para obtener las series previas registradas de un ejercicio
   const getPreviousSetsForExercise = (exerciseId: string): SessionSet[] | null => {
     if (!activeSession) return null;
     const completedPastSessions = sessions.filter((s) => s.completed && s.id !== activeSession.id);
@@ -561,7 +551,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                   const distanceKey = `cardio-${exIdx}`;
                   const displayDistance = distanceInputs[distanceKey] ?? (cardioData.distanceKm !== undefined ? String(cardioData.distanceKm) : '');
 
-                  // Obtener el historial previo para este ejercicio
                   const prevSets = !isExCardio ? getPreviousSetsForExercise(ex.exerciseId) : null;
 
                   return (
@@ -645,118 +634,42 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                               </button>
                             </div>
                           ) : (
-                            <>
-                              {/* Vista escritorio */}
-                              <div className="hidden sm:block overflow-x-auto scrollbar-thin">
-                                <table className="w-full text-sm">
-                                  <thead>
-                                    <tr className="text-xs uppercase text-gray-400 border-b border-gray-100 dark:border-gray-800">
-                                      <th className="text-left px-4 py-2.5 font-semibold">#</th>
-                                      <th className="text-left px-4 py-2.5 font-semibold">Anterior</th>
-                                      <th className="text-left px-4 py-2.5 font-semibold">Reps</th>
-                                      <th className="text-left px-4 py-2.5 font-semibold">Peso (kg)</th>
-                                      <th className="text-left px-4 py-2.5 font-semibold">RIR</th>
-                                      <th className="text-left px-4 py-2.5 font-semibold">Volumen</th>
-                                      <th className="px-4 py-2.5"></th>
-                                      <th className="px-4 py-2.5"></th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {ex.sets?.map((set, setIdx) => {
-                                      const key = `${exIdx}-${setIdx}`;
-                                      const displayWeight = weightInputs[key] ?? (set.weight ? String(set.weight) : '');
-                                      const prevSet = prevSets?.[setIdx];
+                            <div className="overflow-x-auto scrollbar-thin">
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="text-xs uppercase text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                                    <th className="text-left px-3 py-2.5 font-semibold">#</th>
+                                    <th className="text-left px-3 py-2.5 font-semibold text-brand-600 dark:text-brand-400">Anterior</th>
+                                    <th className="text-left px-3 py-2.5 font-semibold">Reps</th>
+                                    <th className="text-left px-3 py-2.5 font-semibold">Peso (kg)</th>
+                                    <th className="text-left px-3 py-2.5 font-semibold">RIR</th>
+                                    <th className="text-left px-3 py-2.5 font-semibold">Volumen</th>
+                                    <th className="px-2 py-2.5"></th>
+                                    <th className="px-2 py-2.5"></th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {ex.sets?.map((set, setIdx) => {
+                                    const key = `${exIdx}-${setIdx}`;
+                                    const displayWeight = weightInputs[key] ?? (set.weight ? String(set.weight) : '');
+                                    const prevSet = prevSets?.[setIdx];
 
-                                      return (
-                                        <tr key={setIdx} className={`border-b border-gray-50 dark:border-gray-800/50 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
-                                          <td className="px-4 py-2.5 font-semibold whitespace-nowrap">{set.setNumber}</td>
-                                          <td className="px-4 py-2.5 text-xs text-gray-400 whitespace-nowrap">
-                                            {prevSet ? (
-                                              <span className="inline-flex items-center gap-1 font-mono bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-md">
-                                                <History size={11} className="text-gray-400" />
-                                                {prevSet.weight}kg × {prevSet.reps}
-                                              </span>
-                                            ) : (
-                                              <span className="text-gray-300 dark:text-gray-600">—</span>
-                                            )}
-                                          </td>
-                                          <td className="px-4 py-2.5">
-                                            <Input
-                                              type="text"
-                                              inputMode="numeric"
-                                              value={set.reps || ''}
-                                              placeholder="0"
-                                              onFocus={(e) => e.target.select()}
-                                              onChange={(e) => updateSet(activeSession, exIdx, setIdx, { reps: Math.max(0, parseInt(e.target.value) || 0) })}
-                                              className="w-20 h-9 py-1.5 text-center"
-                                            />
-                                          </td>
-                                          <td className="px-4 py-2.5">
-                                            <Input
-                                              type="text"
-                                              inputMode="decimal"
-                                              value={displayWeight}
-                                              placeholder="0"
-                                              onFocus={(e) => e.target.select()}
-                                              onChange={(e) => handleWeightInputChange(activeSession, exIdx, setIdx, e.target.value)}
-                                              className="w-24 h-9 py-1.5 text-center"
-                                            />
-                                          </td>
-                                          <td className="px-4 py-2.5">
-                                            <div className="flex gap-1">
-                                              {[0, 1, 2, 3].map((val) => (
-                                                <button
-                                                  key={val}
-                                                  type="button"
-                                                  onClick={() => updateSet(activeSession, exIdx, setIdx, { rir: set.rir === val ? undefined : val })}
-                                                  className={`px-2 py-1 text-xs font-semibold rounded-md border transition-colors ${
-                                                    set.rir === val
-                                                      ? 'bg-brand-500 text-white border-brand-500'
-                                                      : 'bg-gray-50 dark:bg-gray-800 text-gray-500 border-gray-200 dark:border-gray-700 hover:border-brand-300'
-                                                  }`}
-                                                >
-                                                  {val === 3 ? '3+' : val}
-                                                </button>
-                                              ))}
-                                            </div>
-                                          </td>
-                                          <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">{((set.reps || 0) * (set.weight || 0)).toFixed(1)}</td>
-                                          <td className="px-4 py-2.5"><button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600'}`}><Check size={16} /></button></td>
-                                          <td className="px-4 py-2.5"><button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1.5 text-gray-300 hover:text-red-500"><X size={14} /></button></td>
-                                        </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                </table>
-                              </div>
-
-                              {/* Vista móvil */}
-                              <div className="sm:hidden divide-y divide-gray-100 dark:divide-gray-800">
-                                {ex.sets?.map((set, setIdx) => {
-                                  const key = `${exIdx}-${setIdx}`;
-                                  const displayWeight = weightInputs[key] ?? (set.weight ? String(set.weight) : '');
-                                  const prevSet = prevSets?.[setIdx];
-
-                                  return (
-                                    <div key={setIdx} className={`p-3.5 space-y-2.5 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
-                                      <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-xs font-bold uppercase text-gray-400 break-words">Serie {set.setNumber}</span>
-                                          {prevSet && (
-                                            <span className="inline-flex items-center gap-1 text-[11px] font-mono bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-md">
-                                              <History size={10} className="text-gray-400" />
-                                              Ant: {prevSet.weight}kg × {prevSet.reps}
+                                    return (
+                                      <tr key={setIdx} className={`border-b border-gray-50 dark:border-gray-800/50 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
+                                        <td className="px-3 py-2.5 font-semibold whitespace-nowrap">{set.setNumber}</td>
+                                        
+                                        <td className="px-3 py-2.5 text-xs whitespace-nowrap">
+                                          {prevSet ? (
+                                            <span className="inline-flex items-center gap-1.5 font-mono font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2.5 py-1 rounded-lg border border-gray-200/80 dark:border-gray-700">
+                                              <History size={12} className="text-brand-500 shrink-0" />
+                                              {prevSet.weight}kg × {prevSet.reps}
                                             </span>
+                                          ) : (
+                                            <span className="text-gray-300 dark:text-gray-600 font-mono text-xs">—</span>
                                           )}
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                          <button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}><Check size={16} /></button>
-                                          <button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1.5 text-gray-300 hover:text-red-500"><X size={14} /></button>
-                                        </div>
-                                      </div>
-                                      <div className="flex gap-2.5">
-                                        <div className="flex-1 min-w-0">
-                                          <Label>Reps</Label>
+                                        </td>
+
+                                        <td className="px-3 py-2.5">
                                           <Input
                                             type="text"
                                             inputMode="numeric"
@@ -764,11 +677,10 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                             placeholder="0"
                                             onFocus={(e) => e.target.select()}
                                             onChange={(e) => updateSet(activeSession, exIdx, setIdx, { reps: Math.max(0, parseInt(e.target.value) || 0) })}
-                                            className="h-10 text-base text-center"
+                                            className="w-20 h-9 py-1.5 text-center"
                                           />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                          <Label>Peso (kg)</Label>
+                                        </td>
+                                        <td className="px-3 py-2.5">
                                           <Input
                                             type="text"
                                             inputMode="decimal"
@@ -776,39 +688,44 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                             placeholder="0"
                                             onFocus={(e) => e.target.select()}
                                             onChange={(e) => handleWeightInputChange(activeSession, exIdx, setIdx, e.target.value)}
-                                            className="h-10 text-base text-center"
+                                            className="w-24 h-9 py-1.5 text-center"
                                           />
-                                        </div>
-                                        <div className="flex flex-col justify-end min-w-0">
-                                          <Label>Vol.</Label>
-                                          <div className="h-10 flex items-center justify-center text-sm font-semibold text-gray-500 dark:text-gray-400 break-words whitespace-nowrap">{((set.reps || 0) * (set.weight || 0)).toFixed(1)}</div>
-                                        </div>
-                                      </div>
-                                      
-                                      <div>
-                                        <Label className="text-[11px] text-gray-400 mb-1 block">RIR (Reps en recámara)</Label>
-                                        <div className="grid grid-cols-4 gap-1.5">
-                                          {[0, 1, 2, 3].map((val) => (
-                                            <button
-                                              key={val}
-                                              type="button"
-                                              onClick={() => updateSet(activeSession, exIdx, setIdx, { rir: set.rir === val ? undefined : val })}
-                                              className={`h-8 text-xs font-semibold rounded-lg border transition-colors ${
-                                                set.rir === val
-                                                  ? 'bg-brand-500 text-white border-brand-500'
-                                                  : 'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
-                                              }`}
-                                            >
-                                              {val === 3 ? '3+' : `RIR ${val}`}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </>
+                                        </td>
+                                        <td className="px-3 py-2.5">
+                                          <div className="flex gap-1">
+                                            {[0, 1, 2, 3].map((val) => (
+                                              <button
+                                                key={val}
+                                                type="button"
+                                                onClick={() => updateSet(activeSession, exIdx, setIdx, { rir: set.rir === val ? undefined : val })}
+                                                className={`px-2 py-1 text-xs font-semibold rounded-md border transition-colors ${
+                                                  set.rir === val
+                                                    ? 'bg-brand-500 text-white border-brand-500'
+                                                    : 'bg-gray-50 dark:bg-gray-800 text-gray-500 border-gray-200 dark:border-gray-700 hover:border-brand-300'
+                                                }`}
+                                              >
+                                                {val === 3 ? '3+' : val}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        </td>
+                                        <td className="px-3 py-2.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">{((set.reps || 0) * (set.weight || 0)).toFixed(1)}</td>
+                                        <td className="px-2 py-2.5">
+                                          <button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600'}`}>
+                                            <Check size={16} />
+                                          </button>
+                                        </td>
+                                        <td className="px-2 py-2.5">
+                                          <button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1.5 text-gray-300 hover:text-red-500">
+                                            <X size={14} />
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
                           )}
                         </div>
                       </CardBody>
