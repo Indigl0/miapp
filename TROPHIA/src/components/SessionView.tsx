@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ListChecks, Plus, Check, Trash2, Play, Calendar, CheckCircle2, Clock, X, Save, RotateCcw, Activity, ChevronDown, BellRing } from 'lucide-react';
+import { ListChecks, Plus, Check, Trash2, Play, Calendar, CheckCircle2, Clock, X, Save, RotateCcw, Activity, ChevronDown, BellRing, History } from 'lucide-react';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
 import { enqueue } from '@/lib/sync';
@@ -176,7 +176,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
           triggerScreenFlash();
           setIsTimerFinished(true);
           
-          // Ocultar el widget de descanso tras 5 segundos
           setTimeout(() => {
             setActiveRestSeconds(null);
             setIsTimerFinished(false);
@@ -212,6 +211,19 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   const getExercise = (id: string) => exercises.find((e) => e.id === id);
   const exName = (id: string) => getExercise(id)?.name ?? 'Ejercicio eliminado';
   const isCardio = (id: string) => getExercise(id)?.muscleGroup?.toLowerCase() === 'cardio';
+
+  // Función helper para obtener las series previas registradas de un ejercicio
+  const getPreviousSetsForExercise = (exerciseId: string): SessionSet[] | null => {
+    if (!activeSession) return null;
+    const completedPastSessions = sessions.filter((s) => s.completed && s.id !== activeSession.id);
+    for (const pastSession of completedPastSessions) {
+      const match = pastSession.exercises?.find((ex) => ex.exerciseId === exerciseId);
+      if (match && match.sets && match.sets.length > 0) {
+        return match.sets;
+      }
+    }
+    return null;
+  };
 
   const totalVolume = (s: TrainingSession) =>
     (s.exercises || []).reduce((sum, ex) => sum + (ex.sets ? ex.sets.reduce((a, set) => a + (set.completed ? (set.reps || 0) * (set.weight || 0) : 0), 0) : 0), 0);
@@ -436,12 +448,10 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
 
   return (
     <>
-      {/* Flash visual de pantalla completa para avisar fin del tiempo */}
       {screenFlash && (
         <div className="fixed inset-0 z-[100] bg-white opacity-90 transition-opacity duration-100 pointer-events-none" />
       )}
 
-      {/* Toast informativo */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-gray-900 text-white dark:bg-white dark:text-gray-900 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-bounce">
           <span className="text-sm font-medium">{toastMessage}</span>
@@ -451,7 +461,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
         </div>
       )}
 
-      {/* Temporizador flotante de descanso */}
       {activeRestSeconds !== null && (
         <div 
           className={`fixed bottom-6 left-6 z-50 px-5 py-4 sm:px-6 sm:py-5 rounded-3xl shadow-2xl flex items-center gap-4 transition-all duration-300 border-2 ${
@@ -552,6 +561,9 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                   const distanceKey = `cardio-${exIdx}`;
                   const displayDistance = distanceInputs[distanceKey] ?? (cardioData.distanceKm !== undefined ? String(cardioData.distanceKm) : '');
 
+                  // Obtener el historial previo para este ejercicio
+                  const prevSets = !isExCardio ? getPreviousSetsForExercise(ex.exerciseId) : null;
+
                   return (
                     <Card key={exIdx}>
                       <CardHeader>
@@ -640,6 +652,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                   <thead>
                                     <tr className="text-xs uppercase text-gray-400 border-b border-gray-100 dark:border-gray-800">
                                       <th className="text-left px-4 py-2.5 font-semibold">#</th>
+                                      <th className="text-left px-4 py-2.5 font-semibold">Anterior</th>
                                       <th className="text-left px-4 py-2.5 font-semibold">Reps</th>
                                       <th className="text-left px-4 py-2.5 font-semibold">Peso (kg)</th>
                                       <th className="text-left px-4 py-2.5 font-semibold">RIR</th>
@@ -652,10 +665,21 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                     {ex.sets?.map((set, setIdx) => {
                                       const key = `${exIdx}-${setIdx}`;
                                       const displayWeight = weightInputs[key] ?? (set.weight ? String(set.weight) : '');
+                                      const prevSet = prevSets?.[setIdx];
 
                                       return (
                                         <tr key={setIdx} className={`border-b border-gray-50 dark:border-gray-800/50 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
                                           <td className="px-4 py-2.5 font-semibold whitespace-nowrap">{set.setNumber}</td>
+                                          <td className="px-4 py-2.5 text-xs text-gray-400 whitespace-nowrap">
+                                            {prevSet ? (
+                                              <span className="inline-flex items-center gap-1 font-mono bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-md">
+                                                <History size={11} className="text-gray-400" />
+                                                {prevSet.weight}kg × {prevSet.reps}
+                                              </span>
+                                            ) : (
+                                              <span className="text-gray-300 dark:text-gray-600">—</span>
+                                            )}
+                                          </td>
                                           <td className="px-4 py-2.5">
                                             <Input
                                               type="text"
@@ -711,11 +735,20 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                 {ex.sets?.map((set, setIdx) => {
                                   const key = `${exIdx}-${setIdx}`;
                                   const displayWeight = weightInputs[key] ?? (set.weight ? String(set.weight) : '');
+                                  const prevSet = prevSets?.[setIdx];
 
                                   return (
                                     <div key={setIdx} className={`p-3.5 space-y-2.5 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
                                       <div className="flex items-center justify-between gap-2">
-                                        <span className="text-xs font-bold uppercase text-gray-400 break-words">Serie {set.setNumber}</span>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-xs font-bold uppercase text-gray-400 break-words">Serie {set.setNumber}</span>
+                                          {prevSet && (
+                                            <span className="inline-flex items-center gap-1 text-[11px] font-mono bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-md">
+                                              <History size={10} className="text-gray-400" />
+                                              Ant: {prevSet.weight}kg × {prevSet.reps}
+                                            </span>
+                                          )}
+                                        </div>
                                         <div className="flex items-center gap-2">
                                           <button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}><Check size={16} /></button>
                                           <button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1.5 text-gray-300 hover:text-red-500"><X size={14} /></button>
