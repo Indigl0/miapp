@@ -20,11 +20,28 @@ interface WeightLog {
   notes?: string;
 }
 
+// Función auxiliar para dar formato a las fechas (Ej: "28 sept 2026")
+const formatChartDate = (dateStr: string) => {
+  if (!dateStr) return '';
+  const [year, month, day] = dateStr.split('T')[0].split('-');
+  if (!year || !month || !day) return dateStr;
+  
+  const dateObj = new Date(Number(year), Number(month) - 1, Number(day));
+  const formatted = dateObj.toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+  return formatted.replace('.', '');
+};
+
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
   if (!active || !payload || payload.length === 0) return null;
   return (
     <div className="rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-xl px-3.5 py-2.5">
-      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 break-words">{label}</p>
+      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 break-words">
+        {label ? formatChartDate(label) : ''}
+      </p>
       {payload.map((p, i) => (
         <p key={i} className="text-sm font-bold break-words" style={{ color: p.color }}>
           {p.name}: {p.value.toLocaleString('es-ES')} kg
@@ -403,7 +420,13 @@ export function MetricsView() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-                  <XAxis dataKey="date" tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <XAxis 
+                    dataKey="date" 
+                    tickFormatter={formatChartDate}
+                    tick={{ fill: axisColor, fontSize: 12 }} 
+                    axisLine={false} 
+                    tickLine={false} 
+                  />
                   <YAxis domain={['auto', 'auto']} tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
                   <Tooltip content={<CustomTooltip />} />
                   {initialWeight > 0 && (
@@ -440,7 +463,7 @@ export function MetricsView() {
                     <Calendar size={16} className="text-gray-400" />
                     <div>
                       <p className="text-sm font-bold">{item.weight} kg</p>
-                      <p className="text-xs text-gray-400">{item.date}</p>
+                      <p className="text-xs text-gray-400">{formatChartDate(item.date)}</p>
                     </div>
                   </div>
                   <button onClick={() => handleDeleteLog(item.id)} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors">

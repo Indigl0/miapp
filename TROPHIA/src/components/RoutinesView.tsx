@@ -60,6 +60,69 @@ export function RoutinesView() {
   const removeExercise = (idx: number) => 
     setForm((f) => ({ ...f, exercises: f.exercises.filter((_, i) => i !== idx) }));
 
+  // Función para sincronizar la rutina actualizada con las sesiones de entrenamiento
+  const syncRoutineToSessions = async (routine: Routine) => {
+    try {
+      // Buscar todas las sesiones que tengan esta rutina
+      const sessions = await db.sessions.toArray();
+      const matchingSessions = sessions.filter(
+        (s) => (s as any).routineId === routine.id || s.routineName === routine.name
+      );
+
+      for (const session of matchingSessions) {
+        const existingEntries = session.exercises || [];
+
+        // Construir la nueva lista de ejercicios para la sesión preservando series registradas
+        const updatedExercises = routine.exercises.map((re) => {
+          const match = existingEntries.find((e) => e.exerciseId === re.exerciseId);
+          if (match) {
+            return {
+              ...match,
+              cardioType: re.cardioType || match.cardioType,
+              durationMinutes: re.durationMinutes || match.durationMinutes,
+            };
+          }
+
+          // Si el ejercicio es nuevo y no existía en la sesión previa
+          const cardio = isCardio(re.exerciseId);
+          if (cardio) {
+            return {
+              exerciseId: re.exerciseId,
+              cardioType: re.cardioType || 'Cinta',
+              durationMinutes: re.durationMinutes || 30,
+              sets: [],
+            };
+          }
+
+          // Ejercicio de fuerza nuevo
+          const defaultSets = Array.from({ length: re.sets || 3 }).map(() => ({
+            id: uuid(),
+            reps: re.targetReps || 10,
+            weightKg: 0,
+            completed: false,
+          }));
+
+          return {
+            exerciseId: re.exerciseId,
+            sets: defaultSets,
+          };
+        });
+
+        const updatedSession = {
+          ...session,
+          routineName: routine.name,
+          exercises: updatedExercises,
+          updatedAt: now(),
+        };
+
+        await db.sessions.put(updatedSession);
+        await enqueue({ kind: 'upsert', table: 'sessions', record: updatedSession as unknown as Record<string, unknown> });
+      }
+    } catch (err) {
+      console.error('Error sincronizando rutina con sesiones:', err);
+    }
+  };
+
   const save = async () => {
     if (!form.name.trim() || form.exercises.length === 0) return;
     const ts = now();
@@ -67,6 +130,9 @@ export function RoutinesView() {
       const updated: Routine = { ...editing, name: form.name.trim(), description: form.description.trim() || undefined, exercises: form.exercises, updatedAt: ts };
       await db.routines.put(updated);
       await enqueue({ kind: 'upsert', table: 'routines', record: updated as unknown as Record<string, unknown> });
+      
+      // Sincronizar automáticamente a las sesiones activas o creadas
+      await syncRoutineToSessions(updated);
     } else {
       const r: Routine = { id: uuid(), name: form.name.trim(), description: form.description.trim() || undefined, exercises: form.exercises, createdAt: ts, updatedAt: ts };
       await db.routines.add(r);
