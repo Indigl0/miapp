@@ -43,7 +43,7 @@ interface ExerciseProgress {
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
   if (!active || !payload || payload.length === 0) return null;
   return (
-    <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-xl p-3.5 min-w-[170px] animate-in fade-in zoom-in-95 duration-150">
+    <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-xl p-3.5 min-w-[170px] animate-in fade-in zoom-in-95 duration-150 z-50">
       <p className="text-[10px] font-semibold tracking-wider uppercase text-gray-400 dark:text-gray-500 mb-1.5 border-b border-gray-100 dark:border-gray-800/80 pb-1">
         {label}
       </p>
@@ -489,7 +489,7 @@ export function AnalyticsView() {
                     <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
                     <XAxis dataKey="group" stroke={axisColor} fontSize={11} tickLine={false} angle={-25} textAnchor="end" />
                     <YAxis stroke={axisColor} fontSize={11} tickLine={false} />
-                    <Tooltip content={<CustomTooltip />} />
+                    <Tooltip content={<CustomTooltip />} cursor={false} />
                     <Bar dataKey="volume" name="Volumen (kg)" fill="#f97316" radius={[6, 6, 0, 0]}>
                       {muscleGroupVolume.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={activeBarIndex === index ? '#ea580c' : '#f97316'} />
