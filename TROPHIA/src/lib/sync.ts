@@ -6,13 +6,19 @@ import type { MutationOp, MutationQueueEntry, Exercise, Routine, TrainingSession
 export type SyncTable = 'exercises' | 'routines' | 'sessions' | 'metrics';
 
 async function getCurrentUserId(): Promise<string | null> {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.user?.id ?? null;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.user?.id ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function enqueue(op: MutationOp): Promise<void> {
   const entry: MutationQueueEntry = { id: uuid(), op, createdAt: now(), synced: 0 };
   await db.mutationQueue.add(entry);
+  // Intentar sincronizar de inmediato al encolar
+  flush().catch(() => {});
 }
 
 export async function pendingCount(): Promise<number> {
@@ -35,7 +41,7 @@ function parseJsonField<T>(field: unknown): T {
 }
 
 function localToRemote(table: SyncTable, record: Record<string, unknown>, userId: string | null): Record<string, unknown> {
-  const baseData = { user_id: userId };
+  const baseData = userId ? { user_id: userId } : {};
 
   if (table === 'exercises') {
     const e = record as unknown as Exercise;
@@ -77,7 +83,6 @@ function localToRemote(table: SyncTable, record: Record<string, unknown>, userId
     };
   }
 
-  // Manejo para 'metrics' usando las propiedades reales de BodyMetric
   const m = record as unknown as BodyMetric;
   return {
     ...baseData,
@@ -131,7 +136,6 @@ function remoteToLocal(table: SyncTable, row: Record<string, unknown>): Record<s
     };
   }
 
-  // Manejo para 'metrics'
   return {
     id: row.id,
     date: row.date,
@@ -162,14 +166,21 @@ async function pushPending(): Promise<number> {
       if (op.kind === 'upsert') {
         const remoteRow = localToRemote(op.table as SyncTable, op.record, userId);
         const { error } = await supabase.from(op.table).upsert(remoteRow);
-        if (error) throw error;
+        if (error) {
+          console.error(`Error upserting to ${op.table}:`, error);
+          throw error;
+        }
       } else if (op.kind === 'delete') {
         const { error } = await supabase.from(op.table).delete().eq('id', op.id);
-        if (error) throw error;
+        if (error) {
+          console.error(`Error deleting from ${op.table}:`, error);
+          throw error;
+        }
       }
       await db.mutationQueue.update(entry.id, { synced: 1 });
       pushed++;
-    } catch {
+    } catch (e) {
+      console.error('Failed to push mutation entry:', entry, e);
       break;
     }
   }
@@ -229,21 +240,6 @@ async function pullTable(table: SyncTable): Promise<number> {
     }
   }
 
-  const remoteIds = new Set(data.map((r) => (r as { id: string }).id));
-  const allLocal = await dexieTable.toArray();
-
-  for (const localRow of allLocal) {
-    const localId = (localRow as { id: string }).id;
-    const localDeletedAt = (localRow as { deletedAt?: number }).deletedAt;
-
-    if (!remoteIds.has(localId)) {
-      if (!pendingUpsertIds.has(localId) && !localDeletedAt) {
-        await dexieTable.delete(localId);
-        pulled++;
-      }
-    }
-  }
-
   return pulled;
 }
 
@@ -278,7 +274,7 @@ export function startSyncLoop(onChange?: () => void): () => void {
 
   const onlineHandler = () => tick();
   window.addEventListener('online', onlineHandler);
-  const interval = window.setInterval(tick, 15000);
+  const interval = window.setInterval(tick, 10000);
   tick();
 
   return () => {
