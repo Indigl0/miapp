@@ -673,17 +673,16 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                             </div>
                           ) : (
                             <div className="overflow-x-auto scrollbar-thin -mx-4 sm:mx-0 px-4 sm:px-0">
-                              <table className="w-full text-sm min-w-[600px]">
+                              <table className="w-full text-xs sm:text-sm">
                                 <thead>
-                                  <tr className="text-xs uppercase text-gray-400 border-b border-gray-100 dark:border-gray-800">
-                                    <th className="text-left px-3 py-2.5 font-semibold">#</th>
-                                    <th className="text-left px-3 py-2.5 font-semibold text-brand-600 dark:text-brand-400">Anterior</th>
-                                    <th className="text-left px-3 py-2.5 font-semibold">Reps</th>
-                                    <th className="text-left px-3 py-2.5 font-semibold">Peso (kg)</th>
-                                    <th className="text-left px-3 py-2.5 font-semibold">RIR</th>
-                                    <th className="text-left px-3 py-2.5 font-semibold">Volumen</th>
-                                    <th className="px-2 py-2.5"></th>
-                                    <th className="px-2 py-2.5"></th>
+                                  <tr className="text-[11px] uppercase text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                                    <th className="text-left px-2 py-2 font-semibold"># / Ant</th>
+                                    <th className="text-left px-2 py-2 font-semibold">Reps</th>
+                                    <th className="text-left px-2 py-2 font-semibold">Peso</th>
+                                    <th className="text-left px-2 py-2 font-semibold">RIR</th>
+                                    <th className="text-left px-2 py-2 font-semibold">Vol</th>
+                                    <th className="px-1 py-2"></th>
+                                    <th className="px-1 py-2"></th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -694,20 +693,18 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
 
                                     return (
                                       <tr key={setIdx} className={`border-b border-gray-50 dark:border-gray-800/50 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
-                                        <td className="px-3 py-2.5 font-semibold whitespace-nowrap">{set.setNumber}</td>
-                                        
-                                        <td className="px-3 py-2.5 text-xs whitespace-nowrap">
+                                        <td className="px-2 py-2.5 whitespace-nowrap align-middle">
+                                          <div className="font-bold text-xs text-gray-900 dark:text-gray-100">{set.setNumber}</div>
                                           {prevSet ? (
-                                            <span className="inline-flex items-center gap-1.5 font-mono font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2.5 py-1 rounded-lg border border-gray-200/80 dark:border-gray-700">
-                                              <History size={12} className="text-brand-500 shrink-0" />
-                                              {prevSet.weight}kg × {prevSet.reps}
-                                            </span>
+                                            <div className="text-[10px] text-brand-600 dark:text-brand-400 font-mono font-medium mt-0.5">
+                                              {prevSet.weight}×{prevSet.reps}
+                                            </div>
                                           ) : (
-                                            <span className="text-gray-300 dark:text-gray-600 font-mono text-xs">—</span>
+                                            <div className="text-[10px] text-gray-300 dark:text-gray-600">—</div>
                                           )}
                                         </td>
 
-                                        <td className="px-3 py-2.5">
+                                        <td className="px-2 py-2.5">
                                           <Input
                                             type="text"
                                             inputMode="numeric"
@@ -715,10 +712,10 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                             placeholder="0"
                                             onFocus={(e) => e.target.select()}
                                             onChange={(e) => updateSet(activeSession, exIdx, setIdx, { reps: Math.max(0, parseInt(e.target.value) || 0) })}
-                                            className="w-20 h-9 py-1.5 text-center"
+                                            className="w-14 h-8 py-1 text-center text-xs"
                                           />
                                         </td>
-                                        <td className="px-3 py-2.5">
+                                        <td className="px-2 py-2.5">
                                           <Input
                                             type="text"
                                             inputMode="decimal"
@@ -726,17 +723,17 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                             placeholder="0"
                                             onFocus={(e) => e.target.select()}
                                             onChange={(e) => handleWeightInputChange(activeSession, exIdx, setIdx, e.target.value)}
-                                            className="w-24 h-9 py-1.5 text-center"
+                                            className="w-16 h-8 py-1 text-center text-xs"
                                           />
                                         </td>
-                                        <td className="px-3 py-2.5">
-                                          <div className="flex gap-1">
+                                        <td className="px-2 py-2.5">
+                                          <div className="flex gap-0.5">
                                             {[0, 1, 2, 3].map((val) => (
                                               <button
                                                 key={val}
                                                 type="button"
                                                 onClick={() => updateSet(activeSession, exIdx, setIdx, { rir: set.rir === val ? undefined : val })}
-                                                className={`px-2 py-1 text-xs font-semibold rounded-md border transition-colors ${
+                                                className={`px-1.5 py-1 text-[11px] font-semibold rounded border transition-colors ${
                                                   set.rir === val
                                                     ? 'bg-brand-500 text-white border-brand-500'
                                                     : 'bg-gray-50 dark:bg-gray-800 text-gray-500 border-gray-200 dark:border-gray-700 hover:border-brand-300'
@@ -747,15 +744,15 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                             ))}
                                           </div>
                                         </td>
-                                        <td className="px-3 py-2.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">{((set.reps || 0) * (set.weight || 0)).toFixed(1)}</td>
-                                        <td className="px-2 py-2.5">
-                                          <button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600'}`}>
-                                            <Check size={16} />
+                                        <td className="px-2 py-2.5 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{((set.reps || 0) * (set.weight || 0)).toFixed(0)}</td>
+                                        <td className="px-1 py-2.5">
+                                          <button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600'}`}>
+                                            <Check size={14} />
                                           </button>
                                         </td>
-                                        <td className="px-2 py-2.5">
-                                          <button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1.5 text-gray-300 hover:text-red-500">
-                                            <X size={14} />
+                                        <td className="px-1 py-2.5">
+                                          <button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1 text-gray-300 hover:text-red-500">
+                                            <X size={13} />
                                           </button>
                                         </td>
                                       </tr>
