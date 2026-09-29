@@ -28,6 +28,18 @@ function formatRestTime(seconds?: number): string | null {
   return `${secs} s`;
 }
 
+// Obtener el ID del usuario actual de la sesión local
+function getCurrentUserId(): string | null {
+  try {
+    const stored = localStorage.getItem('ironlog-session');
+    if (!stored) return null;
+    const { id } = JSON.parse(stored) as { id: string };
+    return id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // AudioContext global reutilizable
 let globalAudioCtx: AudioContext | null = null;
 
@@ -83,11 +95,14 @@ function playTimerBeep() {
 }
 
 export function SessionView({ activeSessionId, onActiveSessionChange }: { activeSessionId: string | null; onActiveSessionChange: (id: string | null) => void }) {
-  // Consulta segura que tolera registros con fechas no indexadas
+  const currentUserId = getCurrentUserId();
+
+  // Consulta filtrada estrictamente por el userId activo
   const rawSessions = useLiveQuery(async () => {
-    const list = await db.sessions.toArray();
+    if (!currentUserId) return [];
+    const list = await db.sessions.where('userId').equals(currentUserId).toArray();
     return list.sort((a, b) => (b.date || 0) - (a.date || 0));
-  }, [], [] as TrainingSession[]);
+  }, [currentUserId], [] as TrainingSession[]);
   
   const allSessions = rawSessions.map((s) => ({
     ...s,
@@ -106,8 +121,20 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   const sessions = allSessions.filter((s) => !(s as TrainingSession & { deletedAt?: number }).deletedAt);
   const trashSessions = allSessions.filter((s) => (s as TrainingSession & { deletedAt?: number }).deletedAt);
 
-  const exercises = useLiveQuery(() => db.exercises.orderBy('name').toArray(), [], [] as Exercise[]);
-  const routines = useLiveQuery(() => db.routines.orderBy('name').toArray(), [], [] as Routine[]);
+  // Consultas de Ejercicios y Rutinas aisladas por el usuario actual (o generales si no poseen userId)
+  const exercises = useLiveQuery(async () => {
+    if (!currentUserId) return [];
+    const all = await db.exercises.toArray();
+    return all
+      .filter((e) => !e.userId || e.userId === currentUserId)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [currentUserId], [] as Exercise[]);
+
+  const routines = useLiveQuery(async () => {
+    if (!currentUserId) return [];
+    return db.routines.where('userId').equals(currentUserId).sortBy('name');
+  }, [currentUserId], [] as Routine[]);
+
   const activeSessionRaw = useLiveQuery<TrainingSession | undefined>(
     () => (activeSessionId ? db.sessions.get(activeSessionId) : undefined),
     [activeSessionId],
@@ -236,7 +263,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     }, 0);
 
   const updateSession = async (s: TrainingSession) => {
-    const updated = { ...s, updatedAt: now() };
+    const updated = { ...s, userId: s.userId || currentUserId || '', updatedAt: now() };
     await db.sessions.put(updated);
     await enqueue({ kind: 'upsert', table: 'sessions', record: updated as unknown as Record<string, unknown> });
   };
@@ -305,7 +332,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
       return true;
     });
 
-    // Guardar explícitamente en la base de datos antes de cerrar
     await updateSession({ ...s, exercises: filteredExercises, completed: true, notes: localNotes }); 
     showToast('🎉 Sesión finalizada y guardada con éxito.');
     onActiveSessionChange(null); 
@@ -347,6 +373,11 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   };
 
   const createBlankSession = async (routineId?: string) => {
+    if (!currentUserId) {
+      showToast('Error: No hay sesión de usuario activa.');
+      return;
+    }
+
     let routineName = 'Sesión Libre';
     let sessionExercises: SessionExercise[] = [];
 
@@ -405,6 +436,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     const ts = now();
     const session: TrainingSession = { 
       id: uuid(), 
+      userId: currentUserId, // ASIGNACIÓN OBLIGATORIA DEL USERID
       routineId: routineId ?? null, 
       routineName, 
       date: ts, 

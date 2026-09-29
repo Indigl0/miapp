@@ -42,7 +42,9 @@ function parseJsonField<T>(field: unknown): T {
 }
 
 function localToRemote(table: SyncTable, record: Record<string, unknown>, userId: string | null): Record<string, unknown> {
-  const baseData = userId ? { user_id: userId } : {};
+  // Aseguramos asignar user_id local si existe, o usar la sesión activa como fallback
+  const finalUserId = (record.userId as string) || userId;
+  const baseData = finalUserId ? { user_id: finalUserId } : {};
 
   if (table === 'exercises') {
     const e = record as unknown as Exercise;
@@ -103,9 +105,12 @@ function localToRemote(table: SyncTable, record: Record<string, unknown>, userId
 }
 
 function remoteToLocal(table: SyncTable, row: Record<string, unknown>): Record<string, unknown> {
+  const userId = (row.user_id as string) ?? undefined;
+
   if (table === 'exercises') {
     return {
       id: row.id,
+      userId,
       name: row.name,
       muscleGroup: row.muscle_group,
       notes: row.notes ?? undefined,
@@ -116,6 +121,7 @@ function remoteToLocal(table: SyncTable, row: Record<string, unknown>): Record<s
   if (table === 'routines') {
     return {
       id: row.id,
+      userId, // CORREGIDO: Mantiene el id del usuario al guardar localmente
       name: row.name,
       description: row.description ?? undefined,
       exercises: parseJsonField(row.exercises),
@@ -126,6 +132,7 @@ function remoteToLocal(table: SyncTable, row: Record<string, unknown>): Record<s
   if (table === 'sessions') {
     return {
       id: row.id,
+      userId, // CORREGIDO: Mantiene el id del usuario al guardar localmente
       routineId: row.routine_id ?? null,
       routineName: row.routine_name,
       date: row.date,
@@ -139,6 +146,7 @@ function remoteToLocal(table: SyncTable, row: Record<string, unknown>): Record<s
 
   return {
     id: row.id,
+    userId, // CORREGIDO: Mantiene el id del usuario al guardar localmente
     date: row.date,
     weightKg: row.weight_kg ?? undefined,
     bodyFatPercentage: row.body_fat_percentage ?? undefined,

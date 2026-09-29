@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 // @ts-ignore
 import { supabase } from '../supabase';
 import { useAuth } from '@/lib/auth';
@@ -45,19 +45,15 @@ interface BodyMetricsLog {
   thighs?: number | null;
 }
 
-// Función auxiliar para dar formato a las fechas (Ej: "28 sept 2026")
+const MONTHS_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
 const formatChartDate = (dateStr: string) => {
   if (!dateStr) return '';
   const [year, month, day] = dateStr.split('T')[0].split('-');
   if (!year || !month || !day) return dateStr;
   
-  const dateObj = new Date(Number(year), Number(month) - 1, Number(day));
-  const formatted = dateObj.toLocaleDateString('es-ES', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
-  });
-  return formatted.replace('.', '');
+  const monthIdx = parseInt(month, 10) - 1;
+  return `${day} ${MONTHS_ES[monthIdx] || month} ${year}`;
 };
 
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
@@ -87,7 +83,6 @@ export function MetricsView() {
   const axisColor = isDark ? '#6b7280' : '#9ca3af';
   const gridColor = isDark ? '#1f2937' : '#f3f4f6';
 
-  // Perfil del usuario
   const [profile, setProfile] = useState<UserProfile>({
     age: '',
     height: '',
@@ -95,26 +90,13 @@ export function MetricsView() {
     goal: 'Ganar Masa Muscular',
   });
 
-  // Historial de pesos
   const [logs, setLogs] = useState<WeightLog[]>([]);
-  
-  // Historial de medidas corporales
   const [bodyLogs, setBodyLogs] = useState<BodyMetricsLog[]>([]);
 
-  // Nuevo registro de peso
   const [newWeight, setNewWeight] = useState<string>('');
-  const [newWeightDate, setNewWeightDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [newWeightDate, setNewWeightDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
 
-  // Formulario de nuevas medidas
-  const [newBodyLog, setNewBodyLog] = useState<{
-    date: string;
-    fat_percentage: string;
-    chest: string;
-    waist: string;
-    hips: string;
-    biceps: string;
-    thighs: string;
-  }>({
+  const [newBodyLog, setNewBodyLog] = useState({
     date: new Date().toISOString().split('T')[0],
     fat_percentage: '',
     chest: '',
@@ -136,43 +118,24 @@ export function MetricsView() {
     if (!user?.id) return;
     setLoading(true);
     try {
-      // Cargar Perfil
-      const { data: profData } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const [profRes, weightRes, bodyRes] = await Promise.all([
+        supabase.from('user_profiles').select('*').eq('user_id', user.id).maybeSingle(),
+        supabase.from('weight_logs').select('*').eq('user_id', user.id).order('date', { ascending: true }),
+        supabase.from('body_metrics_logs').select('*').eq('user_id', user.id).order('date', { ascending: true })
+      ]);
 
-      if (profData) {
+      if (profRes.data) {
         setProfile({
-          age: profData.age ?? '',
-          height: profData.height ?? '',
-          initial_weight: profData.initial_weight ?? '',
-          goal: profData.goal || 'Ganar Masa Muscular',
+          age: profRes.data.age ?? '',
+          height: profRes.data.height ?? '',
+          initial_weight: profRes.data.initial_weight ?? '',
+          goal: profRes.data.goal || 'Ganar Masa Muscular',
         });
       }
 
-      // Cargar Registros de Peso
-      const { data: weightData } = await supabase
-        .from('weight_logs')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: true });
+      if (weightRes.data) setLogs(weightRes.data);
+      if (bodyRes.data) setBodyLogs(bodyRes.data);
 
-      if (weightData) {
-        setLogs(weightData);
-      }
-
-      // Cargar Registros de Medidas Corporales
-      const { data: bodyData } = await supabase
-        .from('body_metrics_logs')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: true });
-
-      if (bodyData) {
-        setBodyLogs(bodyData);
-      }
     } catch (err) {
       console.error('Error cargando métricas:', err);
     } finally {
@@ -236,7 +199,7 @@ export function MetricsView() {
       if (error) throw error;
 
       if (data && data.length > 0) {
-        setLogs((prev) => [...prev, ...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+        setLogs((prev) => [...prev, ...data].sort((a, b) => a.date.localeCompare(b.date)));
         setNewWeight('');
       }
     } catch (err: any) {
@@ -279,7 +242,7 @@ export function MetricsView() {
       if (error) throw error;
 
       if (data && data.length > 0) {
-        setBodyLogs((prev) => [...prev, ...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+        setBodyLogs((prev) => [...prev, ...data].sort((a, b) => a.date.localeCompare(b.date)));
         setNewBodyLog({
           date: new Date().toISOString().split('T')[0],
           fat_percentage: '',
@@ -305,6 +268,10 @@ export function MetricsView() {
       console.error('Error eliminando registro de medidas:', err);
     }
   };
+
+  // Memoización para listados ordenados inversamente
+  const reversedLogs = useMemo(() => [...logs].reverse(), [logs]);
+  const reversedBodyLogs = useMemo(() => [...bodyLogs].reverse(), [bodyLogs]);
 
   // Cálculos de Peso
   const latestWeight = logs.length > 0 ? logs[logs.length - 1].weight : Number(profile.initial_weight) || 0;
@@ -586,9 +553,9 @@ export function MetricsView() {
 
             <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
               <h3 className="text-base font-bold mb-4">Historial de Pesajes</h3>
-              {logs.length > 0 ? (
+              {reversedLogs.length > 0 ? (
                 <div className="space-y-3 max-h-64 overflow-y-auto pr-1 no-scrollbar">
-                  {logs.slice().reverse().map((item) => (
+                  {reversedLogs.map((item) => (
                     <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800">
                       <div className="flex items-center gap-3">
                         <Calendar size={16} className="text-gray-400" />
@@ -762,7 +729,7 @@ export function MetricsView() {
           {/* HISTORIAL DE MEDIDAS */}
           <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm overflow-hidden">
             <h3 className="text-base font-bold mb-4">Historial de Medidas Corporales</h3>
-            {bodyLogs.length > 0 ? (
+            {reversedBodyLogs.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
@@ -778,7 +745,7 @@ export function MetricsView() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                    {bodyLogs.slice().reverse().map((item) => (
+                    {reversedBodyLogs.map((item) => (
                       <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                         <td className="py-3 font-semibold">{formatChartDate(item.date)}</td>
                         <td className="py-3 text-brand-500 font-bold">{item.fat_percentage ? `${item.fat_percentage}%` : '-'}</td>

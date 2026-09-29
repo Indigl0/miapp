@@ -4,6 +4,7 @@ export type MuscleGroup = 'Pecho' | 'Espalda' | 'Piernas' | 'Hombros' | 'Brazos'
 
 export interface Exercise {
   id: ID;
+  userId?: string; // Asociación opcional u obligatoria según tu modelo
   name: string;
   muscleGroup: MuscleGroup;
   notes?: string;
@@ -23,6 +24,7 @@ export interface RoutineExercise {
 
 export interface Routine {
   id: ID;
+  userId: string; // <-- AÑADIDO: Asocia la rutina al usuario que la creó
   name: string;
   description?: string;
   exercises: RoutineExercise[];
@@ -53,6 +55,7 @@ export interface SessionExercise {
 
 export interface TrainingSession {
   id: ID;
+  userId: string; // <-- AÑADIDO: Asocia la sesión de entrenamiento al usuario
   routineId: ID | null;
   routineName: string;
   date: number;
@@ -79,6 +82,7 @@ export interface MutationQueueEntry {
 
 export interface BodyMetric {
   id: ID;
+  userId: string; // <-- AÑADIDO: Asocia las métricas corporales al usuario
   date: number; // Timestamp
   weightKg?: number;
   bodyFatPercentage?: number;

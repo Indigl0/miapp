@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ClipboardList, Plus, Pencil, Trash2, X } from 'lucide-react';
+import { useAuth } from '@/lib/auth';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
 import { enqueue } from '@/lib/sync';
@@ -25,7 +26,19 @@ const INITIAL_FORM: FormState = {
 };
 
 export function RoutinesView() {
-  const routines = useLiveQuery(() => db.routines.orderBy('updatedAt').reverse().toArray(), [], [] as Routine[]);
+  const { user } = useAuth();
+
+  // FILTRO CORREGIDO: Filtra las rutinas en IndexedDB según el user.id autenticado
+  const routines = useLiveQuery(
+    async () => {
+      if (!user) return [];
+      const allRoutines = await db.routines.orderBy('updatedAt').reverse().toArray();
+      return allRoutines.filter((r) => r.userId === user.id);
+    },
+    [user?.id],
+    [] as Routine[]
+  );
+
   const exercises = useLiveQuery(() => db.exercises.orderBy('name').toArray(), [], [] as Exercise[]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Routine | null>(null);
@@ -88,13 +101,12 @@ export function RoutinesView() {
       exercises: f.exercises.filter((_, i) => i !== idx),
     }));
 
-  // Sincronización inteligente con sesiones de entrenamiento activas
   const syncRoutineToSessions = async (routine: Routine) => {
     try {
+      if (!user) return;
       const sessions = await db.sessions.toArray();
-      // Sincronizar únicamente sesiones activas / NO finalizadas
       const matchingSessions = sessions.filter(
-        (s) => !s.completed && (s.routineId === routine.id || s.routineName === routine.name)
+        (s) => s.userId === user.id && !s.completed && (s.routineId === routine.id || s.routineName === routine.name)
       );
 
       for (const session of matchingSessions) {
@@ -117,7 +129,6 @@ export function RoutinesView() {
               };
             }
 
-            // Preservar datos de series completadas/pesos cargados y ajustar cantidad de series si cambió
             const existingSets = match.sets || [];
             const targetSetCount = re.sets || 3;
             let updatedSets: SessionSet[] = [];
@@ -143,7 +154,6 @@ export function RoutinesView() {
             };
           }
 
-          // Ejercicio nuevo en la sesión de tipo Cardio
           if (cardio) {
             return {
               exerciseId: re.exerciseId,
@@ -155,7 +165,6 @@ export function RoutinesView() {
             };
           }
 
-          // Ejercicio nuevo en la sesión de tipo Fuerza
           const defaultSets: SessionSet[] = Array.from({ length: re.sets || 3 }).map((_, i) => ({
             setNumber: i + 1,
             reps: re.targetReps || 10,
@@ -187,6 +196,7 @@ export function RoutinesView() {
 
   const save = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (!user) return;
     const cleanName = form.name.trim();
     if (!cleanName || form.exercises.length === 0) return;
 
@@ -194,6 +204,7 @@ export function RoutinesView() {
     if (editing) {
       const updated: Routine = {
         ...editing,
+        userId: user.id, // ASIGNACIÓN DE PROPIETARIO
         name: cleanName,
         description: form.description.trim() || undefined,
         exercises: form.exercises,
@@ -206,6 +217,7 @@ export function RoutinesView() {
     } else {
       const created: Routine = {
         id: uuid(),
+        userId: user.id, // ASIGNACIÓN DE PROPIETARIO
         name: cleanName,
         description: form.description.trim() || undefined,
         exercises: form.exercises,
