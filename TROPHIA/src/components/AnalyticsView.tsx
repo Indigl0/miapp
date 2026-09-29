@@ -43,15 +43,15 @@ interface ExerciseProgress {
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
   if (!active || !payload || payload.length === 0) return null;
   return (
-    <div className="rounded-xl bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-gray-200/80 dark:border-gray-800 shadow-2xl p-3 min-w-[160px]">
-      <p className="text-[11px] font-medium tracking-wider uppercase text-gray-400 dark:text-gray-500 mb-2 border-b border-gray-100 dark:border-gray-800/80 pb-1">
+    <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-xl p-3.5 min-w-[170px] animate-in fade-in zoom-in-95 duration-150">
+      <p className="text-[10px] font-semibold tracking-wider uppercase text-gray-400 dark:text-gray-500 mb-1.5 border-b border-gray-100 dark:border-gray-800/80 pb-1">
         {label}
       </p>
-      <div className="space-y-1.5">
+      <div className="space-y-1">
         {payload.map((p, i) => (
           <div key={i} className="flex items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="h-2 w-2 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: p.color }} />
               <span className="text-gray-600 dark:text-gray-300 font-medium truncate">{p.name}</span>
             </div>
             <span className="font-mono font-bold text-gray-900 dark:text-gray-100">
@@ -375,6 +375,9 @@ export function AnalyticsView() {
         <Card><CardBody className="text-center py-4"><Flame size={18} className="text-blue-500 mx-auto mb-1" /><p className="text-xl font-bold">{totalCardioMinutes}m</p><p className="text-xs text-gray-400">Cardio</p></CardBody></Card>
       </div>
 
+      {/* Calendario de Consistencia ubicado arriba al inicio */}
+      <ConsistencyHeatmap sessions={sessions} />
+
       {/* Filtros de Rango y Ejercicio */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
         <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
@@ -543,8 +546,6 @@ export function AnalyticsView() {
           </CardBody>
         </Card>
       </div>
-
-      <ConsistencyHeatmap sessions={sessions} />
 
       {/* Historial Detallado de Sesiones */}
       <Card>
