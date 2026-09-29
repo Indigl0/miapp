@@ -14,6 +14,7 @@ import { EmptyState } from '@/components/ui/Feedback';
 import { Calendar as CalendarPicker } from '@/components/ui/Calendar';
 
 function fmtDate(ts: number): string { 
+  if (!ts) return 'Sin fecha';
   return new Date(ts).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); 
 }
 
@@ -82,7 +83,11 @@ function playTimerBeep() {
 }
 
 export function SessionView({ activeSessionId, onActiveSessionChange }: { activeSessionId: string | null; onActiveSessionChange: (id: string | null) => void }) {
-  const rawSessions = useLiveQuery(() => db.sessions.orderBy('date').reverse().toArray(), [], [] as TrainingSession[]);
+  // Consulta segura que tolera registros con fechas no indexadas
+  const rawSessions = useLiveQuery(async () => {
+    const list = await db.sessions.toArray();
+    return list.sort((a, b) => (b.date || 0) - (a.date || 0));
+  }, [], [] as TrainingSession[]);
   
   const allSessions = rawSessions.map((s) => ({
     ...s,
@@ -300,6 +305,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
       return true;
     });
 
+    // Guardar explícitamente en la base de datos antes de cerrar
     await updateSession({ ...s, exercises: filteredExercises, completed: true, notes: localNotes }); 
     showToast('🎉 Sesión finalizada y guardada con éxito.');
     onActiveSessionChange(null); 
