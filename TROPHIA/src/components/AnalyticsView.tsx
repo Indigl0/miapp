@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
-import { BarChart3, TrendingUp, Activity, Calendar, FileDown, Dumbbell, ChevronDown, ChevronUp, Flame, ChevronsDown, ChevronsUp, Zap, HelpCircle, Filter, Award } from 'lucide-react';
+import { BarChart3, TrendingUp, Activity, Calendar, FileDown, Dumbbell, ChevronDown, ChevronUp, Flame, Zap, Award } from 'lucide-react';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
 import { useAuth } from '@/lib/auth';
@@ -123,7 +123,6 @@ function ConsistencyHeatmap({ sessions }: { sessions: TrainingSession[] }) {
 export function AnalyticsView() {
   const { user } = useAuth();
 
-  // FILTRADO ESTRICTO POR userId ACTIVO
   const sessions = useLiveQuery(
     () => (user?.id ? db.sessions.where('userId').equals(user.id).toArray() : Promise.resolve([])), 
     [user?.id], 
@@ -138,10 +137,7 @@ export function AnalyticsView() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const [activeBarIndex, setActiveBarIndex] = useState<number | null>(null);
-  const [activeGroupData, setActiveGroupData] = useState<{ group: string; volume: number } | null>(null);
-  const [activeExPoint, setActiveExPoint] = useState<ExerciseProgress | null>(null);
-
+  const [activeBarIndex] = useState<number | null>(null);
   const [visibleCount, setVisibleCount] = useState<number>(5);
   const [expandedSessions, setExpandedSessions] = useState<Record<string, boolean>>({});
 
@@ -351,15 +347,6 @@ export function AnalyticsView() {
     ? 'Todos los ejercicios' 
     : currentExercise?.name ?? 'Seleccionar ejercicio';
 
-  const handleBarHover = useCallback((index: number | null, group?: string, volume?: number) => {
-    setActiveBarIndex(index);
-    if (group !== undefined && volume !== undefined) {
-      setActiveGroupData({ group, volume });
-    } else {
-      setActiveGroupData(null);
-    }
-  }, []);
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -378,7 +365,7 @@ export function AnalyticsView() {
         </button>
       </div>
 
-      {/* Métricas KPI y Gráficos */}
+      {/* Métricas KPI */}
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
         <Card><CardBody className="text-center py-4"><Activity size={18} className="text-brand-500 mx-auto mb-1" /><p className="text-xl font-bold">{completedSessions.length}</p><p className="text-xs text-gray-400">Sesiones</p></CardBody></Card>
         <Card><CardBody className="text-center py-4"><TrendingUp size={18} className="text-brand-500 mx-auto mb-1" /><p className="text-xl font-bold">{totalVolume.toLocaleString('es-ES')}</p><p className="text-xs text-gray-400">Volumen kg</p></CardBody></Card>
@@ -388,7 +375,297 @@ export function AnalyticsView() {
         <Card><CardBody className="text-center py-4"><Flame size={18} className="text-blue-500 mx-auto mb-1" /><p className="text-xl font-bold">{totalCardioMinutes}m</p><p className="text-xs text-gray-400">Cardio</p></CardBody></Card>
       </div>
 
+      {/* Filtros de Rango y Ejercicio */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
+        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+          {(['1M', '3M', '6M', '1Y', 'ALL'] as TimeRange[]).map((range) => (
+            <button
+              key={range}
+              onClick={() => setTimeRange(range)}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                timeRange === range
+                  ? 'bg-brand-500 text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              {range}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center justify-between gap-3 px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700/80 rounded-xl text-xs sm:text-sm font-semibold transition-all w-full sm:w-64"
+          >
+            <div className="flex items-center gap-2 truncate">
+              <Dumbbell size={16} className="text-brand-500 shrink-0" />
+              <span className="truncate">{currentExerciseName}</span>
+            </div>
+            <ChevronDown size={16} className="text-gray-400 shrink-0" />
+          </button>
+
+          {isDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-full sm:w-72 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xl z-50 p-2 max-h-72 overflow-y-auto no-scrollbar">
+              <button
+                onClick={() => { setSelectedExercise('all'); setIsDropdownOpen(false); }}
+                className={`w-full text-left px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-colors ${
+                  selectedExercise === 'all' ? 'bg-brand-500/10 text-brand-500 font-bold' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                Todos los ejercicios (General)
+              </button>
+              {exercises.map((ex) => (
+                <button
+                  key={ex.id}
+                  onClick={() => { setSelectedExercise(ex.id); setIsDropdownOpen(false); }}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-colors truncate ${
+                    selectedExercise === ex.id ? 'bg-brand-500/10 text-brand-500 font-bold' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  {ex.name} <span className="text-[10px] text-gray-400">({ex.muscleGroup})</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Gráfico de Evolución de Volumen Total */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <TrendingUp size={18} className="text-brand-500" />
+              Evolución de Volumen Total (kg)
+            </span>
+            <span className="text-xs font-normal text-gray-400">Volumen por sesión</span>
+          </CardTitle>
+        </CardHeader>
+        <CardBody>
+          {dailyVolume.length === 0 ? (
+            <EmptyState icon={<TrendingUp size={24} className="text-gray-400" />} title="Sin datos de volumen" description="Registra entrenamientos completados para ver tu evolución gráfica." />
+          ) : (
+            <div className="h-72 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={dailyVolume} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="volGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f97316" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#f97316" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+                  <XAxis dataKey="date" stroke={axisColor} fontSize={11} tickLine={false} />
+                  <YAxis stroke={axisColor} fontSize={11} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Area type="monotone" dataKey="volume" name="Volumen (kg)" stroke="#f97316" strokeWidth={2.5} fillOpacity={1} fill="url(#volGradient)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardBody>
+      </Card>
+
+      {/* Gráfico de Distribución Muscular y Progreso Específico */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Dumbbell size={18} className="text-brand-500" />
+              Volumen por Grupo Muscular
+            </CardTitle>
+          </CardHeader>
+          <CardBody>
+            {muscleGroupVolume.length === 0 ? (
+              <EmptyState icon={<Dumbbell size={24} className="text-gray-400" />} title="Sin datos musculares" description="Asocia ejercicios con grupos musculares para ver esta gráfica." />
+            ) : (
+              <div className="h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={muscleGroupVolume} margin={{ top: 10, right: 10, left: -20, bottom: 25 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+                    <XAxis dataKey="group" stroke={axisColor} fontSize={11} tickLine={false} angle={-25} textAnchor="end" />
+                    <YAxis stroke={axisColor} fontSize={11} tickLine={false} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="volume" name="Volumen (kg)" fill="#f97316" radius={[6, 6, 0, 0]}>
+                      {muscleGroupVolume.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={activeBarIndex === index ? '#ea580c' : '#f97316'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Award size={18} className="text-brand-500" />
+                Progreso: {currentExerciseName}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardBody>
+            {exerciseProgress.length === 0 ? (
+              <EmptyState icon={<Award size={24} className="text-gray-400" />} title="Sin registros para este ejercicio" description="Selecciona otro ejercicio o registra series completadas." />
+            ) : (
+              <div className="h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={exerciseProgress} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="rm1Gradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+                    <XAxis dataKey="date" stroke={axisColor} fontSize={11} tickLine={false} />
+                    <YAxis yAxisId="left" stroke={axisColor} fontSize={11} tickLine={false} />
+                    <YAxis yAxisId="right" orientation="right" domain={[0, 5]} stroke={axisColor} fontSize={11} tickLine={false} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '5px' }} />
+                    {!isSelectedCardio && (
+                      <Area yAxisId="left" type="monotone" dataKey="estimated1RM" name="1RM Estimado (kg)" stroke="#3b82f6" strokeWidth={2.5} fillOpacity={1} fill="url(#rm1Gradient)" />
+                    )}
+                    {!isSelectedCardio && (
+                      <Area yAxisId="right" type="monotone" dataKey="avgRir" name="RIR Promedio" stroke="#10b981" strokeWidth={2} fill="none" />
+                    )}
+                    {isSelectedCardio && (
+                      <Area yAxisId="left" type="monotone" dataKey="durationMinutes" name="Duración (min)" stroke="#8b5cf6" strokeWidth={2.5} fillOpacity={1} fill="url(#rm1Gradient)" />
+                    )}
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardBody>
+        </Card>
+      </div>
+
       <ConsistencyHeatmap sessions={sessions} />
+
+      {/* Historial Detallado de Sesiones */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <CardTitle className="flex items-center gap-2">
+              <Activity size={18} className="text-brand-500" />
+              Historial Detallado de Sesiones
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={expandAll}
+                className="px-3 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
+              >
+                Expandir todo
+              </button>
+              <button
+                onClick={collapseAll}
+                className="px-3 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
+              >
+                Colapsar todo
+              </button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardBody>
+          {completedSessions.length === 0 ? (
+            <EmptyState icon={<Activity size={24} className="text-gray-400" />} title="No hay sesiones completadas" description="Finaliza sesiones en la pestaña Sesión para ver el desglose detallado." />
+          ) : (
+            <div className="space-y-4">
+              {visibleSessions.map((session) => {
+                const isExpanded = expandedSessions[session.id] || false;
+                const sessionVol = session.exercises.reduce((acc, ex) => {
+                  if (!ex.sets) return acc;
+                  return acc + ex.sets.reduce((sAcc, set) => sAcc + (set.completed ? (set.reps || 0) * (set.weight || 0) : 0), 0);
+                }, 0);
+                const completedSetsCount = session.exercises.reduce((acc, ex) => acc + (ex.sets?.filter(s => s.completed).length || 0), 0);
+
+                return (
+                  <div key={session.id} className="border border-gray-200 dark:border-gray-800 rounded-2xl p-4 bg-white/50 dark:bg-gray-900/50 transition-all">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 cursor-pointer" onClick={() => toggleSession(session.id)}>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-sm sm:text-base text-gray-900 dark:text-gray-100">{session.routineName || 'Entrenamiento'}</h4>
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold">Completada</span>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-0.5">{String(fmtDate(session.date))}</p>
+                      </div>
+                      <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                        <div className="text-right">
+                          <p className="text-xs text-gray-400">Volumen</p>
+                          <p className="text-sm font-bold font-mono">{Math.round(sessionVol).toLocaleString('es-ES')} kg</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-gray-400">Series</p>
+                          <p className="text-sm font-bold font-mono">{completedSetsCount}</p>
+                        </div>
+                        <button className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
+                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 space-y-3 animate-fade-in">
+                        {session.exercises.map((ex, idx) => {
+                          const exerciseObj = exercises.find(e => e.id === ex.exerciseId);
+                          return (
+                            <div key={idx} className="bg-gray-50 dark:bg-gray-800/40 rounded-xl p-3">
+                              <p className="font-semibold text-xs sm:text-sm text-brand-600 dark:text-brand-400 mb-2">
+                                {exerciseObj?.name || 'Ejercicio'} <span className="text-[11px] text-gray-400 font-normal">({exerciseObj?.muscleGroup || 'General'})</span>
+                              </p>
+                              {ex.sets && ex.sets.length > 0 && (
+                                <div className="space-y-1.5">
+                                  {ex.sets.map((set, sIdx) => (
+                                    <div key={sIdx} className="flex items-center justify-between text-xs font-mono bg-white dark:bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-gray-800">
+                                      <div className="flex items-center gap-3">
+                                        <span className="text-gray-400 font-sans font-bold">#{sIdx + 1}</span>
+                                        <span>{set.weight || 0} kg × {set.reps || 0} reps</span>
+                                      </div>
+                                      <div className="flex items-center gap-3">
+                                        {typeof set.rir === 'number' && (
+                                          <span className="px-2 py-0.5 rounded bg-brand-500/10 text-brand-500 font-bold">RIR: {set.rir}</span>
+                                        )}
+                                        <span className={set.completed ? 'text-emerald-500 font-bold' : 'text-gray-400'}>
+                                          {set.completed ? 'Completada' : 'Pendiente'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {session.notes && (
+                          <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 text-xs text-gray-600 dark:text-gray-300">
+                            <span className="font-bold text-amber-600 dark:text-amber-400 block mb-1">Notas de la sesión:</span>
+                            {session.notes}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {visibleCount < completedSessions.length && (
+                <div className="text-center pt-4">
+                  <button
+                    onClick={() => setVisibleCount(prev => prev + 5)}
+                    className="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer"
+                  >
+                    Cargar más sesiones ({completedSessions.length - visibleCount} restantes)
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </CardBody>
+      </Card>
     </div>
   );
 }
