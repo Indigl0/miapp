@@ -456,13 +456,9 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   const handleWeightInputChange = (s: TrainingSession, exIdx: number, setIdx: number, rawVal: string) => {
     const key = `${exIdx}-${setIdx}`;
     
-    // 1. Elimina todo lo que NO sea un número, un punto o una coma (evita :, ;)
     const cleanVal = rawVal.replace(/[^0-9.,]/g, '');
-    
-    // 2. Transforma la coma a punto para que JavaScript pueda interpretarlo
     const sanitized = cleanVal.replace(',', '.');
     
-    // 3. Valida que el resultado sea un número decimal válido o un string vacío
     if (sanitized === '' || /^\d*\.?\d*$/.test(sanitized)) {
       setWeightInputs((prev) => ({ ...prev, [key]: cleanVal }));
       const parsed = parseFloat(sanitized);
@@ -684,17 +680,18 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                               </button>
                             </div>
                           ) : (
-                            <div className="overflow-x-auto scrollbar-thin -mx-4 sm:mx-0 px-4 sm:px-0">
-                              <table className="w-full text-xs sm:text-sm">
+                            // AQUÍ ESTÁ LA CORRECCIÓN CLAVE PARA MÓVILES
+                            <div className="overflow-x-auto scrollbar-thin -mx-4 sm:mx-0 px-2 sm:px-0">
+                              <table className="w-full text-xs sm:text-sm min-w-[340px] table-fixed">
                                 <thead>
-                                  <tr className="text-[11px] uppercase text-gray-400 border-b border-gray-100 dark:border-gray-800">
-                                    <th className="text-center px-2 py-2 font-semibold w-10">#</th>
-                                    <th className="text-center px-2 py-2 font-semibold">Reps</th>
-                                    <th className="text-center px-2 py-2 font-semibold">Peso</th>
-                                    <th className="text-left px-2 py-2 font-semibold">RIR</th>
-                                    <th className="text-left px-2 py-2 font-semibold">Vol</th>
-                                    <th className="px-1 py-2"></th>
-                                    <th className="px-1 py-2"></th>
+                                  <tr className="text-[10px] sm:text-[11px] uppercase text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                                    <th className="text-center px-1 py-2 font-semibold w-8">#</th>
+                                    <th className="text-center px-1 py-2 font-semibold w-[64px]">Reps</th>
+                                    <th className="text-center px-1 py-2 font-semibold w-[64px]">Peso</th>
+                                    <th className="text-center px-1 py-2 font-semibold w-[90px]">RIR</th>
+                                    <th className="text-center px-1 py-2 font-semibold w-10">Vol</th>
+                                    <th className="px-1 py-2 w-8"></th>
+                                    <th className="px-1 py-2 w-8"></th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -705,11 +702,11 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
 
                                     return (
                                       <tr key={setIdx} className={`border-b border-gray-50 dark:border-gray-800/50 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
-                                        <td className="px-2 py-2.5 whitespace-nowrap align-middle text-center">
+                                        <td className="px-1 py-2.5 whitespace-nowrap align-middle text-center">
                                           <div className="font-bold text-sm text-gray-900 dark:text-gray-100">{set.setNumber}</div>
                                         </td>
 
-                                        <td className="px-2 py-2.5 text-center">
+                                        <td className="px-1 py-2.5 text-center align-middle">
                                           <Input
                                             type="text"
                                             inputMode="numeric"
@@ -717,14 +714,14 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                             placeholder={prevSet ? String(prevSet.reps) : "0"}
                                             onFocus={(e) => e.target.select()}
                                             onChange={(e) => {
-                                              // Permite solo números enteros, bloquea :, ;, letras, etc.
                                               const cleanVal = e.target.value.replace(/[^0-9]/g, '');
                                               updateSet(activeSession, exIdx, setIdx, { reps: cleanVal === '' ? 0 : parseInt(cleanVal, 10) });
                                             }}
-                                            className="w-14 h-8 py-1 text-center text-xs placeholder:text-gray-300 dark:placeholder:text-gray-600 inline-block"
+                                            // Ancho fijo estricto para evitar que se aplaste
+                                            className="w-[56px] min-w-[56px] mx-auto h-9 text-center text-sm font-medium placeholder:text-gray-300 dark:placeholder:text-gray-600 block !px-1"
                                           />
                                         </td>
-                                        <td className="px-2 py-2.5 text-center">
+                                        <td className="px-1 py-2.5 text-center align-middle">
                                           <Input
                                             type="text"
                                             inputMode="decimal"
@@ -732,11 +729,12 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                             placeholder={prevSet ? String(prevSet.weight) : "0"}
                                             onFocus={(e) => e.target.select()}
                                             onChange={(e) => handleWeightInputChange(activeSession, exIdx, setIdx, e.target.value)}
-                                            className="w-16 h-8 py-1 text-center text-xs placeholder:text-gray-300 dark:placeholder:text-gray-600 inline-block"
+                                            // Ancho fijo estricto para evitar que se aplaste
+                                            className="w-[60px] min-w-[60px] mx-auto h-9 text-center text-sm font-medium placeholder:text-gray-300 dark:placeholder:text-gray-600 block !px-1"
                                           />
                                         </td>
-                                        <td className="px-2 py-2.5">
-                                          <div className="flex gap-0.5">
+                                        <td className="px-1 py-2.5 align-middle">
+                                          <div className="flex justify-center gap-0.5 min-w-[80px]">
                                             {[0, 1, 2, 3].map((val) => (
                                               <button
                                                 key={val}
@@ -753,15 +751,17 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                             ))}
                                           </div>
                                         </td>
-                                        <td className="px-2 py-2.5 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{((set.reps || 0) * (set.weight || 0)).toFixed(0)}</td>
-                                        <td className="px-1 py-2.5">
-                                          <button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600'}`}>
+                                        <td className="px-1 py-2.5 text-center align-middle text-xs text-gray-500 dark:text-gray-400">
+                                          {((set.reps || 0) * (set.weight || 0)).toFixed(0)}
+                                        </td>
+                                        <td className="px-1 py-2.5 text-center align-middle">
+                                          <button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-7 w-7 mx-auto rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600'}`}>
                                             <Check size={14} />
                                           </button>
                                         </td>
-                                        <td className="px-1 py-2.5">
-                                          <button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1 text-gray-300 hover:text-red-500">
-                                            <X size={13} />
+                                        <td className="px-1 py-2.5 text-center align-middle">
+                                          <button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1 mx-auto text-gray-300 hover:text-red-500 flex justify-center">
+                                            <X size={14} />
                                           </button>
                                         </td>
                                       </tr>
