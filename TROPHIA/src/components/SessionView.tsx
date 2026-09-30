@@ -452,23 +452,32 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     setCreateOpen(false);
   };
 
+  // Manejo seguro del peso, filtrando cualquier carácter inválido
   const handleWeightInputChange = (s: TrainingSession, exIdx: number, setIdx: number, rawVal: string) => {
     const key = `${exIdx}-${setIdx}`;
-    const sanitized = rawVal.replace(',', '.');
     
+    // 1. Elimina todo lo que NO sea un número, un punto o una coma (evita :, ;)
+    const cleanVal = rawVal.replace(/[^0-9.,]/g, '');
+    
+    // 2. Transforma la coma a punto para que JavaScript pueda interpretarlo
+    const sanitized = cleanVal.replace(',', '.');
+    
+    // 3. Valida que el resultado sea un número decimal válido o un string vacío
     if (sanitized === '' || /^\d*\.?\d*$/.test(sanitized)) {
-      setWeightInputs((prev) => ({ ...prev, [key]: rawVal }));
+      setWeightInputs((prev) => ({ ...prev, [key]: cleanVal }));
       const parsed = parseFloat(sanitized);
       updateSet(s, exIdx, setIdx, { weight: isNaN(parsed) ? 0 : parsed });
     }
   };
 
+  // Manejo seguro de distancia para el cardio
   const handleDistanceInputChange = (s: TrainingSession, exIdx: number, rawVal: string) => {
     const key = `cardio-${exIdx}`;
-    const sanitized = rawVal.replace(',', '.');
+    const cleanVal = rawVal.replace(/[^0-9.,]/g, '');
+    const sanitized = cleanVal.replace(',', '.');
 
     if (sanitized === '' || /^\d*\.?\d*$/.test(sanitized)) {
-      setDistanceInputs((prev) => ({ ...prev, [key]: rawVal }));
+      setDistanceInputs((prev) => ({ ...prev, [key]: cleanVal }));
       const parsed = parseFloat(sanitized);
       updateCardioDetails(s, exIdx, { distanceKm: isNaN(parsed) ? undefined : parsed });
     }
@@ -645,7 +654,10 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                   value={cardioData.durationMinutes || ''}
                                   placeholder="0"
                                   onFocus={(e) => e.target.select()}
-                                  onChange={(e) => updateCardioDetails(activeSession, exIdx, { durationMinutes: Math.max(0, parseInt(e.target.value) || 0) })}
+                                  onChange={(e) => {
+                                    const cleanVal = e.target.value.replace(/[^0-9]/g, '');
+                                    updateCardioDetails(activeSession, exIdx, { durationMinutes: Math.max(0, parseInt(cleanVal) || 0) });
+                                  }}
                                 />
                               </div>
 
@@ -676,9 +688,9 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                               <table className="w-full text-xs sm:text-sm">
                                 <thead>
                                   <tr className="text-[11px] uppercase text-gray-400 border-b border-gray-100 dark:border-gray-800">
-                                    <th className="text-left px-2 py-2 font-semibold"># / Ant</th>
-                                    <th className="text-left px-2 py-2 font-semibold">Reps</th>
-                                    <th className="text-left px-2 py-2 font-semibold">Peso</th>
+                                    <th className="text-center px-2 py-2 font-semibold w-10">#</th>
+                                    <th className="text-center px-2 py-2 font-semibold">Reps</th>
+                                    <th className="text-center px-2 py-2 font-semibold">Peso</th>
                                     <th className="text-left px-2 py-2 font-semibold">RIR</th>
                                     <th className="text-left px-2 py-2 font-semibold">Vol</th>
                                     <th className="px-1 py-2"></th>
@@ -693,37 +705,34 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
 
                                     return (
                                       <tr key={setIdx} className={`border-b border-gray-50 dark:border-gray-800/50 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
-                                        <td className="px-2 py-2.5 whitespace-nowrap align-middle">
-                                          <div className="font-bold text-xs text-gray-900 dark:text-gray-100">{set.setNumber}</div>
-                                          {prevSet ? (
-                                            <div className="text-[10px] text-brand-600 dark:text-brand-400 font-mono font-medium mt-0.5">
-                                              {prevSet.weight}×{prevSet.reps}
-                                            </div>
-                                          ) : (
-                                            <div className="text-[10px] text-gray-300 dark:text-gray-600">—</div>
-                                          )}
+                                        <td className="px-2 py-2.5 whitespace-nowrap align-middle text-center">
+                                          <div className="font-bold text-sm text-gray-900 dark:text-gray-100">{set.setNumber}</div>
                                         </td>
 
-                                        <td className="px-2 py-2.5">
+                                        <td className="px-2 py-2.5 text-center">
                                           <Input
                                             type="text"
                                             inputMode="numeric"
                                             value={set.reps || ''}
-                                            placeholder="0"
+                                            placeholder={prevSet ? String(prevSet.reps) : "0"}
                                             onFocus={(e) => e.target.select()}
-                                            onChange={(e) => updateSet(activeSession, exIdx, setIdx, { reps: Math.max(0, parseInt(e.target.value) || 0) })}
-                                            className="w-14 h-8 py-1 text-center text-xs"
+                                            onChange={(e) => {
+                                              // Permite solo números enteros, bloquea :, ;, letras, etc.
+                                              const cleanVal = e.target.value.replace(/[^0-9]/g, '');
+                                              updateSet(activeSession, exIdx, setIdx, { reps: cleanVal === '' ? 0 : parseInt(cleanVal, 10) });
+                                            }}
+                                            className="w-14 h-8 py-1 text-center text-xs placeholder:text-gray-300 dark:placeholder:text-gray-600 inline-block"
                                           />
                                         </td>
-                                        <td className="px-2 py-2.5">
+                                        <td className="px-2 py-2.5 text-center">
                                           <Input
                                             type="text"
                                             inputMode="decimal"
                                             value={displayWeight}
-                                            placeholder="0"
+                                            placeholder={prevSet ? String(prevSet.weight) : "0"}
                                             onFocus={(e) => e.target.select()}
                                             onChange={(e) => handleWeightInputChange(activeSession, exIdx, setIdx, e.target.value)}
-                                            className="w-16 h-8 py-1 text-center text-xs"
+                                            className="w-16 h-8 py-1 text-center text-xs placeholder:text-gray-300 dark:placeholder:text-gray-600 inline-block"
                                           />
                                         </td>
                                         <td className="px-2 py-2.5">
