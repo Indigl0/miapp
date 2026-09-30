@@ -1,6 +1,5 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { fileURLToPath, URL } from 'node:url';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
@@ -8,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.svg', 'pwa-192.png', 'pwa-512.png'],
       manifest: {
         name: 'TROPHIA',
         short_name: 'TROPHIA',
@@ -25,13 +24,14 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
-        navigateFallback: 'index.html',
+        navigateFallback: '/index.html',
+        cleanupOutdatedCaches: true,
       },
     }),
   ],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@': new URL('./src', import.meta.url).pathname,
     },
   },
   optimizeDeps: {

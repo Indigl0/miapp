@@ -42,8 +42,7 @@ function parseJsonField<T>(field: unknown): T {
 }
 
 function localToRemote(table: SyncTable, record: Record<string, unknown>, userId: string | null): Record<string, unknown> {
-  // Aseguramos asignar user_id local si existe, o usar la sesión activa como fallback
-  const finalUserId = (record.userId as string) || userId;
+  const finalUserId = (record.userId as string) || (record.user_id as string) || userId;
   const baseData = finalUserId ? { user_id: finalUserId } : {};
 
   if (table === 'exercises') {
@@ -121,7 +120,7 @@ function remoteToLocal(table: SyncTable, row: Record<string, unknown>): Record<s
   if (table === 'routines') {
     return {
       id: row.id,
-      userId, // CORREGIDO: Mantiene el id del usuario al guardar localmente
+      userId,
       name: row.name,
       description: row.description ?? undefined,
       exercises: parseJsonField(row.exercises),
@@ -132,7 +131,7 @@ function remoteToLocal(table: SyncTable, row: Record<string, unknown>): Record<s
   if (table === 'sessions') {
     return {
       id: row.id,
-      userId, // CORREGIDO: Mantiene el id del usuario al guardar localmente
+      userId,
       routineId: row.routine_id ?? null,
       routineName: row.routine_name,
       date: row.date,
@@ -146,7 +145,7 @@ function remoteToLocal(table: SyncTable, row: Record<string, unknown>): Record<s
 
   return {
     id: row.id,
-    userId, // CORREGIDO: Mantiene el id del usuario al guardar localmente
+    userId,
     date: row.date,
     weightKg: row.weight_kg ?? undefined,
     bodyFatPercentage: row.body_fat_percentage ?? undefined,
@@ -193,7 +192,15 @@ async function pullTable(table: SyncTable): Promise<number> {
   const userId = await getCurrentUserId();
   if (!userId) return 0;
 
-  const { data, error } = await supabase.from(table).select('*').eq('user_id', userId);
+  // Descarga tanto los registros del usuario como los ejercicios base/globales (user_id IS NULL)
+  let query = supabase.from(table).select('*');
+  if (table === 'exercises') {
+    query = query.or(`user_id.eq.${userId},user_id.is.null`);
+  } else {
+    query = query.eq('user_id', userId);
+  }
+
+  const { data, error } = await query;
   if (error || !data) return 0;
 
   const pendingMutations = await db.mutationQueue.where('synced').equals(0).toArray();

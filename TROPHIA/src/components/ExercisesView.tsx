@@ -46,8 +46,9 @@ export function ExercisesView() {
   // Filtrar ejercicios: Muestra los del usuario actual + los ejercicios base/globales
   const exercises = useMemo(() => {
     return rawExercises.filter((e: any) => {
-      if (!e.userId && !e.user_id) return true;
-      return e.userId === user?.id || e.user_id === user?.id;
+      const exUserId = e.userId || e.user_id;
+      if (!exUserId) return true; // Ejercicio global/base
+      return exUserId === user?.id; // Ejercicio propio del usuario
     });
   }, [rawExercises, user?.id]);
 
@@ -98,9 +99,13 @@ export function ExercisesView() {
     if (!cleanName) return;
 
     const ts = now();
-    if (editing) {
+    const isGlobal = editing && !editing.userId && !(editing as any).user_id;
+
+    if (editing && !isGlobal) {
+      // Editar un ejercicio que YA ES del usuario
       const updated: Exercise = {
         ...editing,
+        userId: user?.id || editing.userId,
         name: cleanName,
         muscleGroup: form.muscleGroup,
         notes: form.notes.trim() || undefined,
@@ -113,8 +118,9 @@ export function ExercisesView() {
         record: updated as unknown as Record<string, unknown>,
       });
     } else {
+      // Crear un ejercicio NUEVO o crear una COPIA personal de un ejercicio global editado
       const created: Exercise & { userId?: string; user_id?: string } = {
-        id: uuid(),
+        id: uuid(), // Se genera un nuevo ID unico para el usuario
         name: cleanName,
         muscleGroup: form.muscleGroup,
         notes: form.notes.trim() || undefined,
@@ -134,8 +140,16 @@ export function ExercisesView() {
 
   const remove = async (exercise: Exercise) => {
     if (!confirm(`¿Eliminar el ejercicio "${exercise.name}"?`)) return;
+
+    const isGlobal = !exercise.userId && !(exercise as any).user_id;
+
+    // Eliminar siempre localmente en el dispositivo
     await db.exercises.delete(exercise.id);
-    await enqueue({ kind: 'delete', table: 'exercises', id: exercise.id });
+
+    // Solo enviamos orden de borrado al servidor remoto si el ejercicio era propio del usuario
+    if (!isGlobal) {
+      await enqueue({ kind: 'delete', table: 'exercises', id: exercise.id });
+    }
   };
 
   return (
