@@ -189,6 +189,7 @@ export function RoutinesView() {
 
         const updatedSession: TrainingSession = {
           ...session,
+          userId: user.id,
           routineName: routine.name,
           exercises: updatedExercises,
           updatedAt: now(),
@@ -293,7 +294,7 @@ export function RoutinesView() {
                   <div className="flex flex-wrap gap-1.5 mt-3">
                     {r.exercises
                       .map((re) => ({ re, ex: getExercise(re.exerciseId) }))
-                      .filter(({ ex }) => !!ex) // Filtra de forma limpia cualquier ejercicio eliminado
+                      .filter(({ ex }) => !!ex) // Filtra ejercicios eliminados
                       .map(({ re, ex }, i) => {
                         const cardio = ex?.muscleGroup?.toLowerCase() === 'cardio';
                         return (

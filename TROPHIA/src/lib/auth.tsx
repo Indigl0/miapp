@@ -88,6 +88,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     setUser(null);
     localStorage.removeItem(SESSION_KEY);
+    // Limpiamos datos locales en IndexedDB al cerrar sesión para prevenir filtrado a otros usuarios
+    await Promise.all([
+      db.routines.clear(),
+      db.sessions.clear(),
+      db.metrics.clear(),
+      db.mutationQueue.clear(),
+    ]).catch(() => {});
   }, []);
 
   const createUser = useCallback(async (data: { name: string; username: string; password: string; role: 'admin' | 'user' }) => {
@@ -133,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       db.routines.clear(),
       db.sessions.clear(),
       db.metrics.clear(),
+      db.mutationQueue.clear(),
     ]);
 
     if (user?.id === id) { 

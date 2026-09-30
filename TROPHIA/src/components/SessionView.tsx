@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { ListChecks, Plus, Check, Trash2, Play, Calendar, CheckCircle2, Clock, X, Save, RotateCcw, Activity, ChevronDown, BellRing, History } from 'lucide-react';
+import { ListChecks, Plus, Check, Trash2, Play, Calendar, CheckCircle2, Clock, X, Save, RotateCcw, Activity, ChevronDown, BellRing } from 'lucide-react';
+import { useAuth } from '@/lib/auth';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
 import { enqueue } from '@/lib/sync';
@@ -26,18 +27,6 @@ function formatRestTime(seconds?: number): string | null {
   if (mins > 0 && secs > 0) return `${mins} min ${secs} s`;
   if (mins > 0) return `${mins} min`;
   return `${secs} s`;
-}
-
-// Obtener el ID del usuario actual de la sesión local
-function getCurrentUserId(): string | null {
-  try {
-    const stored = localStorage.getItem('ironlog-session');
-    if (!stored) return null;
-    const { id } = JSON.parse(stored) as { id: string };
-    return id ?? null;
-  } catch {
-    return null;
-  }
 }
 
 // AudioContext global reutilizable
@@ -95,7 +84,8 @@ function playTimerBeep() {
 }
 
 export function SessionView({ activeSessionId, onActiveSessionChange }: { activeSessionId: string | null; onActiveSessionChange: (id: string | null) => void }) {
-  const currentUserId = getCurrentUserId();
+  const { user } = useAuth();
+  const currentUserId = user?.id;
 
   // Consulta filtrada estrictamente por el userId activo
   const rawSessions = useLiveQuery(async () => {
@@ -121,7 +111,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   const sessions = allSessions.filter((s) => !(s as TrainingSession & { deletedAt?: number }).deletedAt);
   const trashSessions = allSessions.filter((s) => (s as TrainingSession & { deletedAt?: number }).deletedAt);
 
-  // Consultas de Ejercicios y Rutinas aisladas por el usuario actual (o generales si no poseen userId)
+  // Consultas de Ejercicios y Rutinas aisladas por el usuario actual
   const exercises = useLiveQuery(async () => {
     if (!currentUserId) return [];
     const all = await db.exercises.toArray();
@@ -136,8 +126,12 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   }, [currentUserId], [] as Routine[]);
 
   const activeSessionRaw = useLiveQuery<TrainingSession | undefined>(
-    () => (activeSessionId ? db.sessions.get(activeSessionId) : undefined),
-    [activeSessionId],
+    async () => {
+      if (!activeSessionId || !currentUserId) return undefined;
+      const target = await db.sessions.get(activeSessionId);
+      return target && target.userId === currentUserId ? target : undefined;
+    },
+    [activeSessionId, currentUserId],
     undefined,
   );
 
@@ -452,10 +446,8 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     setCreateOpen(false);
   };
 
-  // Manejo seguro del peso, filtrando cualquier carácter inválido
   const handleWeightInputChange = (s: TrainingSession, exIdx: number, setIdx: number, rawVal: string) => {
     const key = `${exIdx}-${setIdx}`;
-    
     const cleanVal = rawVal.replace(/[^0-9.,]/g, '');
     const sanitized = cleanVal.replace(',', '.');
     
@@ -466,7 +458,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     }
   };
 
-  // Manejo seguro de distancia para el cardio
   const handleDistanceInputChange = (s: TrainingSession, exIdx: number, rawVal: string) => {
     const key = `cardio-${exIdx}`;
     const cleanVal = rawVal.replace(/[^0-9.,]/g, '');
@@ -705,7 +696,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                           <div className="font-bold text-sm text-gray-900 dark:text-gray-100">{set.setNumber}</div>
                                         </td>
 
-                                        {/* Columna Reps con micro-etiqueta sutil */}
                                         <td className="px-1 py-2.5 text-center align-middle">
                                           <div className="flex flex-col items-center justify-center">
                                             <Input
@@ -728,7 +718,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                           </div>
                                         </td>
 
-                                        {/* Columna Peso con micro-etiqueta sutil */}
                                         <td className="px-1 py-2.5 text-center align-middle">
                                           <div className="flex flex-col items-center justify-center">
                                             <Input
