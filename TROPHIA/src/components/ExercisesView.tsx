@@ -43,12 +43,13 @@ export function ExercisesView() {
 
   const rawExercises = useLiveQuery(() => db.exercises.orderBy('name').toArray(), [], [] as Exercise[]);
 
-  // Filtrar ejercicios: Muestra los del usuario actual + los ejercicios base/globales
+  // Filtrar ejercicios de manera estricta para el usuario actual + globales
   const exercises = useMemo(() => {
+    if (!user) return [];
     return rawExercises.filter((e: any) => {
       const exUserId = e.userId || e.user_id;
-      if (!exUserId) return true; // Ejercicio global/base
-      return exUserId === user?.id; // Ejercicio propio del usuario
+      if (!exUserId) return true; // Ejercicio global/base disponible para todos
+      return exUserId === user.id; // Ejercicio exclusivo del usuario autenticado
     });
   }, [rawExercises, user?.id]);
 
@@ -95,17 +96,28 @@ export function ExercisesView() {
 
   const save = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (!user) return;
     const cleanName = form.name.trim();
     if (!cleanName) return;
+
+    // Validación estricta: Bloquear si ya existe un ejercicio con el mismo nombre para este usuario
+    const nameExists = exercises.some(
+      (ex) => ex.name.toLowerCase() === cleanName.toLowerCase() && (!editing || ex.id !== editing.id)
+    );
+
+    if (nameExists) {
+      alert(`Ya tienes un ejercicio registrado con el nombre "${cleanName}". Por favor, usa un nombre diferente.`);
+      return;
+    }
 
     const ts = now();
     const isGlobal = editing && !editing.userId && !(editing as any).user_id;
 
     if (editing && !isGlobal) {
-      // Editar un ejercicio que YA ES del usuario
+      // Editar un ejercicio propio del usuario
       const updated: Exercise = {
         ...editing,
-        userId: user?.id || editing.userId,
+        userId: user.id,
         name: cleanName,
         muscleGroup: form.muscleGroup,
         notes: form.notes.trim() || undefined,
@@ -118,16 +130,17 @@ export function ExercisesView() {
         record: updated as unknown as Record<string, unknown>,
       });
     } else {
-      // Crear un ejercicio NUEVO o crear una COPIA personal de un ejercicio global editado
-      const created: Exercise & { userId?: string; user_id?: string } = {
-        id: uuid(), // Se genera un nuevo ID unico para el usuario
+      // Crear un ejercicio NUEVO
+      const created = {
+        id: uuid(),
         name: cleanName,
         muscleGroup: form.muscleGroup,
         notes: form.notes.trim() || undefined,
         createdAt: ts,
         updatedAt: ts,
-        ...(user?.id ? { userId: user.id, user_id: user.id } : {}),
-      };
+        userId: user.id,
+      } as Exercise;
+
       await db.exercises.add(created);
       await enqueue({
         kind: 'upsert',
@@ -143,10 +156,10 @@ export function ExercisesView() {
 
     const isGlobal = !exercise.userId && !(exercise as any).user_id;
 
-    // Eliminar siempre localmente en el dispositivo
+    // Eliminar localmente de forma inmediata
     await db.exercises.delete(exercise.id);
 
-    // Solo enviamos orden de borrado al servidor remoto si el ejercicio era propio del usuario
+    // Si es un ejercicio propio del usuario, enviamos la orden de borrado a la sincronización remota
     if (!isGlobal) {
       await enqueue({ kind: 'delete', table: 'exercises', id: exercise.id });
     }
