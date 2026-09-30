@@ -16,7 +16,7 @@ import { EmptyState } from '@/components/ui/Feedback';
 interface FormState {
   name: string;
   description: string;
-  exercises: RoutineExercise[];
+  exercises: (RoutineExercise & { _tempId: string })[];
 }
 
 const INITIAL_FORM: FormState = {
@@ -62,8 +62,11 @@ export function RoutinesView() {
 
   const openEdit = (r: Routine) => {
     setEditing(r);
-    // Al editar, filtramos ejercicios de la rutina que ya no existan en la DB
-    const validExercises = r.exercises.filter((re) => !!getExercise(re.exerciseId));
+    // Al editar, asignamos un identificador temporal único (_tempId) a cada ejercicio para evitar conflictos en el render
+    const validExercises = r.exercises
+      .filter((re) => !!getExercise(re.exerciseId))
+      .map((re) => ({ ...re, _tempId: uuid() }));
+    
     setForm({
       name: r.name,
       description: r.description ?? '',
@@ -77,36 +80,36 @@ export function RoutinesView() {
     const firstEx = exercises[0];
     const isFirstCardio = firstEx.muscleGroup?.toLowerCase() === 'cardio';
 
-    const newExercise: RoutineExercise = isFirstCardio
-      ? { exerciseId: firstEx.id, cardioType: 'Cinta', durationMinutes: 30 }
-      : { exerciseId: firstEx.id, sets: 3, targetReps: 10, restSeconds: 90 };
+    const newExercise = isFirstCardio
+      ? { exerciseId: firstEx.id, cardioType: 'Cinta', durationMinutes: 30, _tempId: uuid() }
+      : { exerciseId: firstEx.id, sets: 3, targetReps: 10, restSeconds: 90, _tempId: uuid() };
 
     setForm((f) => ({ ...f, exercises: [...f.exercises, newExercise] }));
   };
 
-  const handleExerciseChange = (idx: number, newExerciseId: string) => {
+  const handleExerciseChange = (tempId: string, newExerciseId: string) => {
     const cardio = isCardio(newExerciseId);
     setForm((f) => ({
       ...f,
-      exercises: f.exercises.map((e, i) => {
-        if (i !== idx) return e;
+      exercises: f.exercises.map((e) => {
+        if (e._tempId !== tempId) return e;
         return cardio
-          ? { exerciseId: newExerciseId, cardioType: 'Cinta', durationMinutes: 30 }
-          : { exerciseId: newExerciseId, sets: 3, targetReps: 10, restSeconds: 90 };
+          ? { ...e, exerciseId: newExerciseId, cardioType: 'Cinta', durationMinutes: 30, sets: undefined, targetReps: undefined, restSeconds: undefined }
+          : { ...e, exerciseId: newExerciseId, sets: 3, targetReps: 10, restSeconds: 90, cardioType: undefined, durationMinutes: undefined };
       }),
     }));
   };
 
-  const updateExercise = (idx: number, patch: Partial<RoutineExercise>) =>
+  const updateExercise = (tempId: string, patch: Partial<RoutineExercise>) =>
     setForm((f) => ({
       ...f,
-      exercises: f.exercises.map((e, i) => (i === idx ? { ...e, ...patch } : e)),
+      exercises: f.exercises.map((e) => (e._tempId === tempId ? { ...e, ...patch } : e)),
     }));
 
-  const removeExercise = (idx: number) =>
+  const removeExercise = (tempId: string) =>
     setForm((f) => ({
       ...f,
-      exercises: f.exercises.filter((_, i) => i !== idx),
+      exercises: f.exercises.filter((e) => e._tempId !== tempId),
     }));
 
   const syncRoutineToSessions = async (routine: Routine) => {
@@ -209,6 +212,16 @@ export function RoutinesView() {
     const cleanName = form.name.trim();
     if (!cleanName || form.exercises.length === 0) return;
 
+    // Limpiamos la propiedad temporal _tempId antes de guardar en la base de datos
+    const cleanedExercises: RoutineExercise[] = form.exercises.map(({ exerciseId, sets, targetReps, restSeconds, cardioType, durationMinutes }) => ({
+      exerciseId,
+      ...(sets !== undefined ? { sets } : {}),
+      ...(targetReps !== undefined ? { targetReps } : {}),
+      ...(restSeconds !== undefined ? { restSeconds } : {}),
+      ...(cardioType !== undefined ? { cardioType } : {}),
+      ...(durationMinutes !== undefined ? { durationMinutes } : {}),
+    }));
+
     const ts = now();
     if (editing) {
       const updated: Routine = {
@@ -216,7 +229,7 @@ export function RoutinesView() {
         userId: user.id,
         name: cleanName,
         description: form.description.trim() || undefined,
-        exercises: form.exercises,
+        exercises: cleanedExercises,
         updatedAt: ts,
       };
       await db.routines.put(updated);
@@ -229,7 +242,7 @@ export function RoutinesView() {
         userId: user.id,
         name: cleanName,
         description: form.description.trim() || undefined,
-        exercises: form.exercises,
+        exercises: cleanedExercises,
         createdAt: ts,
         updatedAt: ts,
       };
@@ -294,7 +307,7 @@ export function RoutinesView() {
                   <div className="flex flex-wrap gap-1.5 mt-3">
                     {r.exercises
                       .map((re) => ({ re, ex: getExercise(re.exerciseId) }))
-                      .filter(({ ex }) => !!ex) // Filtra ejercicios eliminados
+                      .filter(({ ex }) => !!ex)
                       .map(({ re, ex }, i) => {
                         const cardio = ex?.muscleGroup?.toLowerCase() === 'cardio';
                         return (
@@ -369,13 +382,13 @@ export function RoutinesView() {
               </p>
             ) : (
               <div className="space-y-2">
-                {form.exercises.map((re, idx) => {
+                {form.exercises.map((re) => {
                   const cardio = isCardio(re.exerciseId);
                   return (
-                    <div key={idx} className="flex flex-wrap items-end gap-2 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+                    <div key={re._tempId} className="flex flex-wrap items-end gap-2 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50">
                       <div className="flex-1 min-w-[140px]">
                         <Label>Ejercicio</Label>
-                        <Select value={re.exerciseId} onChange={(e) => handleExerciseChange(idx, e.target.value)}>
+                        <Select value={re.exerciseId} onChange={(e) => handleExerciseChange(re._tempId, e.target.value)}>
                           {exercises.map((ex) => (
                             <option key={ex.id} value={ex.id}>
                               {ex.name}
@@ -390,7 +403,7 @@ export function RoutinesView() {
                             <Label>Tipo Cardio</Label>
                             <Select
                               value={re.cardioType ?? 'Cinta'}
-                              onChange={(e) => updateExercise(idx, { cardioType: e.target.value })}
+                              onChange={(e) => updateExercise(re._tempId, { cardioType: e.target.value })}
                             >
                               <option value="Cinta">Cinta / Trote</option>
                               <option value="Bicicleta">Bicicleta</option>
@@ -406,7 +419,7 @@ export function RoutinesView() {
                               type="number"
                               min={1}
                               value={re.durationMinutes ?? 30}
-                              onChange={(e) => updateExercise(idx, { durationMinutes: Math.max(1, Number(e.target.value)) })}
+                              onChange={(e) => updateExercise(re._tempId, { durationMinutes: Math.max(1, Number(e.target.value)) })}
                             />
                           </div>
                         </>
@@ -418,7 +431,7 @@ export function RoutinesView() {
                               type="number"
                               min={1}
                               value={re.sets ?? 3}
-                              onChange={(e) => updateExercise(idx, { sets: Math.max(1, Number(e.target.value)) })}
+                              onChange={(e) => updateExercise(re.targetReps ? re._tempId : re._tempId, { sets: Math.max(1, Number(e.target.value)) })}
                             />
                           </div>
                           <div className="w-16">
@@ -427,7 +440,7 @@ export function RoutinesView() {
                               type="number"
                               min={1}
                               value={re.targetReps ?? 10}
-                              onChange={(e) => updateExercise(idx, { targetReps: Math.max(1, Number(e.target.value)) })}
+                              onChange={(e) => updateExercise(re._tempId, { targetReps: Math.max(1, Number(e.target.value)) })}
                             />
                           </div>
                           <div className="w-20">
@@ -436,7 +449,7 @@ export function RoutinesView() {
                               type="number"
                               min={0}
                               value={re.restSeconds ?? 90}
-                              onChange={(e) => updateExercise(idx, { restSeconds: Math.max(0, Number(e.target.value)) })}
+                              onChange={(e) => updateExercise(re._tempId, { restSeconds: Math.max(0, Number(e.target.value)) })}
                             />
                           </div>
                         </>
@@ -446,7 +459,7 @@ export function RoutinesView() {
                         type="button"
                         size="icon"
                         variant="danger"
-                        onClick={() => removeExercise(idx)}
+                        onClick={() => removeExercise(re._tempId)}
                         className="h-10 w-10 shrink-0"
                       >
                         <X size={16} />
