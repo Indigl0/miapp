@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from '@/lib/auth';
-import { Layout, type View } from '@/components/Layout';
-import { LoginView } from '@/components/LoginView';
-import { AdminPanel } from '@/components/AdminPanel';
-import { ExercisesView } from '@/components/ExercisesView';
-import { RoutinesView } from '@/components/RoutinesView';
-import { SessionView } from '@/components/SessionView';
-import { AnalyticsView } from '@/components/AnalyticsView';
-import { MetricsView } from '@/components/MetricsView';
-import { FullPageSpinner } from '@/components/ui/Feedback';
+import { AuthProvider, useAuth } from '@/lib/auth.tsx';
+import { Layout, type View } from '@/components/Layout.tsx';
+import { LoginView } from '@/components/LoginView.tsx';
+import { AdminPanel } from '@/components/AdminPanel.tsx';
+import { ExercisesView } from '@/components/ExercisesView.tsx';
+import { RoutinesView } from '@/components/RoutinesView.tsx';
+import { SessionView } from '@/components/SessionView.tsx';
+import { AnalyticsView } from '@/components/AnalyticsView.tsx';
+import { MetricsView } from '@/components/MetricsView.tsx';
+import { FullPageSpinner } from '@/components/ui/Feedback.tsx';
 
 function AppContent() {
   const { user, ready } = useAuth();
