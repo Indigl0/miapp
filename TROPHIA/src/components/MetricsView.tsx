@@ -38,9 +38,11 @@ interface BodyMetricsLog {
   id: string;
   date: string;
   fat_percentage?: number | null;
+  body_fat?: number | null;
   chest?: number | null;
   waist?: number | null;
   hips?: number | null;
+  hip?: number | null;
   biceps?: number | null;
   thighs?: number | null;
 }
@@ -134,7 +136,14 @@ export function MetricsView() {
       }
 
       if (weightRes.data) setLogs(weightRes.data);
-      if (bodyRes.data) setBodyLogs(bodyRes.data);
+      if (bodyRes.data) {
+        const normalizedData = bodyRes.data.map((item: any) => ({
+          ...item,
+          fat_percentage: item.fat_percentage ?? item.body_fat ?? null,
+          hips: item.hips ?? item.hip ?? null
+        }));
+        setBodyLogs(normalizedData);
+      }
 
     } catch (err) {
       console.error('Error cargando métricas:', err);
@@ -226,10 +235,10 @@ export function MetricsView() {
       const payload = {
         user_id: user.id,
         date: newBodyLog.date,
-        fat_percentage: newBodyLog.fat_percentage ? Number(newBodyLog.fat_percentage) : null,
+        body_fat: newBodyLog.fat_percentage ? Number(newBodyLog.fat_percentage) : null,
         chest: newBodyLog.chest ? Number(newBodyLog.chest) : null,
         waist: newBodyLog.waist ? Number(newBodyLog.waist) : null,
-        hips: newBodyLog.hips ? Number(newBodyLog.hips) : null,
+        hip: newBodyLog.hips ? Number(newBodyLog.hips) : null,
         biceps: newBodyLog.biceps ? Number(newBodyLog.biceps) : null,
         thighs: newBodyLog.thighs ? Number(newBodyLog.thighs) : null,
       };
@@ -242,7 +251,13 @@ export function MetricsView() {
       if (error) throw error;
 
       if (data && data.length > 0) {
-        setBodyLogs((prev) => [...prev, ...data].sort((a, b) => a.date.localeCompare(b.date)));
+        const addedItem = {
+          ...data[0],
+          fat_percentage: data[0].body_fat ?? data[0].fat_percentage ?? null,
+          hips: data[0].hip ?? data[0].hips ?? null
+        };
+
+        setBodyLogs((prev) => [...prev, addedItem].sort((a, b) => a.date.localeCompare(b.date)));
         setNewBodyLog({
           date: new Date().toISOString().split('T')[0],
           fat_percentage: '',
@@ -326,7 +341,7 @@ export function MetricsView() {
                 value={profile.height}
                 onChange={(e) => setProfile({ ...profile, height: e.target.value ? Number(e.target.value) : '' })}
                 placeholder="cm (ej: 175)"
-                className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="mt-1 w-full h-10 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             ) : (
               <div>
@@ -344,7 +359,7 @@ export function MetricsView() {
                 value={profile.age}
                 onChange={(e) => setProfile({ ...profile, age: e.target.value ? Number(e.target.value) : '' })}
                 placeholder="Años"
-                className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="mt-1 w-full h-10 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             ) : (
               <div>
@@ -363,7 +378,7 @@ export function MetricsView() {
                 value={profile.initial_weight}
                 onChange={(e) => setProfile({ ...profile, initial_weight: e.target.value ? Number(e.target.value) : '' })}
                 placeholder="kg (ej: 70.5)"
-                className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="mt-1 w-full h-10 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             ) : (
               <div>
@@ -379,7 +394,7 @@ export function MetricsView() {
               <select
                 value={profile.goal}
                 onChange={(e) => setProfile({ ...profile, goal: e.target.value })}
-                className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="mt-1 w-full h-10 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
               >
                 <option value="Perder Peso">Perder Peso / Definición</option>
                 <option value="Ganar Masa Muscular">Ganar Masa Muscular</option>
@@ -478,7 +493,7 @@ export function MetricsView() {
                   value={newWeight}
                   onChange={(e) => setNewWeight(e.target.value)}
                   placeholder="Ej: 74.5"
-                  className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="mt-1 w-full h-11 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent px-4 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
               </div>
               <div className="w-full sm:w-1/2">
@@ -488,12 +503,12 @@ export function MetricsView() {
                   required
                   value={newWeightDate}
                   onChange={(e) => setNewWeightDate(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="mt-1 w-full h-11 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent px-4 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 appearance-none"
                 />
               </div>
               <button
                 type="submit"
-                className="w-full sm:w-auto shrink-0 flex items-center justify-center gap-2 rounded-xl bg-brand-500 text-white px-6 py-2.5 text-sm font-semibold hover:bg-brand-600 shadow-sm shadow-brand-500/30 transition-all"
+                className="w-full sm:w-auto shrink-0 h-11 flex items-center justify-center gap-2 rounded-xl bg-brand-500 text-white px-6 text-sm font-semibold hover:bg-brand-600 shadow-sm shadow-brand-500/30 transition-all"
               >
                 <Plus size={18} />
                 <span>Guardar Peso</span>
@@ -630,7 +645,7 @@ export function MetricsView() {
               </h3>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 items-end">
               <div>
                 <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Fecha</label>
                 <input
@@ -638,7 +653,7 @@ export function MetricsView() {
                   required
                   value={newBodyLog.date}
                   onChange={(e) => setNewBodyLog({ ...newBodyLog, date: e.target.value })}
-                  className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="mt-1 w-full h-11 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 appearance-none box-border"
                 />
               </div>
 
@@ -650,7 +665,7 @@ export function MetricsView() {
                   placeholder="%"
                   value={newBodyLog.fat_percentage}
                   onChange={(e) => setNewBodyLog({ ...newBodyLog, fat_percentage: e.target.value })}
-                  className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="mt-1 w-full h-11 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 box-border"
                 />
               </div>
 
@@ -662,7 +677,7 @@ export function MetricsView() {
                   placeholder="cm"
                   value={newBodyLog.chest}
                   onChange={(e) => setNewBodyLog({ ...newBodyLog, chest: e.target.value })}
-                  className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="mt-1 w-full h-11 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 box-border"
                 />
               </div>
 
@@ -674,7 +689,7 @@ export function MetricsView() {
                   placeholder="cm"
                   value={newBodyLog.waist}
                   onChange={(e) => setNewBodyLog({ ...newBodyLog, waist: e.target.value })}
-                  className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="mt-1 w-full h-11 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 box-border"
                 />
               </div>
 
@@ -686,7 +701,7 @@ export function MetricsView() {
                   placeholder="cm"
                   value={newBodyLog.hips}
                   onChange={(e) => setNewBodyLog({ ...newBodyLog, hips: e.target.value })}
-                  className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="mt-1 w-full h-11 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 box-border"
                 />
               </div>
 
@@ -698,7 +713,7 @@ export function MetricsView() {
                   placeholder="cm"
                   value={newBodyLog.biceps}
                   onChange={(e) => setNewBodyLog({ ...newBodyLog, biceps: e.target.value })}
-                  className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="mt-1 w-full h-11 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 box-border"
                 />
               </div>
 
@@ -710,14 +725,14 @@ export function MetricsView() {
                   placeholder="cm"
                   value={newBodyLog.thighs}
                   onChange={(e) => setNewBodyLog({ ...newBodyLog, thighs: e.target.value })}
-                  className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="mt-1 w-full h-11 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 box-border"
                 />
               </div>
 
-              <div className="flex items-end">
+              <div>
                 <button
                   type="submit"
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-brand-500 text-white px-4 py-2 text-sm font-semibold hover:bg-brand-600 shadow-sm shadow-brand-500/30 transition-all"
+                  className="w-full h-11 flex items-center justify-center gap-2 rounded-xl bg-brand-500 text-white px-4 text-sm font-semibold hover:bg-brand-600 shadow-sm shadow-brand-500/30 transition-all"
                 >
                   <Plus size={16} />
                   <span>Guardar</span>
