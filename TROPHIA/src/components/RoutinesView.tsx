@@ -28,7 +28,7 @@ const INITIAL_FORM: FormState = {
 export function RoutinesView() {
   const { user } = useAuth();
 
-  // FILTRO CORREGIDO: Filtra las rutinas en IndexedDB según el user.id autenticado
+  // Filtra las rutinas en IndexedDB según el user.id autenticado
   const routines = useLiveQuery(
     async () => {
       if (!user) return [];
@@ -39,13 +39,19 @@ export function RoutinesView() {
     [] as Routine[]
   );
 
-  const exercises = useLiveQuery(() => db.exercises.orderBy('name').toArray(), [], [] as Exercise[]);
+  const rawExercises = useLiveQuery(() => db.exercises.orderBy('name').toArray(), [], [] as Exercise[]);
+
+  // Filtrar ejercicios visibles (los del usuario actual + base/legacy)
+  const exercises = rawExercises.filter((e: any) => {
+    if (!e.userId && !e.user_id) return true;
+    return e.userId === user?.id || e.user_id === user?.id;
+  });
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Routine | null>(null);
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
 
   const getExercise = (id: string) => exercises.find((e) => e.id === id);
-  const exName = (id: string) => getExercise(id)?.name ?? 'Ejercicio eliminado';
   const isCardio = (id: string) => getExercise(id)?.muscleGroup?.toLowerCase() === 'cardio';
 
   const openCreate = () => {
@@ -56,10 +62,12 @@ export function RoutinesView() {
 
   const openEdit = (r: Routine) => {
     setEditing(r);
+    // Al editar, filtramos ejercicios de la rutina que ya no existan en la DB
+    const validExercises = r.exercises.filter((re) => !!getExercise(re.exerciseId));
     setForm({
       name: r.name,
       description: r.description ?? '',
-      exercises: r.exercises,
+      exercises: validExercises,
     });
     setModalOpen(true);
   };
@@ -204,7 +212,7 @@ export function RoutinesView() {
     if (editing) {
       const updated: Routine = {
         ...editing,
-        userId: user.id, // ASIGNACIÓN DE PROPIETARIO
+        userId: user.id,
         name: cleanName,
         description: form.description.trim() || undefined,
         exercises: form.exercises,
@@ -217,7 +225,7 @@ export function RoutinesView() {
     } else {
       const created: Routine = {
         id: uuid(),
-        userId: user.id, // ASIGNACIÓN DE PROPIETARIO
+        userId: user.id,
         name: cleanName,
         description: form.description.trim() || undefined,
         exercises: form.exercises,
@@ -283,14 +291,17 @@ export function RoutinesView() {
                     </p>
                   )}
                   <div className="flex flex-wrap gap-1.5 mt-3">
-                    {r.exercises.map((re, i) => {
-                      const cardio = isCardio(re.exerciseId);
-                      return (
-                        <Badge key={i} color={cardio ? 'blue' : 'gray'}>
-                          {exName(re.exerciseId)} {cardio ? `· ${re.durationMinutes ?? 30} min` : `· ${re.sets}x${re.targetReps}`}
-                        </Badge>
-                      );
-                    })}
+                    {r.exercises
+                      .map((re) => ({ re, ex: getExercise(re.exerciseId) }))
+                      .filter(({ ex }) => !!ex) // Filtra de forma limpia cualquier ejercicio eliminado
+                      .map(({ re, ex }, i) => {
+                        const cardio = ex?.muscleGroup?.toLowerCase() === 'cardio';
+                        return (
+                          <Badge key={i} color={cardio ? 'blue' : 'gray'}>
+                            {ex?.name} {cardio ? `· ${re.durationMinutes ?? 30} min` : `· ${re.sets}x${re.targetReps}`}
+                          </Badge>
+                        );
+                      })}
                   </div>
                 </div>
                 <div className="flex gap-2 pt-2 mt-auto">

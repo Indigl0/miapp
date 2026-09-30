@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { TrendingUp, Plus, Pencil, Trash2, Search } from 'lucide-react';
+import { useAuth } from '@/lib/auth';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
 import { enqueue } from '@/lib/sync';
@@ -38,7 +39,17 @@ const INITIAL_FORM: FormState = {
 };
 
 export function ExercisesView() {
-  const exercises = useLiveQuery(() => db.exercises.orderBy('name').toArray(), [], [] as Exercise[]);
+  const { user } = useAuth();
+
+  const rawExercises = useLiveQuery(() => db.exercises.orderBy('name').toArray(), [], [] as Exercise[]);
+
+  // Filtrar ejercicios: Muestra los del usuario actual + los ejercicios base/globales
+  const exercises = useMemo(() => {
+    return rawExercises.filter((e: any) => {
+      if (!e.userId && !e.user_id) return true;
+      return e.userId === user?.id || e.user_id === user?.id;
+    });
+  }, [rawExercises, user?.id]);
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<MuscleGroup | 'all'>('all');
@@ -102,13 +113,14 @@ export function ExercisesView() {
         record: updated as unknown as Record<string, unknown>,
       });
     } else {
-      const created: Exercise = {
+      const created: Exercise & { userId?: string; user_id?: string } = {
         id: uuid(),
         name: cleanName,
         muscleGroup: form.muscleGroup,
         notes: form.notes.trim() || undefined,
         createdAt: ts,
         updatedAt: ts,
+        ...(user?.id ? { userId: user.id, user_id: user.id } : {}),
       };
       await db.exercises.add(created);
       await enqueue({
@@ -135,7 +147,7 @@ export function ExercisesView() {
             Ejercicios
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 break-words">
-            Catálogo de ejercicios por grupo muscular.
+            Catálogo de ejercicios personalizados por grupo muscular.
           </p>
         </div>
         <Button onClick={openCreate} className="shrink-0">
