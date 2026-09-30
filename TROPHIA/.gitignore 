@@ -10,6 +10,9 @@ lerna-debug.log*
 # Environment files
 .env
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
 .env.*
 
 # Dependency directories
@@ -17,4 +20,16 @@ node_modules/
 
 # Build output
 dist/
+dist-ssr/
 build/
+*.local
+
+# System & IDE files
+.DS_Store
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

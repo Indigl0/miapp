@@ -1,5 +1,7 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { BarChart3, TrendingUp, Activity, Calendar, FileDown, Dumbbell, ChevronDown, ChevronUp, Flame, Zap, Award } from 'lucide-react';
+// @ts-ignore
+import html2pdf from 'html2pdf.js';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
 import { useAuth } from '@/lib/auth';
@@ -140,6 +142,7 @@ export function AnalyticsView() {
   const [activeBarIndex] = useState<number | null>(null);
   const [visibleCount, setVisibleCount] = useState<number>(5);
   const [expandedSessions, setExpandedSessions] = useState<Record<string, boolean>>({});
+  const [isExporting, setIsExporting] = useState<boolean>(false);
 
   const isDark = theme === 'dark';
   const axisColor = isDark ? '#64748b' : '#94a3b8';
@@ -191,10 +194,33 @@ export function AnalyticsView() {
     setExpandedSessions({});
   }, []);
 
-  // Función mejorada y directa para iOS Safari y escritorio
-  const handleExportPDF = () => {
-    expandAll(); // Expande las sesiones para incluir todo en el PDF
-    window.print();
+  // Exportar PDF con html2pdf.js (Funciona directo en PWA iOS / Android)
+  const handleExportPDF = async () => {
+    try {
+      setIsExporting(true);
+      expandAll();
+
+      // Breve espera para asegurar que el DOM expanda todas las sesiones
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      const element = document.querySelector('.printable-area') as HTMLElement;
+      if (!element) return;
+
+      const opt = {
+        margin:       [0.3, 0.3, 0.3, 0.3] as [number, number, number, number],
+        filename:     `Reporte_Entrenamiento_${new Date().toISOString().slice(0, 10)}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false },
+        jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+      };
+
+      // @ts-ignore
+      await html2pdf().set(opt).from(element).save();
+    } catch (error) {
+      console.error('Error generando PDF:', error);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const dailyVolume = useMemo<DayVolume[]>(() => {
@@ -349,36 +375,6 @@ export function AnalyticsView() {
 
   return (
     <div className="space-y-6 printable-area">
-      {/* Estilos CSS dedicados para impresión en PDF en iOS, Android y PC */}
-      <style>{`
-        @media print {
-          body {
-            background-color: #ffffff !important;
-            color: #000000 !important;
-            padding: 0 !important;
-            margin: 0 !important;
-          }
-          .no-print, header, nav, sidebar, button {
-            display: none !important;
-          }
-          .printable-area {
-            width: 100% !important;
-            max-width: 100% !important;
-            margin: 0 !important;
-            padding: 10px !important;
-          }
-          .recharts-responsive-container {
-            width: 100% !important;
-            height: 250px !important;
-          }
-          .card, div[class*="rounded-"] {
-            border: 1px solid #e5e7eb !important;
-            box-shadow: none !important;
-            break-inside: avoid;
-          }
-        }
-      `}</style>
-
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
@@ -389,10 +385,11 @@ export function AnalyticsView() {
         <button
           type="button"
           onClick={handleExportPDF}
-          className="no-print flex items-center gap-2 px-3.5 py-2 bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-xl transition-all shadow-md text-xs sm:text-sm cursor-pointer"
+          disabled={isExporting}
+          className="no-print flex items-center gap-2 px-3.5 py-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white font-medium rounded-xl transition-all shadow-md text-xs sm:text-sm cursor-pointer"
         >
           <FileDown size={16} />
-          Exportar PDF
+          {isExporting ? 'Generando PDF...' : 'Exportar PDF'}
         </button>
       </div>
 
@@ -406,10 +403,9 @@ export function AnalyticsView() {
         <Card><CardBody className="text-center py-4"><Flame size={18} className="text-blue-500 mx-auto mb-1" /><p className="text-xl font-bold">{totalCardioMinutes}m</p><p className="text-xs text-gray-400">Cardio</p></CardBody></Card>
       </div>
 
-      {/* Calendario de Consistencia ubicado arriba al inicio */}
       <ConsistencyHeatmap sessions={sessions} />
 
-      {/* Filtros de Rango y Ejercicio */}
+      {/* Filtros */}
       <div className="no-print flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
         <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
           {(['1M', '3M', '6M', '1Y', 'ALL'] as TimeRange[]).map((range) => (
@@ -465,7 +461,7 @@ export function AnalyticsView() {
         </div>
       </div>
 
-      {/* Gráfico de Evolución de Volumen Total */}
+      {/* Gráficos */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
@@ -501,7 +497,6 @@ export function AnalyticsView() {
         </CardBody>
       </Card>
 
-      {/* Gráfico de Distribución Muscular y Progreso Específico */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -578,7 +573,7 @@ export function AnalyticsView() {
         </Card>
       </div>
 
-      {/* Historial Detallado de Sesiones */}
+      {/* Historial Detallado */}
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
