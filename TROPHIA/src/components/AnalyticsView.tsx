@@ -94,10 +94,10 @@ function ConsistencyHeatmap({ sessions }: { sessions: TrainingSession[] }) {
   }, [datesSet]);
 
   return (
-    <Card>
+    <Card className="print:shadow-none print:border-gray-300">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Calendar size={18} className="text-brand-500" />
+          <Calendar size={18} className="text-brand-500 print:text-black" />
           Calendario de Consistencia
         </CardTitle>
       </CardHeader>
@@ -109,8 +109,8 @@ function ConsistencyHeatmap({ sessions }: { sessions: TrainingSession[] }) {
               title={`${day.formatted}: ${day.active ? 'Entrenamiento completado' : 'Sin registro'}`}
               className={`w-3.5 h-3.5 rounded-sm transition-transform hover:scale-125 ${
                 day.active 
-                  ? 'bg-brand-500 shadow-sm shadow-brand-500/50' 
-                  : 'bg-gray-100 dark:bg-gray-800/60'
+                  ? 'bg-brand-500 shadow-sm shadow-brand-500/50 print:bg-black' 
+                  : 'bg-gray-100 dark:bg-gray-800/60 print:bg-gray-200'
               }`}
             />
           ))}
@@ -191,10 +191,10 @@ export function AnalyticsView() {
     setExpandedSessions({});
   }, []);
 
+  // Función mejorada y directa para iOS Safari y escritorio
   const handleExportPDF = () => {
-    setTimeout(() => {
-      window.print();
-    }, 100);
+    expandAll(); // Expande las sesiones para incluir todo en el PDF
+    window.print();
   };
 
   const dailyVolume = useMemo<DayVolume[]>(() => {
@@ -348,7 +348,37 @@ export function AnalyticsView() {
     : currentExercise?.name ?? 'Seleccionar ejercicio';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 printable-area">
+      {/* Estilos CSS dedicados para impresión en PDF en iOS, Android y PC */}
+      <style>{`
+        @media print {
+          body {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .no-print, header, nav, sidebar, button {
+            display: none !important;
+          }
+          .printable-area {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 10px !important;
+          }
+          .recharts-responsive-container {
+            width: 100% !important;
+            height: 250px !important;
+          }
+          .card, div[class*="rounded-"] {
+            border: 1px solid #e5e7eb !important;
+            box-shadow: none !important;
+            break-inside: avoid;
+          }
+        }
+      `}</style>
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
@@ -357,8 +387,9 @@ export function AnalyticsView() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Estadísticas exclusivas del usuario actual.</p>
         </div>
         <button
+          type="button"
           onClick={handleExportPDF}
-          className="flex items-center gap-2 px-3.5 py-2 bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-xl transition-all shadow-md text-xs sm:text-sm cursor-pointer"
+          className="no-print flex items-center gap-2 px-3.5 py-2 bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-xl transition-all shadow-md text-xs sm:text-sm cursor-pointer"
         >
           <FileDown size={16} />
           Exportar PDF
@@ -379,7 +410,7 @@ export function AnalyticsView() {
       <ConsistencyHeatmap sessions={sessions} />
 
       {/* Filtros de Rango y Ejercicio */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
+      <div className="no-print flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
         <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
           {(['1M', '3M', '6M', '1Y', 'ALL'] as TimeRange[]).map((range) => (
             <button
@@ -555,7 +586,7 @@ export function AnalyticsView() {
               <Activity size={18} className="text-brand-500" />
               Historial Detallado de Sesiones
             </CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="no-print flex items-center gap-2">
               <button
                 onClick={expandAll}
                 className="px-3 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
@@ -603,7 +634,7 @@ export function AnalyticsView() {
                           <p className="text-xs text-gray-400">Series</p>
                           <p className="text-sm font-bold font-mono">{completedSetsCount}</p>
                         </div>
-                        <button className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
+                        <button className="no-print p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
                           {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                         </button>
                       </div>
@@ -654,7 +685,7 @@ export function AnalyticsView() {
               })}
 
               {visibleCount < completedSessions.length && (
-                <div className="text-center pt-4">
+                <div className="no-print text-center pt-4">
                   <button
                     onClick={() => setVisibleCount(prev => prev + 5)}
                     className="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer"
