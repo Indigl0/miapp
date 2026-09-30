@@ -680,7 +680,6 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                               </button>
                             </div>
                           ) : (
-                            // AQUÍ ESTÁ LA CORRECCIÓN CLAVE PARA MÓVILES
                             <div className="overflow-x-auto scrollbar-thin -mx-4 sm:mx-0 px-2 sm:px-0">
                               <table className="w-full text-xs sm:text-sm min-w-[340px] table-fixed">
                                 <thead>
@@ -706,33 +705,49 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                           <div className="font-bold text-sm text-gray-900 dark:text-gray-100">{set.setNumber}</div>
                                         </td>
 
+                                        {/* Columna Reps con micro-etiqueta sutil */}
                                         <td className="px-1 py-2.5 text-center align-middle">
-                                          <Input
-                                            type="text"
-                                            inputMode="numeric"
-                                            value={set.reps || ''}
-                                            placeholder={prevSet ? String(prevSet.reps) : "0"}
-                                            onFocus={(e) => e.target.select()}
-                                            onChange={(e) => {
-                                              const cleanVal = e.target.value.replace(/[^0-9]/g, '');
-                                              updateSet(activeSession, exIdx, setIdx, { reps: cleanVal === '' ? 0 : parseInt(cleanVal, 10) });
-                                            }}
-                                            // Ancho fijo estricto para evitar que se aplaste
-                                            className="w-[56px] min-w-[56px] mx-auto h-9 text-center text-sm font-medium placeholder:text-gray-300 dark:placeholder:text-gray-600 block !px-1"
-                                          />
+                                          <div className="flex flex-col items-center justify-center">
+                                            <Input
+                                              type="text"
+                                              inputMode="numeric"
+                                              value={set.reps || ''}
+                                              placeholder={prevSet ? String(prevSet.reps) : "0"}
+                                              onFocus={(e) => e.target.select()}
+                                              onChange={(e) => {
+                                                const cleanVal = e.target.value.replace(/[^0-9]/g, '');
+                                                updateSet(activeSession, exIdx, setIdx, { reps: cleanVal === '' ? 0 : parseInt(cleanVal, 10) });
+                                              }}
+                                              className="w-[56px] min-w-[56px] h-9 text-center text-sm font-medium placeholder:text-gray-300 dark:placeholder:text-gray-600 block !px-1"
+                                            />
+                                            {prevSet && prevSet.reps !== undefined && (
+                                              <span className="text-[9px] text-gray-400 leading-none mt-1 font-mono">
+                                                prev: {prevSet.reps}
+                                              </span>
+                                            )}
+                                          </div>
                                         </td>
+
+                                        {/* Columna Peso con micro-etiqueta sutil */}
                                         <td className="px-1 py-2.5 text-center align-middle">
-                                          <Input
-                                            type="text"
-                                            inputMode="decimal"
-                                            value={displayWeight}
-                                            placeholder={prevSet ? String(prevSet.weight) : "0"}
-                                            onFocus={(e) => e.target.select()}
-                                            onChange={(e) => handleWeightInputChange(activeSession, exIdx, setIdx, e.target.value)}
-                                            // Ancho fijo estricto para evitar que se aplaste
-                                            className="w-[60px] min-w-[60px] mx-auto h-9 text-center text-sm font-medium placeholder:text-gray-300 dark:placeholder:text-gray-600 block !px-1"
-                                          />
+                                          <div className="flex flex-col items-center justify-center">
+                                            <Input
+                                              type="text"
+                                              inputMode="decimal"
+                                              value={displayWeight}
+                                              placeholder={prevSet ? String(prevSet.weight) : "0"}
+                                              onFocus={(e) => e.target.select()}
+                                              onChange={(e) => handleWeightInputChange(activeSession, exIdx, setIdx, e.target.value)}
+                                              className="w-[60px] min-w-[60px] h-9 text-center text-sm font-medium placeholder:text-gray-300 dark:placeholder:text-gray-600 block !px-1"
+                                            />
+                                            {prevSet && prevSet.weight !== undefined && (
+                                              <span className="text-[9px] text-gray-400 leading-none mt-1 font-mono">
+                                                prev: {prevSet.weight}
+                                              </span>
+                                            )}
+                                          </div>
                                         </td>
+
                                         <td className="px-1 py-2.5 align-middle">
                                           <div className="flex justify-center gap-0.5 min-w-[80px]">
                                             {[0, 1, 2, 3].map((val) => (
