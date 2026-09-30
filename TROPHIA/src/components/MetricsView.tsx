@@ -284,16 +284,13 @@ export function MetricsView() {
     }
   };
 
-  // Memoización para listados ordenados inversamente
   const reversedLogs = useMemo(() => [...logs].reverse(), [logs]);
   const reversedBodyLogs = useMemo(() => [...bodyLogs].reverse(), [bodyLogs]);
 
-  // Cálculos de Peso
   const latestWeight = logs.length > 0 ? logs[logs.length - 1].weight : Number(profile.initial_weight) || 0;
   const initialWeight = Number(profile.initial_weight) || 0;
   const weightDiff = initialWeight > 0 && latestWeight > 0 ? (latestWeight - initialWeight).toFixed(1) : '0';
 
-  // Cálculos de Medidas Recientes
   const latestBodyLog = bodyLogs.length > 0 ? bodyLogs[bodyLogs.length - 1] : null;
 
   if (loading) {
@@ -741,47 +738,98 @@ export function MetricsView() {
             </div>
           </form>
 
-          {/* HISTORIAL DE MEDIDAS */}
-          <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm overflow-hidden">
+          {/* HISTORIAL DE MEDIDAS (ADAPTADO MÓVIL Y DESKTOP) */}
+          <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-6 shadow-sm">
             <h3 className="text-base font-bold mb-4">Historial de Medidas Corporales</h3>
             {reversedBodyLogs.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-200 dark:border-gray-800 text-xs font-semibold text-gray-400 uppercase">
-                      <th className="pb-3">Fecha</th>
-                      <th className="pb-3">Grasa %</th>
-                      <th className="pb-3">Pecho</th>
-                      <th className="pb-3">Cintura</th>
-                      <th className="pb-3">Cadera</th>
-                      <th className="pb-3">Bíceps</th>
-                      <th className="pb-3">Muslos</th>
-                      <th className="pb-3 text-right">Acción</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                    {reversedBodyLogs.map((item) => (
-                      <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                        <td className="py-3 font-semibold">{formatChartDate(item.date)}</td>
-                        <td className="py-3 text-brand-500 font-bold">{item.fat_percentage ? `${item.fat_percentage}%` : '-'}</td>
-                        <td className="py-3">{item.chest ? `${item.chest} cm` : '-'}</td>
-                        <td className="py-3">{item.waist ? `${item.waist} cm` : '-'}</td>
-                        <td className="py-3">{item.hips ? `${item.hips} cm` : '-'}</td>
-                        <td className="py-3">{item.biceps ? `${item.biceps} cm` : '-'}</td>
-                        <td className="py-3">{item.thighs ? `${item.thighs} cm` : '-'}</td>
-                        <td className="py-3 text-right">
-                          <button
-                            onClick={() => handleDeleteBodyLog(item.id)}
-                            className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
+              <>
+                {/* VISTA MÓVIL (Tarjetas limpias y legibles) */}
+                <div className="block md:hidden space-y-3">
+                  {reversedBodyLogs.map((item) => (
+                    <div key={item.id} className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 space-y-3">
+                      <div className="flex items-center justify-between border-b border-gray-200/60 dark:border-gray-700/60 pb-2">
+                        <div className="flex items-center gap-2">
+                          <Calendar size={15} className="text-brand-500" />
+                          <span className="text-sm font-bold">{formatChartDate(item.date)}</span>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteBodyLog(item.id)}
+                          className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                          title="Eliminar registro"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                        <div className="p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+                          <p className="text-[10px] text-gray-400 uppercase font-semibold">Grasa</p>
+                          <p className="font-bold text-brand-500 mt-0.5">{item.fat_percentage ? `${item.fat_percentage}%` : '-'}</p>
+                        </div>
+                        <div className="p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+                          <p className="text-[10px] text-gray-400 uppercase font-semibold">Pecho</p>
+                          <p className="font-bold mt-0.5">{item.chest ? `${item.chest} cm` : '-'}</p>
+                        </div>
+                        <div className="p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+                          <p className="text-[10px] text-gray-400 uppercase font-semibold">Cintura</p>
+                          <p className="font-bold mt-0.5">{item.waist ? `${item.waist} cm` : '-'}</p>
+                        </div>
+                        <div className="p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+                          <p className="text-[10px] text-gray-400 uppercase font-semibold">Cadera</p>
+                          <p className="font-bold mt-0.5">{item.hips ? `${item.hips} cm` : '-'}</p>
+                        </div>
+                        <div className="p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+                          <p className="text-[10px] text-gray-400 uppercase font-semibold">Bíceps</p>
+                          <p className="font-bold mt-0.5">{item.biceps ? `${item.biceps} cm` : '-'}</p>
+                        </div>
+                        <div className="p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+                          <p className="text-[10px] text-gray-400 uppercase font-semibold">Muslos</p>
+                          <p className="font-bold mt-0.5">{item.thighs ? `${item.thighs} cm` : '-'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* VISTA DESKTOP (Tabla tradicional con espaciado amplio) */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200 dark:border-gray-800 text-xs font-semibold text-gray-400 uppercase">
+                        <th className="pb-3 px-2">Fecha</th>
+                        <th className="pb-3 px-2">Grasa %</th>
+                        <th className="pb-3 px-2">Pecho</th>
+                        <th className="pb-3 px-2">Cintura</th>
+                        <th className="pb-3 px-2">Cadera</th>
+                        <th className="pb-3 px-2">Bíceps</th>
+                        <th className="pb-3 px-2">Muslos</th>
+                        <th className="pb-3 px-2 text-right">Acción</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                      {reversedBodyLogs.map((item) => (
+                        <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                          <td className="py-3 px-2 font-semibold whitespace-nowrap">{formatChartDate(item.date)}</td>
+                          <td className="py-3 px-2 text-brand-500 font-bold whitespace-nowrap">{item.fat_percentage ? `${item.fat_percentage}%` : '-'}</td>
+                          <td className="py-3 px-2 whitespace-nowrap">{item.chest ? `${item.chest} cm` : '-'}</td>
+                          <td className="py-3 px-2 whitespace-nowrap">{item.waist ? `${item.waist} cm` : '-'}</td>
+                          <td className="py-3 px-2 whitespace-nowrap">{item.hips ? `${item.hips} cm` : '-'}</td>
+                          <td className="py-3 px-2 whitespace-nowrap">{item.biceps ? `${item.biceps} cm` : '-'}</td>
+                          <td className="py-3 px-2 whitespace-nowrap">{item.thighs ? `${item.thighs} cm` : '-'}</td>
+                          <td className="py-3 px-2 text-right whitespace-nowrap">
+                            <button
+                              onClick={() => handleDeleteBodyLog(item.id)}
+                              className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             ) : (
               <p className="text-xs text-gray-400">No hay registros antropométricos aún.</p>
             )}
