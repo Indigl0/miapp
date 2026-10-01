@@ -1,4 +1,8 @@
-import { TrendingUp, BarChart3, ClipboardList, ListChecks, LogOut, Moon, Sun, Shield, CloudOff, Cloud, Menu, X, UserCheck, Dumbbell, Info } from 'lucide-react';
+import { 
+  TrendingUp, BarChart3, ClipboardList, ListChecks, LogOut, Moon, Sun, 
+  Shield, CloudOff, Cloud, Menu, X, UserCheck, Dumbbell, Info, 
+  Instagram, Mail, MessageCircle 
+} from 'lucide-react';
 import { useState, useEffect, type ReactNode } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useTheme } from '@/lib/theme';
@@ -48,10 +52,62 @@ const VIEW_INFO: Record<View, { title: string; description: string }> = {
   }
 };
 
+// --- COMPONENTE DEL MODAL DE CONTACTO ---
+function DeveloperContactModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+      <div className="relative w-full max-w-sm p-6 bg-white dark:bg-[#1a1a1b] border border-gray-200 dark:border-gray-800 rounded-3xl shadow-2xl">
+        
+        <button 
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-full transition-colors"
+        >
+          <X size={18} />
+        </button>
+
+        <div className="flex flex-col items-center text-center mt-2">
+          <div className="h-20 w-20 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg shadow-brand-500/30 mb-4">
+            FI
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Felipe Ibarra</h2>
+          <p className="text-sm text-brand-500 font-semibold mb-4">Creador de TROPHIA</p>
+          
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+            ¿Tienes alguna sugerencia, encontraste un error o quieres hablar sobre entrenamiento? No dudes en escribirme.
+          </p>
+
+          <div className="flex flex-col gap-3 w-full">
+            <a 
+              href="https://instagram.com/f.7barra" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-brand-500 hover:bg-brand-600 text-white rounded-xl font-semibold transition-colors shadow-md shadow-brand-500/20"
+            >
+              <Instagram size={20} />
+              Contactar por Instagram
+            </a>
+
+            <a 
+              href="mailto:felipe7barra@gmail.com" 
+              className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-transparent border-2 border-gray-200 dark:border-gray-700 hover:border-brand-500 dark:hover:border-brand-500 text-gray-700 dark:text-gray-200 rounded-xl font-semibold transition-colors"
+            >
+              <Mail size={20} />
+              Enviar un correo
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
   const { user, logout, pendingMutations } = useAuth();
   const [theme, toggleTheme] = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false); // Estado del modal
   const isAdmin = user?.role === 'admin';
 
   // Forzar que el administrador permanezca exclusivamente en la vista de administración
@@ -141,6 +197,16 @@ export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
                 )}
               </div>
               
+              {/* Botón de Contacto Desktop */}
+              <button 
+                onClick={() => setIsContactModalOpen(true)} 
+                className="hidden sm:flex p-2.5 rounded-xl text-brand-500 bg-brand-500/10 hover:bg-brand-500/20 dark:bg-brand-500/10 dark:hover:bg-brand-500/20 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500" 
+                aria-label="Contactar al desarrollador"
+                title="Soporte y Contacto"
+              >
+                <MessageCircle size={20} className="sm:w-[18px] sm:h-[18px]"/>
+              </button>
+
               <button 
                 onClick={toggleTheme} 
                 className="p-2 sm:p-2.5 rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500" 
@@ -182,7 +248,7 @@ export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
 
         {/* Mobile Navigation Dropdown */}
         {mobileOpen && (
-          <div className="md:hidden absolute top-16 left-0 right-0 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0f0f10] shadow-lg">
+          <div className="md:hidden absolute top-16 left-0 right-0 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0f0f10] shadow-lg z-50">
              <nav className="flex flex-col px-4 py-3 gap-1.5 animate-fade-in max-h-[calc(100vh-4rem)] overflow-y-auto">
                <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100 dark:border-gray-800 sm:hidden">
                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-base font-bold shrink-0">
@@ -195,6 +261,18 @@ export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
                </div>
                
                {navItems}
+
+               {/* Botón de Contacto Mobile */}
+               <button
+                 onClick={() => {
+                   setMobileOpen(false);
+                   setIsContactModalOpen(true);
+                 }}
+                 className="flex items-center mt-2 w-full gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-brand-500 bg-brand-500/10 hover:bg-brand-500/20 transition-all duration-200"
+               >
+                 <MessageCircle size={20} className="shrink-0" />
+                 <span>Soporte y Contacto</span>
+               </button>
                
                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400 sm:hidden">
                   {pendingMutations > 0 ? (
@@ -232,7 +310,13 @@ export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
           <p className="text-xs text-gray-400 font-condensed tracking-wide text-center sm:text-left">TROPHIA · Offline-First PWA</p>
           <div className="flex items-center gap-2">
             <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold text-center">
-              Desarrollado por <span className="text-brand-500">Felipe Ibarra</span>
+              Desarrollado por{' '}
+              <button 
+                onClick={() => setIsContactModalOpen(true)}
+                className="text-brand-500 hover:text-brand-600 hover:underline transition-all"
+              >
+                Felipe Ibarra
+              </button>
             </p>
             <span className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded text-[10px] font-mono">
               {APP_VERSION}
@@ -240,6 +324,12 @@ export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
           </div>
         </div>
       </footer>
+
+      {/* Renderizado del Modal */}
+      <DeveloperContactModal 
+        isOpen={isContactModalOpen} 
+        onClose={() => setIsContactModalOpen(false)} 
+      />
     </div>
   );
 }
