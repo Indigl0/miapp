@@ -192,7 +192,6 @@ async function pullTable(table: SyncTable): Promise<number> {
   const userId = await getCurrentUserId();
   if (!userId) return 0;
 
-  // Descarga tanto los registros del usuario como los ejercicios base/globales (user_id IS NULL)
   let query = supabase.from(table).select('*');
   if (table === 'exercises') {
     query = query.or(`user_id.eq.${userId},user_id.is.null`);
@@ -254,24 +253,27 @@ async function pullTable(table: SyncTable): Promise<number> {
 
 async function pullAll(): Promise<number> {
   let total = 0;
-  total += await pullTable('exercises');
-  total += await pullTable('routines');
-  total += await pullTable('sessions');
-  total += await pullTable('metrics');
+  total += await pullTable('exercises').catch(() => 0);
+  total += await pullTable('routines').catch(() => 0);
+  total += await pullTable('sessions').catch(() => 0);
+  total += await pullTable('metrics').catch(() => 0);
   return total;
 }
 
 export async function flush(): Promise<{ pushed: number; pulled: number }> {
   if (!isOnline()) return { pushed: 0, pulled: 0 };
-  const pushed = await pushPending();
-  const pulled = await pullAll();
+  const pushed = await pushPending().catch(() => 0);
+  const pulled = await pullAll().catch(() => 0);
   return { pushed, pulled };
 }
 
-let listening = false;
+let activeInterval: number | null = null;
+
 export function startSyncLoop(onChange?: () => void): () => void {
-  if (listening) return () => {};
-  listening = true;
+  if (activeInterval !== null) {
+    window.clearInterval(activeInterval);
+    activeInterval = null;
+  }
 
   const tick = () => {
     flush()
@@ -283,12 +285,15 @@ export function startSyncLoop(onChange?: () => void): () => void {
 
   const onlineHandler = () => tick();
   window.addEventListener('online', onlineHandler);
-  const interval = window.setInterval(tick, 10000);
+  
+  activeInterval = window.setInterval(tick, 10000);
   tick();
 
   return () => {
-    listening = false;
+    if (activeInterval !== null) {
+      window.clearInterval(activeInterval);
+      activeInterval = null;
+    }
     window.removeEventListener('online', onlineHandler);
-    window.clearInterval(interval);
   };
 }
