@@ -11,7 +11,7 @@ import { EmptyState } from '@/components/ui/Feedback';
 import { useTheme } from '@/lib/theme';
 import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell } from 'recharts';
 
-function fmtDate(ts: number): number | string { 
+function fmtDate(ts: number): string { 
   return new Date(ts).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); 
 }
 
@@ -254,7 +254,7 @@ export function AnalyticsView() {
         existing.sets += sets; 
         existing.cardioMinutes += cardioMinutes;
       } else {
-        map.set(ts, { date: String(fmtDate(ts)), timestamp: ts, volume: Math.round(vol), sets, cardioMinutes });
+        map.set(ts, { date: fmtDate(ts), timestamp: ts, volume: Math.round(vol), sets, cardioMinutes });
       }
     });
     return Array.from(map.values()).sort((a, b) => a.timestamp - b.timestamp);
@@ -351,7 +351,7 @@ export function AnalyticsView() {
 
     return Array.from(map.entries())
       .map(([ts, data]) => ({
-        date: String(fmtDate(ts)),
+        date: fmtDate(ts),
         timestamp: ts,
         weight: data.weight,
         volume: data.volume,
@@ -623,7 +623,7 @@ export function AnalyticsView() {
                           <h4 className="font-bold text-sm sm:text-base text-gray-900 dark:text-gray-100">{session.routineName || 'Entrenamiento'}</h4>
                           <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold">Completada</span>
                         </div>
-                        <p className="text-xs text-gray-400 mt-0.5">{String(fmtDate(session.date))}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{fmtDate(session.date)}</p>
                       </div>
                       <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
                         <div className="text-right">
