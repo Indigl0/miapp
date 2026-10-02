@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     (async () => {
       try {
-        await seedExercises();
+        await seedExercises().catch(() => {});
         const stored = localStorage.getItem(SESSION_KEY);
         if (stored) {
           const { id } = JSON.parse(stored) as { id: string };
@@ -69,26 +69,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (username: string, password: string): Promise<boolean> => {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('username', username.trim())
-      .eq('password', password)
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', username.trim())
+        .eq('password', password)
+        .maybeSingle();
 
-    if (error || !data) return false;
+      if (error || !data) return false;
 
-    setUser(data as SupabaseUser);
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ id: data.id }));
-    
-    await flush().catch(() => {});
-    return true;
+      setUser(data as SupabaseUser);
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ id: data.id }));
+      
+      await flush().catch(() => {});
+      return true;
+    } catch {
+      return false;
+    }
   }, []);
 
   const logout = useCallback(async () => {
     setUser(null);
     localStorage.removeItem(SESSION_KEY);
-    // Limpiamos datos locales en IndexedDB al cerrar sesión para prevenir filtrado a otros usuarios
     await Promise.all([
       db.routines.clear(),
       db.sessions.clear(),
@@ -124,24 +127,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user?.id]);
 
   const deleteUser = useCallback(async (id: string) => {
-    // 1. Borrar datos asociados en Supabase
     await Promise.all([
       supabase.from('routines').delete().eq('user_id', id),
       supabase.from('sessions').delete().eq('user_id', id),
       supabase.from('metrics').delete().eq('user_id', id),
-    ]);
+    ]).catch(() => {});
 
-    // 2. Borrar usuario en Supabase
     const { error } = await supabase.from('users').delete().eq('id', id);
     if (error) throw new Error(error.message);
 
-    // 3. Limpiar datos locales en IndexedDB
     await Promise.all([
       db.routines.clear(),
       db.sessions.clear(),
       db.metrics.clear(),
       db.mutationQueue.clear(),
-    ]);
+    ]).catch(() => {});
 
     if (user?.id === id) { 
       setUser(null); 

@@ -1,29 +1,25 @@
 import { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from '@/lib/auth.tsx';
-import { Layout, type View } from '@/components/Layout.tsx';
-import { LoginView } from '@/components/LoginView.tsx';
-import { AdminPanel } from '@/components/AdminPanel.tsx';
-import { ExercisesView } from '@/components/ExercisesView.tsx';
-import { RoutinesView } from '@/components/RoutinesView.tsx';
-import { SessionView } from '@/components/SessionView.tsx';
-import { AnalyticsView } from '@/components/AnalyticsView.tsx';
-import { MetricsView } from '@/components/MetricsView.tsx';
-import { FullPageSpinner } from '@/components/ui/Feedback.tsx';
+import { AuthProvider, useAuth } from '@/lib/auth';
+import { Layout, type View } from '@/components/Layout';
+import { LoginView } from '@/components/LoginView';
+import { AdminPanel } from '@/components/AdminPanel';
+import { ExercisesView } from '@/components/ExercisesView';
+import { RoutinesView } from '@/components/RoutinesView';
+import { SessionView } from '@/components/SessionView';
+import { AnalyticsView } from '@/components/AnalyticsView';
+import { MetricsView } from '@/components/MetricsView';
+import { FullPageSpinner } from '@/components/ui/Feedback';
 
 function AppContent() {
   const { user, ready } = useAuth();
-  // Vista inicial por defecto
   const [view, setView] = useState<View>('routines');
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
-  // Reinicia la vista según el rol cuando cambia el usuario o su rol
   useEffect(() => {
-    if (user) {
-      if (user.role !== 'admin' && view === 'admin') {
-        setView('routines');
-      }
+    if (user && user.role !== 'admin' && view === 'admin') {
+      setView('routines');
     }
-  }, [user?.id, user?.role, view]);
+  }, [user, view]);
 
   if (!ready) return <FullPageSpinner />;
   if (!user) return <LoginView />;
