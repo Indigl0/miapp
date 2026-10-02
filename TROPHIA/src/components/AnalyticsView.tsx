@@ -1,3 +1,5 @@
+// Reemplaza todo el contenido de tu archivo src/components/AnalyticsView.tsx con el siguiente código:
+
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import {
   BarChart3,
@@ -11,6 +13,7 @@ import {
   Flame,
   Zap,
   Award,
+  FileText,
 } from 'lucide-react';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
@@ -852,6 +855,15 @@ export function AnalyticsView() {
                                   ({exerciseObj?.muscleGroup || 'General'})
                                 </span>
                               </p>
+
+                              {/* Nota del ejercicio individual */}
+                              {ex.notes && (
+                                <p className="text-xs text-gray-600 dark:text-gray-300 italic mb-2 flex items-center gap-1">
+                                  <FileText size={12} className="text-gray-400 shrink-0" />
+                                  <span>{ex.notes}</span>
+                                </p>
+                              )}
+
                               {setList.length > 0 && (
                                 <div className="space-y-1.5">
                                   {setList.map((set, sIdx) => (
@@ -886,10 +898,12 @@ export function AnalyticsView() {
                             </div>
                           );
                         })}
+
+                        {/* Nota general de la sesión completa */}
                         {session.notes && (
                           <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 text-xs text-gray-600 dark:text-gray-300">
                             <span className="font-bold text-amber-600 dark:text-amber-400 block mb-1">
-                              Notas de la sesión:
+                              Notas generales de la sesión:
                             </span>
                             {session.notes}
                           </div>

@@ -123,6 +123,7 @@ export function SessionView({
     ...s,
     exercises: (s.exercises || []).map((ex) => ({
       ...ex,
+      notes: ex.notes ?? '',
       sets: ex.sets
         ? ex.sets.map((st) => ({
             ...st,
@@ -174,6 +175,7 @@ export function SessionView({
         ...activeSessionRaw,
         exercises: (activeSessionRaw.exercises || []).map((ex) => ({
           ...ex,
+          notes: ex.notes ?? '',
           sets: ex.sets
             ? ex.sets.map((st) => ({
                 ...st,
@@ -271,7 +273,7 @@ export function SessionView({
     if (!activeSession) return null;
     const completedPastSessions = sessions.filter((s) => s.completed && s.id !== activeSession.id);
     for (const pastSession of completedPastSessions) {
-      const match = pastSession.exercises?.find((ex) => ex.exerciseId === exerciseId);
+      const match = (pastSession.exercises || []).find((ex) => ex.exerciseId === exerciseId);
       if (match && match.sets && match.sets.length > 0) {
         return match.sets;
       }
@@ -307,10 +309,16 @@ export function SessionView({
     await enqueue({ kind: 'upsert', table: 'sessions', record: updated as unknown as Record<string, unknown> });
   };
 
+  const updateExerciseNotes = async (s: TrainingSession, exIdx: number, notes: string) => {
+    const exercisesCopy = (s.exercises || []).map((ex, i) => (i === exIdx ? { ...ex, notes } : ex));
+    await updateSession({ ...s, exercises: exercisesCopy });
+  };
+
   const toggleSet = async (s: TrainingSession, exIdx: number, setIdx: number) => {
     unlockAudioContext();
-    const isNowCompleted = !s.exercises[exIdx]?.sets?.[setIdx]?.completed;
-    const exercisesCopy = s.exercises.map((ex, i) =>
+    const exercisesList = s.exercises || [];
+    const isNowCompleted = !exercisesList[exIdx]?.sets?.[setIdx]?.completed;
+    const exercisesCopy = exercisesList.map((ex, i) =>
       i !== exIdx || !ex.sets
         ? ex
         : {
@@ -321,7 +329,7 @@ export function SessionView({
     await updateSession({ ...s, exercises: exercisesCopy });
 
     if (isNowCompleted) {
-      const routineEx = currentRoutine?.exercises.find((re) => re.exerciseId === s.exercises[exIdx].exerciseId);
+      const routineEx = currentRoutine?.exercises.find((re) => re.exerciseId === exercisesList[exIdx].exerciseId);
       if (routineEx?.restSeconds) {
         startRestTimer(routineEx.restSeconds);
       }
@@ -329,7 +337,7 @@ export function SessionView({
   };
 
   const updateSet = async (s: TrainingSession, exIdx: number, setIdx: number, patch: Partial<SessionSet>) => {
-    const exercisesCopy = s.exercises.map((ex, i) =>
+    const exercisesCopy = (s.exercises || []).map((ex, i) =>
       i !== exIdx || !ex.sets
         ? ex
         : {
@@ -341,7 +349,7 @@ export function SessionView({
   };
 
   const addSet = async (s: TrainingSession, exIdx: number) => {
-    const exercisesCopy = s.exercises.map((ex, i) => {
+    const exercisesCopy = (s.exercises || []).map((ex, i) => {
       if (i !== exIdx) return ex;
       const currentSets = ex.sets || [];
       const nextNum = currentSets.length + 1;
@@ -358,7 +366,7 @@ export function SessionView({
   };
 
   const removeSet = async (s: TrainingSession, exIdx: number, setIdx: number) => {
-    const exercisesCopy = s.exercises.map((ex, i) =>
+    const exercisesCopy = (s.exercises || []).map((ex, i) =>
       i !== exIdx || !ex.sets
         ? ex
         : {
@@ -374,7 +382,7 @@ export function SessionView({
     exIdx: number,
     patch: Partial<NonNullable<SessionExercise['cardioDetails']>>
   ) => {
-    const exercisesCopy = s.exercises.map((ex, i) => {
+    const exercisesCopy = (s.exercises || []).map((ex, i) => {
       if (i !== exIdx || !ex.cardioDetails) return ex;
       return { ...ex, cardioDetails: { ...ex.cardioDetails, ...patch } };
     });
@@ -450,11 +458,12 @@ export function SessionView({
       if (r) {
         routineName = r.name;
         sessionExercises = r.exercises.map((re) => {
-          const lastExMatch = lastSessionWithRoutine?.exercises.find((ex) => ex.exerciseId === re.exerciseId);
+          const lastExMatch = (lastSessionWithRoutine?.exercises || []).find((ex) => ex.exerciseId === re.exerciseId);
 
           if (isCardio(re.exerciseId)) {
             return {
               exerciseId: re.exerciseId,
+              notes: '',
               cardioDetails: {
                 cardioType: lastExMatch?.cardioDetails?.cardioType ?? re.cardioType ?? 'Cinta',
                 durationMinutes: lastExMatch?.cardioDetails?.durationMinutes ?? re.durationMinutes ?? 30,
@@ -467,6 +476,7 @@ export function SessionView({
           if (lastExMatch && lastExMatch.sets && lastExMatch.sets.length > 0) {
             return {
               exerciseId: re.exerciseId,
+              notes: '',
               sets: lastExMatch.sets.map((st, i) => ({
                 setNumber: i + 1,
                 reps: st.reps ?? 10,
@@ -479,6 +489,7 @@ export function SessionView({
 
           return {
             exerciseId: re.exerciseId,
+            notes: '',
             sets: Array.from({ length: re.sets ?? 3 }, (_, i) => ({
               setNumber: i + 1,
               reps: re.targetReps ?? 10,
@@ -661,7 +672,7 @@ export function SessionView({
                   <CardBody>
                     <div className="text-center py-3 sm:py-4">
                       <p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">
-                        {activeSession.exercises.length}
+                        {(activeSession.exercises || []).length}
                       </p>
                       <p className="text-xs text-gray-400 mt-0.5 break-words">Ejercicios</p>
                     </div>
@@ -690,7 +701,7 @@ export function SessionView({
               </Card>
 
               <div className="space-y-4">
-                {activeSession.exercises.map((ex, exIdx) => {
+                {(activeSession.exercises || []).map((ex, exIdx) => {
                   const isExCardio = isCardio(ex.exerciseId) || !!ex.cardioDetails;
                   const cardioData = ex.cardioDetails ?? {
                     cardioType: 'Cinta',
@@ -744,13 +755,23 @@ export function SessionView({
                         </div>
                       </CardHeader>
                       <CardBody>
-                        <div className={isExCardio ? 'p-4' : 'p-0'}>
+                        <div className="space-y-3">
+                          <div>
+                            <input
+                              type="text"
+                              value={ex.notes ?? ''}
+                              onChange={(e) => updateExerciseNotes(activeSession, exIdx, e.target.value)}
+                              placeholder="Notas o sensaciones de este ejercicio..."
+                              className="w-full px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                            />
+                          </div>
+
                           {isExCardio ? (
                             <div className="flex flex-col sm:flex-row sm:items-end gap-3 p-3 rounded-xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30">
                               <div className="flex-1">
                                 <Label>Tipo de Cardio</Label>
                                 <Select
-                                  value={cardioData.cardioType}
+                                  value={cardioData.cardioType ?? 'Cinta'}
                                   onChange={(e) =>
                                     updateCardioDetails(activeSession, exIdx, { cardioType: e.target.value })
                                   }
@@ -836,7 +857,7 @@ export function SessionView({
                                       >
                                         <td className="px-1 py-2.5 whitespace-nowrap align-middle text-center">
                                           <div className="font-bold text-sm text-gray-900 dark:text-gray-100">
-                                            {set.setNumber}
+                                            {set.setNumber ?? setIdx + 1}
                                           </div>
                                         </td>
 
