@@ -26,13 +26,8 @@ function AppContent() {
 
   return (
     <Layout view={view} onView={setView}>
-      {/* Al componente de ejercicios le pasamos las propiedades que está requiriendo */}
-      {view === 'exercises' && (
-        <ExercisesView 
-          activeSessionId={activeSessionId} 
-          onActiveSessionChange={setActiveSessionId} 
-        />
-      )}
+      {/* Vista del Catálogo de Ejercicios */}
+      {view === 'exercises' && <ExercisesView />}
       
       {/* Vista de Rutinas */}
       {view === 'routines' && <RoutinesView />}
