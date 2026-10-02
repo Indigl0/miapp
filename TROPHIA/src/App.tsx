@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from '@/lib/auth';
 import { Layout, type View } from '@/components/Layout';
 import { LoginView } from '@/components/LoginView';
 import { AdminPanel } from '@/components/AdminPanel';
-import { ExercisesView } from '@/components/ExercisesView';
+import { ExercisesView } from '@/components/ExercisesView'; 
 import { RoutinesView } from '@/components/RoutinesView';
 import { SessionView } from '@/components/SessionView';
 import { AnalyticsView } from '@/components/AnalyticsView';
@@ -26,9 +26,25 @@ function AppContent() {
 
   return (
     <Layout view={view} onView={setView}>
-      {view === 'exercises' && <ExercisesView />}
+      {/* Al componente de ejercicios le pasamos las propiedades que está requiriendo */}
+      {view === 'exercises' && (
+        <ExercisesView 
+          activeSessionId={activeSessionId} 
+          onActiveSessionChange={setActiveSessionId} 
+        />
+      )}
+      
+      {/* Vista de Rutinas */}
       {view === 'routines' && <RoutinesView />}
-      {view === 'session' && <SessionView activeSessionId={activeSessionId} onActiveSessionChange={setActiveSessionId} />}
+      
+      {/* Vista de Sesión de Entrenamiento Activa */}
+      {view === 'session' && (
+        <SessionView 
+          activeSessionId={activeSessionId} 
+          onActiveSessionChange={setActiveSessionId} 
+        />
+      )}
+      
       {view === 'analytics' && <AnalyticsView />}
       {view === 'metrics' && <MetricsView />}
       {view === 'admin' && user.role === 'admin' && <AdminPanel />}
