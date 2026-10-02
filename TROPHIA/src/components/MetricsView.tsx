@@ -58,18 +58,22 @@ const formatChartDate = (dateStr: string) => {
   return `${day} ${MONTHS_ES[monthIdx] || month} ${year}`;
 };
 
-function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
+function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name?: string; value?: number; color?: string }>; label?: string }) {
   if (!active || !payload || payload.length === 0) return null;
   return (
     <div className="rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-xl px-3.5 py-2.5">
       <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 break-words">
         {label ? formatChartDate(label) : ''}
       </p>
-      {payload.map((p, i) => (
-        <p key={i} className="text-sm font-bold break-words" style={{ color: p.color }}>
-          {p.name}: {p.value.toLocaleString('es-ES')} {p.name.includes('Grasa') ? '%' : 'kg'}
-        </p>
-      ))}
+      {payload.map((p, i) => {
+        if (!p || p.value === undefined) return null;
+        const name = p.name || '';
+        return (
+          <p key={i} className="text-sm font-bold break-words" style={{ color: p.color || '#f97316' }}>
+            {name}: {p.value.toLocaleString('es-ES')} {name.includes('Grasa') ? '%' : 'kg'}
+          </p>
+        );
+      })}
     </div>
   );
 }
@@ -309,7 +313,7 @@ export function MetricsView() {
         </div>
         <button
           onClick={() => (editingProfile ? handleSaveProfile() : setEditingProfile(true))}
-          className="flex items-center justify-center gap-2 rounded-xl bg-brand-500 text-white px-4 py-2.5 text-sm font-semibold hover:bg-brand-600 shadow-sm shadow-brand-500/30 transition-all w-fit"
+          className="flex items-center justify-center gap-2 rounded-xl bg-brand-500 text-white px-4 py-2.5 text-sm font-semibold hover:bg-brand-600 shadow-sm shadow-brand-500/30 transition-all w-fit cursor-pointer"
         >
           {editingProfile ? <Check size={16} /> : <Edit2 size={16} />}
           <span>{editingProfile ? 'Guardar Perfil' : 'Editar Datos Base'}</span>
@@ -414,7 +418,7 @@ export function MetricsView() {
       <div className="flex border-b border-gray-200 dark:border-gray-800">
         <button
           onClick={() => setActiveTab('weight')}
-          className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all ${
+          className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
             activeTab === 'weight'
               ? 'border-brand-500 text-brand-500'
               : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
@@ -425,7 +429,7 @@ export function MetricsView() {
         </button>
         <button
           onClick={() => setActiveTab('measurements')}
-          className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all ${
+          className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
             activeTab === 'measurements'
               ? 'border-brand-500 text-brand-500'
               : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
@@ -505,7 +509,7 @@ export function MetricsView() {
               </div>
               <button
                 type="submit"
-                className="w-full sm:w-auto shrink-0 h-11 flex items-center justify-center gap-2 rounded-xl bg-brand-500 text-white px-6 text-sm font-semibold hover:bg-brand-600 shadow-sm shadow-brand-500/30 transition-all"
+                className="w-full sm:w-auto shrink-0 h-11 flex items-center justify-center gap-2 rounded-xl bg-brand-500 text-white px-6 text-sm font-semibold hover:bg-brand-600 shadow-sm shadow-brand-500/30 transition-all cursor-pointer"
               >
                 <Plus size={18} />
                 <span>Guardar Peso</span>
@@ -576,7 +580,7 @@ export function MetricsView() {
                           <p className="text-xs text-gray-400">{formatChartDate(item.date)}</p>
                         </div>
                       </div>
-                      <button onClick={() => handleDeleteWeightLog(item.id)} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors">
+                      <button onClick={() => handleDeleteWeightLog(item.id)} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors cursor-pointer">
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -729,7 +733,7 @@ export function MetricsView() {
               <div>
                 <button
                   type="submit"
-                  className="w-full h-11 flex items-center justify-center gap-2 rounded-xl bg-brand-500 text-white px-4 text-sm font-semibold hover:bg-brand-600 shadow-sm shadow-brand-500/30 transition-all"
+                  className="w-full h-11 flex items-center justify-center gap-2 rounded-xl bg-brand-500 text-white px-4 text-sm font-semibold hover:bg-brand-600 shadow-sm shadow-brand-500/30 transition-all cursor-pointer"
                 >
                   <Plus size={16} />
                   <span>Guardar</span>
@@ -738,12 +742,11 @@ export function MetricsView() {
             </div>
           </form>
 
-          {/* HISTORIAL DE MEDIDAS (ADAPTADO MÓVIL Y DESKTOP) */}
+          {/* HISTORIAL DE MEDIDAS */}
           <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-6 shadow-sm">
             <h3 className="text-base font-bold mb-4">Historial de Medidas Corporales</h3>
             {reversedBodyLogs.length > 0 ? (
               <>
-                {/* VISTA MÓVIL (Tarjetas limpias y legibles) */}
                 <div className="block md:hidden space-y-3">
                   {reversedBodyLogs.map((item) => (
                     <div key={item.id} className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 space-y-3">
@@ -754,7 +757,7 @@ export function MetricsView() {
                         </div>
                         <button
                           onClick={() => handleDeleteBodyLog(item.id)}
-                          className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                          className="p-1 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
                           title="Eliminar registro"
                         >
                           <Trash2 size={16} />
@@ -791,7 +794,6 @@ export function MetricsView() {
                   ))}
                 </div>
 
-                {/* VISTA DESKTOP (Tabla tradicional con espaciado amplio) */}
                 <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead>
@@ -819,7 +821,7 @@ export function MetricsView() {
                           <td className="py-3 px-2 text-right whitespace-nowrap">
                             <button
                               onClick={() => handleDeleteBodyLog(item.id)}
-                              className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                              className="p-1.5 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
                             >
                               <Trash2 size={16} />
                             </button>

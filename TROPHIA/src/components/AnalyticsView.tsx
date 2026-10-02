@@ -42,7 +42,7 @@ interface ExerciseProgress {
   distanceKm?: number; 
 }
 
-function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
+function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name?: string; value?: number; color?: string }>; label?: string }) {
   if (!active || !payload || payload.length === 0) return null;
   return (
     <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-xl p-3.5 min-w-[170px] animate-in fade-in zoom-in-95 duration-150 z-50">
@@ -50,17 +50,22 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
         {label}
       </p>
       <div className="space-y-1">
-        {payload.map((p, i) => (
-          <div key={i} className="flex items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="h-2 w-2 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: p.color }} />
-              <span className="text-gray-600 dark:text-gray-300 font-medium truncate">{p.name}</span>
+        {payload.map((p, i) => {
+          if (!p || p.value === undefined) return null;
+          const name = p.name || '';
+          const val = p.value;
+          return (
+            <div key={i} className="flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="h-2 w-2 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: p.color || '#f97316' }} />
+                <span className="text-gray-600 dark:text-gray-300 font-medium truncate">{name}</span>
+              </div>
+              <span className="font-mono font-bold text-gray-900 dark:text-gray-100">
+                {typeof val === 'number' && name.includes('RIR') ? val.toFixed(1) : val.toLocaleString('es-ES')}
+              </span>
             </div>
-            <span className="font-mono font-bold text-gray-900 dark:text-gray-100">
-              {typeof p.value === 'number' && p.name.includes('RIR') ? p.value.toFixed(1) : p.value.toLocaleString('es-ES')}
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -69,8 +74,8 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 function ConsistencyHeatmap({ sessions }: { sessions: TrainingSession[] }) {
   const datesSet = useMemo(() => {
     const set = new Set<string>();
-    sessions.forEach(s => {
-      if (s.completed && !s.deletedAt) {
+    (sessions || []).forEach(s => {
+      if (s?.completed && !s?.deletedAt && s?.date) {
         const d = new Date(s.date);
         set.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
       }
@@ -169,8 +174,8 @@ export function AnalyticsView() {
   }, [timeRange]);
   
   const completedSessions = useMemo(() => 
-    sessions
-      .filter((s) => s.completed && !s.deletedAt && s.date >= rangeCutoff)
+    (sessions || [])
+      .filter((s) => s && s.completed && !s.deletedAt && s.date >= rangeCutoff)
       .sort((a, b) => b.date - a.date), 
     [sessions, rangeCutoff]
   );
@@ -186,7 +191,7 @@ export function AnalyticsView() {
 
   const expandAll = useCallback(() => {
     const allExpanded: Record<string, boolean> = {};
-    completedSessions.forEach((s) => { allExpanded[s.id] = true; });
+    completedSessions.forEach((s) => { if (s?.id) allExpanded[s.id] = true; });
     setExpandedSessions(allExpanded);
   }, [completedSessions]);
 
@@ -194,13 +199,11 @@ export function AnalyticsView() {
     setExpandedSessions({});
   }, []);
 
-  // Exportar PDF con html2pdf.js (Funciona directo en PWA iOS / Android)
   const handleExportPDF = async () => {
     try {
       setIsExporting(true);
       expandAll();
 
-      // Breve espera para asegurar que el DOM expanda todas las sesiones
       await new Promise((resolve) => setTimeout(resolve, 300));
 
       const element = document.querySelector('.printable-area') as HTMLElement;
@@ -226,6 +229,7 @@ export function AnalyticsView() {
   const dailyVolume = useMemo<DayVolume[]>(() => {
     const map = new Map<number, DayVolume>();
     completedSessions.forEach((s) => {
+      if (!s || !s.date) return;
       const day = new Date(s.date); 
       day.setHours(0, 0, 0, 0);
       const ts = day.getTime();
@@ -234,12 +238,12 @@ export function AnalyticsView() {
       let sets = 0;
       let cardioMinutes = 0;
 
-      s.exercises.forEach((ex) => {
-        if (ex.sets) {
-          vol += ex.sets.reduce((a, set) => a + (set.completed ? (set.reps || 0) * (set.weight || 0) : 0), 0);
-          sets += ex.sets.filter((set) => set.completed).length;
-        }
-        if (ex.cardioDetails && ex.cardioDetails.completed) {
+      (s.exercises || []).forEach((ex) => {
+        const setList = ex?.sets || [];
+        vol += setList.reduce((a, set) => a + (set && set.completed ? (set.reps || 0) * (set.weight || 0) : 0), 0);
+        sets += setList.filter((set) => set && set.completed).length;
+
+        if (ex?.cardioDetails && ex.cardioDetails.completed) {
           cardioMinutes += ex.cardioDetails.durationMinutes || 0;
         }
       });
@@ -259,30 +263,30 @@ export function AnalyticsView() {
   const globalAvgRir = useMemo(() => {
     let totalRir = 0;
     let count = 0;
-    completedSessions.forEach((s) => s.exercises.forEach((ex) => {
-      if (ex.sets) {
-        ex.sets.forEach((set) => {
-          if (set.completed && typeof set.rir === 'number') {
-            totalRir += set.rir;
-            count++;
-          }
-        });
-      }
+    completedSessions.forEach((s) => (s?.exercises || []).forEach((ex) => {
+      (ex?.sets || []).forEach((set) => {
+        if (set && set.completed && typeof set.rir === 'number') {
+          totalRir += set.rir;
+          count++;
+        }
+      });
     }));
     return count > 0 ? (totalRir / count) : null;
   }, [completedSessions]);
 
   const muscleGroupVolume = useMemo(() => {
     const map = new Map<string, number>();
-    completedSessions.forEach((s) => s.exercises.forEach((ex) => {
-      const exercise = exercises.find((e) => e.id === ex.exerciseId);
+    const safeExercises = exercises || [];
+
+    completedSessions.forEach((s) => (s?.exercises || []).forEach((ex) => {
+      if (!ex) return;
+      const exercise = safeExercises.find((e) => e?.id === ex.exerciseId);
       if (!exercise || !exercise.muscleGroup) return;
 
       const group = exercise.muscleGroup;
-      if (ex.sets) {
-        const vol = ex.sets.reduce((a, set) => a + (set.completed ? (set.reps || 0) * (set.weight || 0) : 0), 0);
-        map.set(group, (map.get(group) || 0) + vol);
-      }
+      const setList = ex.sets || [];
+      const vol = setList.reduce((a, set) => a + (set && set.completed ? (set.reps || 0) * (set.weight || 0) : 0), 0);
+      map.set(group, (map.get(group) || 0) + vol);
     }));
 
     return Array.from(map.entries())
@@ -293,8 +297,8 @@ export function AnalyticsView() {
   const exerciseProgress = useMemo<ExerciseProgress[]>(() => {
     const map = new Map<number, { weight: number; volume: number; durationMinutes: number; distanceKm: number; rirSum: number; rirCount: number; max1RM: number }>();
     
-    completedSessions.forEach((s) => s.exercises.forEach((ex) => {
-      if (selectedExercise !== 'all' && ex.exerciseId !== selectedExercise) return;
+    completedSessions.forEach((s) => (s?.exercises || []).forEach((ex) => {
+      if (!ex || (selectedExercise !== 'all' && ex.exerciseId !== selectedExercise)) return;
       
       const day = new Date(s.date); 
       day.setHours(0, 0, 0, 0);
@@ -311,9 +315,10 @@ export function AnalyticsView() {
         } else {
           map.set(ts, { weight: 0, volume: 0, durationMinutes: mins, distanceKm: dist, rirSum: 0, rirCount: 0, max1RM: 0 });
         }
-      } else if (ex.sets) {
-        const completedSets = ex.sets.filter((set) => set.completed);
-        const topWeight = Math.max(...completedSets.map((set) => set.weight || 0), 0);
+      } else {
+        const setList = ex.sets || [];
+        const completedSets = setList.filter((set) => set && set.completed);
+        const topWeight = completedSets.length > 0 ? Math.max(...completedSets.map((set) => set.weight || 0), 0) : 0;
         const vol = completedSets.reduce((a, set) => a + (set.reps || 0) * (set.weight || 0), 0);
         
         let dayMax1RM = 0;
@@ -367,7 +372,7 @@ export function AnalyticsView() {
   const totalSets = useMemo(() => dailyVolume.reduce((sum, d) => sum + d.sets, 0), [dailyVolume]);
   const totalCardioMinutes = useMemo(() => dailyVolume.reduce((sum, d) => sum + d.cardioMinutes, 0), [dailyVolume]);
 
-  const currentExercise = useMemo(() => exercises.find((e) => e.id === selectedExercise), [exercises, selectedExercise]);
+  const currentExercise = useMemo(() => (exercises || []).find((e) => e?.id === selectedExercise), [exercises, selectedExercise]);
   const isSelectedCardio = currentExercise?.muscleGroup === 'Cardio';
   const currentExerciseName = selectedExercise === 'all' 
     ? 'Todos los ejercicios' 
@@ -403,7 +408,7 @@ export function AnalyticsView() {
         <Card><CardBody className="text-center py-4"><Flame size={18} className="text-blue-500 mx-auto mb-1" /><p className="text-xl font-bold">{totalCardioMinutes}m</p><p className="text-xs text-gray-400">Cardio</p></CardBody></Card>
       </div>
 
-      <ConsistencyHeatmap sessions={sessions} />
+      <ConsistencyHeatmap sessions={sessions || []} />
 
       {/* Filtros */}
       <div className="no-print flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
@@ -445,7 +450,7 @@ export function AnalyticsView() {
               >
                 Todos los ejercicios (General)
               </button>
-              {exercises.map((ex) => (
+              {(exercises || []).map((ex) => (
                 <button
                   key={ex.id}
                   onClick={() => { setSelectedExercise(ex.id); setIsDropdownOpen(false); }}
@@ -604,11 +609,11 @@ export function AnalyticsView() {
             <div className="space-y-4">
               {visibleSessions.map((session) => {
                 const isExpanded = expandedSessions[session.id] || false;
-                const sessionVol = session.exercises.reduce((acc, ex) => {
-                  if (!ex.sets) return acc;
-                  return acc + ex.sets.reduce((sAcc, set) => sAcc + (set.completed ? (set.reps || 0) * (set.weight || 0) : 0), 0);
+                const sessionVol = (session.exercises || []).reduce((acc, ex) => {
+                  const setList = ex?.sets || [];
+                  return acc + setList.reduce((sAcc, set) => sAcc + (set && set.completed ? (set.reps || 0) * (set.weight || 0) : 0), 0);
                 }, 0);
-                const completedSetsCount = session.exercises.reduce((acc, ex) => acc + (ex.sets?.filter(s => s.completed).length || 0), 0);
+                const completedSetsCount = (session.exercises || []).reduce((acc, ex) => acc + (ex?.sets?.filter(s => s && s.completed).length || 0), 0);
 
                 return (
                   <div key={session.id} className="border border-gray-200 dark:border-gray-800 rounded-2xl p-4 bg-white/50 dark:bg-gray-900/50 transition-all">
@@ -637,16 +642,17 @@ export function AnalyticsView() {
 
                     {isExpanded && (
                       <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 space-y-3 animate-fade-in">
-                        {session.exercises.map((ex, idx) => {
-                          const exerciseObj = exercises.find(e => e.id === ex.exerciseId);
+                        {(session.exercises || []).map((ex, idx) => {
+                          const exerciseObj = (exercises || []).find(e => e?.id === ex.exerciseId);
+                          const setList = ex?.sets || [];
                           return (
                             <div key={idx} className="bg-gray-50 dark:bg-gray-800/40 rounded-xl p-3">
                               <p className="font-semibold text-xs sm:text-sm text-brand-600 dark:text-brand-400 mb-2">
                                 {exerciseObj?.name || 'Ejercicio'} <span className="text-[11px] text-gray-400 font-normal">({exerciseObj?.muscleGroup || 'General'})</span>
                               </p>
-                              {ex.sets && ex.sets.length > 0 && (
+                              {setList.length > 0 && (
                                 <div className="space-y-1.5">
-                                  {ex.sets.map((set, sIdx) => (
+                                  {setList.map((set, sIdx) => (
                                     <div key={sIdx} className="flex items-center justify-between text-xs font-mono bg-white dark:bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-gray-800">
                                       <div className="flex items-center gap-3">
                                         <span className="text-gray-400 font-sans font-bold">#{sIdx + 1}</span>
