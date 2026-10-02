@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ClipboardList, Plus, Pencil, Trash2, X } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { ClipboardList, Plus, Pencil, Trash2, X, HelpCircle, Sparkles, Lightbulb } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
@@ -47,11 +47,50 @@ export function RoutinesView() {
   });
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [editing, setEditing] = useState<Routine | null>(null);
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
 
   const getExercise = (id: string) => exercises.find((e) => e.id === id);
   const isCardio = (id: string) => getExercise(id)?.muscleGroup?.toLowerCase() === 'cardio';
+
+  // Insights / Diagnóstico para Rutinas
+  const routineInsights = useMemo(() => {
+    if (routines.length === 0) {
+      return {
+        tag: 'SIN RUTINAS',
+        color: 'gray',
+        message: 'Aún no has creado ninguna plantilla de rutina. Diseña tu primera rutina estructurada para optimizar tus entrenamientos.',
+      };
+    }
+
+    let totalSeries = 0;
+    const muscleMap: Record<string, number> = {};
+
+    routines.forEach((r) => {
+      r.exercises.forEach((re) => {
+        const ex = getExercise(re.exerciseId);
+        if (ex && ex.muscleGroup && ex.muscleGroup.toLowerCase() !== 'cardio') {
+          const sets = re.sets || 3;
+          totalSeries += sets;
+          const group = ex.muscleGroup;
+          muscleMap[group] = (muscleMap[group] || 0) + sets;
+        }
+      });
+    });
+
+    const topMuscle = Object.entries(muscleMap).sort((a, b) => b[1] - a[1])[0];
+
+    return {
+      tag: 'VOLUMEN ESTRUCTURADO',
+      color: 'emerald',
+      message: `Tienes ${routines.length} ${routines.length === 1 ? 'rutina configurada' : 'rutinas configuradas'} con un total de ${totalSeries} series efectivas programadas. ${
+        topMuscle
+          ? `El grupo muscular con mayor volumen planificado es ${topMuscle[0]} (${topMuscle[1]} series).`
+          : ''
+      }`,
+    };
+  }, [routines, exercises]);
 
   const openCreate = () => {
     setEditing(null);
@@ -296,14 +335,42 @@ export function RoutinesView() {
             Rutinas
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 break-words">
-            Plantillas reutilizables de entrenamiento.
+            Plantillas reutilizables para estructurar tus entrenamientos.
           </p>
         </div>
-        <Button onClick={openCreate} className="shrink-0">
-          <Plus size={18} />
-          Nueva Rutina
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" onClick={() => setGuideOpen(true)} className="gap-2">
+            <HelpCircle size={18} />
+            <span className="hidden sm:inline">Guía de Rutinas</span>
+          </Button>
+          <Button onClick={openCreate} className="shrink-0">
+            <Plus size={18} />
+            Nueva Rutina
+          </Button>
+        </div>
       </header>
+
+      {/* Tarjeta de Diagnóstico Inteligente */}
+      <Card className="border border-brand-500/20 bg-gradient-to-br from-brand-500/5 via-transparent to-transparent">
+        <CardBody className="p-4 sm:p-5">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 rounded-2xl bg-brand-500/10 text-brand-500 shrink-0 mt-0.5">
+              <Sparkles size={20} />
+            </div>
+            <div className="space-y-1 min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold text-xs tracking-wider uppercase text-brand-600 dark:text-brand-400">
+                  Diagnóstico de Rutinas
+                </span>
+                <Badge color={routineInsights.color as any}>{routineInsights.tag}</Badge>
+              </div>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                {routineInsights.message}
+              </p>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
 
       {routines.length === 0 ? (
         <Card>
@@ -361,6 +428,52 @@ export function RoutinesView() {
         </div>
       )}
 
+      {/* Modal Guía Explicativa */}
+      <Modal open={guideOpen} onClose={() => setGuideOpen(false)} title="Guía de Rutinas TROPHIA" size="md">
+        <div className="space-y-4">
+          <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/50 flex items-start gap-3">
+            <Lightbulb size={20} className="text-amber-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+              Las rutinas son plantillas prediseñadas que facilitan el registro acelerado de tus entrenamientos diarios sin repetir la configuración cada vez.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 space-y-1">
+              <h4 className="font-bold text-xs sm:text-sm text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                1. Selección y Orden de Ejercicios
+              </h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Ubica al inicio de la rutina los ejercicios multiarticulares más demandantes (Sentadilla, Press Banco, Peso Muerto) cuando tus niveles de energía son máximos.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 space-y-1">
+              <h4 className="font-bold text-xs sm:text-sm text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                2. Volumen Semanal Objetivo (10-20 series)
+              </h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Asegúrate de que tus rutinas sumen entre 10 y 20 series efectivas por grupo muscular a la semana para maximizar la hipertrofia sin sobrepasar tu capacidad de recuperación.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 space-y-1">
+              <h4 className="font-bold text-xs sm:text-sm text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                3. Tiempos de Descanso
+              </h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Configura un temporizador adecuado (90 a 180 segundos en básicos y 60 a 90 segundos en aislados) para activar el cronómetro automático al completar cada serie.
+              </p>
+            </div>
+          </div>
+
+          <Button onClick={() => setGuideOpen(false)} className="w-full mt-2">
+            Entendido
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Modal Formulario Crear / Editar */}
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}

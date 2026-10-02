@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   ListChecks,
   Plus,
@@ -14,6 +14,9 @@ import {
   Activity,
   ChevronDown,
   BellRing,
+  HelpCircle,
+  Sparkles,
+  Lightbulb,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useLiveQuery } from '@/lib/useLiveQuery';
@@ -192,6 +195,7 @@ export function ExercisesView({
   const currentRoutine = routines.find((r) => r.id === activeSession?.routineId);
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
   const [localNotes, setLocalNotes] = useState('');
   const [visibleCount, setVisibleCount] = useState(6);
@@ -202,6 +206,42 @@ export function ExercisesView({
   const [isTimerFinished, setIsTimerFinished] = useState<boolean>(false);
   const [screenFlash, setScreenFlash] = useState<boolean>(false);
   const restTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Insights / Diagnóstico para Sesión
+  const sessionInsights = useMemo(() => {
+    if (activeSession) {
+      const vol = totalVolume(activeSession);
+      const done = completedSets(activeSession);
+      const total = totalSets(activeSession);
+      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+      return {
+        tag: activeSession.completed ? 'SESIÓN COMPLETADA' : `EN PROGRESO (${pct}%)`,
+        color: activeSession.completed ? 'emerald' : 'amber',
+        message: activeSession.completed
+          ? `Sesión finalizada con un volumen total acumulado de ${vol.toFixed(1)} kg a través de ${done} bloques completados.`
+          : `Llevas ${done} de ${total} bloques completados en esta sesión (${vol.toFixed(1)} kg volumen actual). ¡Mantén la intensidad constante!`,
+      };
+    }
+
+    const completedSessions = sessions.filter((s) => s.completed);
+    if (completedSessions.length === 0) {
+      return {
+        tag: 'SIN HISTORIAL',
+        color: 'gray',
+        message: 'Aún no has completado ninguna sesión de entrenamiento. Inicia una rutina o crea una sesión libre para comenzar a registrar tu sobrecarga.',
+      };
+    }
+
+    const lastSession = completedSessions[0];
+    const totalVolLast = totalVolume(lastSession);
+
+    return {
+      tag: 'ÚLTIMA SESIÓN',
+      color: 'blue',
+      message: `En tu última sesión (${lastSession.routineName}) acumulaste ${totalVolLast.toFixed(1)} kg de volumen total. ¡Asegúrate de superar tus marcas hoy!`,
+    };
+  }, [activeSession, sessions]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -281,8 +321,8 @@ export function ExercisesView({
     return null;
   };
 
-  const totalVolume = (s: TrainingSession) =>
-    (s.exercises || []).reduce(
+  function totalVolume(s: TrainingSession) {
+    return (s.exercises || []).reduce(
       (sum, ex) =>
         sum +
         (ex.sets
@@ -290,18 +330,21 @@ export function ExercisesView({
           : 0),
       0
     );
+  }
 
-  const completedSets = (s: TrainingSession) =>
-    (s.exercises || []).reduce((sum, ex) => {
+  function completedSets(s: TrainingSession) {
+    return (s.exercises || []).reduce((sum, ex) => {
       if (ex.cardioDetails) return sum + (ex.cardioDetails.completed ? 1 : 0);
       return sum + (ex.sets ? ex.sets.filter((set) => set.completed).length : 0);
     }, 0);
+  }
 
-  const totalSets = (s: TrainingSession) =>
-    (s.exercises || []).reduce((sum, ex) => {
+  function totalSets(s: TrainingSession) {
+    return (s.exercises || []).reduce((sum, ex) => {
       if (ex.cardioDetails) return sum + 1;
       return sum + (ex.sets ? ex.sets.length : 0);
     }, 0);
+  }
 
   const updateSession = async (s: TrainingSession) => {
     const updated = { ...s, userId: s.userId || currentUserId || '', updatedAt: now() };
@@ -595,6 +638,53 @@ export function ExercisesView({
         </div>
       )}
 
+      {/* Modal Guía Explicativa de Sesión */}
+      <Modal open={guideOpen} onClose={() => setGuideOpen(false)} title="Guía de Ejecución en Tiempo Real" size="md">
+        <div className="space-y-4">
+          <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/50 flex items-start gap-3">
+            <Lightbulb size={20} className="text-amber-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+              El panel de Sesión en Tiempo Real te permite registrar cada repetición, peso utilizado e intensidad percibida (RIR) con máxima precisión durante el entrenamiento.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 space-y-1">
+              <h4 className="font-bold text-xs sm:text-sm text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                1. Indicador RIR (Repeticiones en Recámara)
+              </h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                • <strong>RIR 0:</strong> Fallo muscular técnico.<br />
+                • <strong>RIR 1-2:</strong> Zona ideal para máxima hipertrofia.<br />
+                • <strong>RIR 3+:</strong> Calentamiento o esfuerzo moderado.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 space-y-1">
+              <h4 className="font-bold text-xs sm:text-sm text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                2. Referencia de Sesión Anterior (prev)
+              </h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Utiliza el valor sombra <span className="font-mono text-[10px]">prev</span> que aparece debajo de los campos para recordar exactamente el peso y reps que hiciste en la última sesión e intentar superarlos.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 space-y-1">
+              <h4 className="font-bold text-xs sm:text-sm text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                3. Autotimer de Descanso
+              </h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Al marcar la casilla de verificación de cada serie se activará automáticamente la cuenta regresiva de descanso si está definida en la rutina.
+              </p>
+            </div>
+          </div>
+
+          <Button onClick={() => setGuideOpen(false)} className="w-full mt-2">
+            Entendido
+          </Button>
+        </div>
+      </Modal>
+
       {activeSession ? (
         (() => {
           const vol = totalVolume(activeSession);
@@ -624,6 +714,10 @@ export function ExercisesView({
                   </h2>
                 </div>
                 <div className="flex gap-2 shrink-0">
+                  <Button variant="outline" onClick={() => setGuideOpen(true)} className="gap-2">
+                    <HelpCircle size={18} />
+                    <span className="hidden sm:inline">Guía de Sesión</span>
+                  </Button>
                   {!activeSession.completed && (
                     <Button onClick={() => finishSession(activeSession)}>
                       <Check size={18} />
@@ -642,6 +736,28 @@ export function ExercisesView({
                   </Button>
                 </div>
               </div>
+
+              {/* Tarjeta de Diagnóstico de la Sesión Activa */}
+              <Card className="border border-brand-500/20 bg-gradient-to-br from-brand-500/5 via-transparent to-transparent">
+                <CardBody className="p-4 sm:p-5">
+                  <div className="flex items-start gap-3.5">
+                    <div className="p-2.5 rounded-2xl bg-brand-500/10 text-brand-500 shrink-0 mt-0.5">
+                      <Sparkles size={20} />
+                    </div>
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-xs tracking-wider uppercase text-brand-600 dark:text-brand-400">
+                          Diagnóstico en Tiempo Real
+                        </span>
+                        <Badge color={sessionInsights.color as any}>{sessionInsights.tag}</Badge>
+                      </div>
+                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                        {sessionInsights.message}
+                      </p>
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
 
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <CalendarPicker value={activeSession.date} onChange={(ts) => updateDate(activeSession, ts)} />
@@ -980,6 +1096,10 @@ export function ExercisesView({
               </p>
             </div>
             <div className="flex gap-2 shrink-0 flex-wrap">
+              <Button variant="outline" onClick={() => setGuideOpen(true)} className="gap-2">
+                <HelpCircle size={18} />
+                <span className="hidden sm:inline">Guía de Sesión</span>
+              </Button>
               <Button variant="outline" onClick={() => setIsTrashOpen(true)}>
                 <Trash2 size={18} /> Papelera ({trashSessions.length})
               </Button>
@@ -989,6 +1109,28 @@ export function ExercisesView({
               </Button>
             </div>
           </div>
+
+          {/* Tarjeta de Diagnóstico Inteligente Sin Sesión Activa */}
+          <Card className="border border-brand-500/20 bg-gradient-to-br from-brand-500/5 via-transparent to-transparent">
+            <CardBody className="p-4 sm:p-5">
+              <div className="flex items-start gap-3.5">
+                <div className="p-2.5 rounded-2xl bg-brand-500/10 text-brand-500 shrink-0 mt-0.5">
+                  <Sparkles size={20} />
+                </div>
+                <div className="space-y-1 min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-xs tracking-wider uppercase text-brand-600 dark:text-brand-400">
+                      Diagnóstico de Sesiones
+                    </span>
+                    <Badge color={sessionInsights.color as any}>{sessionInsights.tag}</Badge>
+                  </div>
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                    {sessionInsights.message}
+                  </p>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
 
           {sessions.length === 0 ? (
             <Card>
