@@ -12,12 +12,12 @@ import { FullPageSpinner } from '@/components/ui/Feedback';
 
 function AppContent() {
   const { user, ready } = useAuth();
-  const [view, setView] = useState<View>('routines');
+  const [view, setView] = useState<View>('session');
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user && user.role !== 'admin' && view === 'admin') {
-      setView('routines');
+      setView('session');
     }
   }, [user, view]);
 

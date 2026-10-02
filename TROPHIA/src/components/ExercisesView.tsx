@@ -206,7 +206,7 @@ export function ExercisesView() {
         </div>
       )}
 
-      {/* Modal Crear Ejercicio */}
+      {/* Modal Crear Ejercicio - Optimizado para celulares con teclado abierto */}
       <Modal
         open={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
@@ -222,7 +222,7 @@ export function ExercisesView() {
           </>
         }
       >
-        <form onSubmit={handleCreateExercise} className="space-y-4">
+        <form onSubmit={handleCreateExercise} className="space-y-4 max-h-[55vh] overflow-y-auto px-1">
           <div>
             <Label>Nombre del ejercicio</Label>
             <Input
