@@ -26,16 +26,26 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: M
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={onClose} />
-      <div className={`relative w-full ${sizeMap[size]} max-h-[92vh] overflow-y-auto scrollbar-thin rounded-t-2xl sm:rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-2xl animate-slide-up sm:animate-fade-in`}>
-        <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md">
+      
+      {/* Contenedor principal adaptado con dvh y flex column para evitar que el teclado lo tape */}
+      <div className={`relative w-full ${sizeMap[size]} max-h-[85dvh] sm:max-h-[90vh] flex flex-col rounded-t-2xl sm:rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-2xl animate-slide-up sm:animate-fade-in overflow-hidden`}>
+        
+        {/* Cabecera fija que no se mueve */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md shrink-0">
           <h2 className="font-condensed text-lg sm:text-xl font-bold tracking-tight">{title}</h2>
           <button onClick={onClose} className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-200 transition-colors" aria-label="Cerrar">
             <X size={20} />
           </button>
         </div>
-        <div className="p-5">{children}</div>
+
+        {/* Cuerpo con scroll interno fluido */}
+        <div className="p-5 overflow-y-auto flex-1 scrollbar-thin">
+          {children}
+        </div>
+
+        {/* Footer siempre visible abajo */}
         {footer && (
-          <div className="sticky bottom-0 px-5 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-md flex gap-3 justify-end">
+          <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-md flex gap-3 justify-end shrink-0">
             {footer}
           </div>
         )}
