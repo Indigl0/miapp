@@ -1,10 +1,19 @@
 export type ID = string;
 
-export type MuscleGroup = 'Pecho' | 'Espalda' | 'Piernas' | 'Hombros' | 'Brazos' | 'Core' | 'Glúteos' | 'Cardio';
+export type MuscleGroup =
+  | 'Pecho'
+  | 'Espalda'
+  | 'Piernas'
+  | 'Hombros'
+  | 'Brazos'
+  | 'Core'
+  | 'Glúteos'
+  | 'Cardio';
 
 export interface Exercise {
   id: ID;
-  userId?: string; // Asociación opcional u obligatoria según tu modelo
+  userId?: string;
+  user_id?: string; // Compatibilidad con esquemas legacy
   name: string;
   muscleGroup: MuscleGroup;
   notes?: string;
@@ -24,7 +33,7 @@ export interface RoutineExercise {
 
 export interface Routine {
   id: ID;
-  userId: string; // <-- AÑADIDO: Asocia la rutina al usuario que la creó
+  userId: string;
   name: string;
   description?: string;
   exercises: RoutineExercise[];
@@ -55,7 +64,7 @@ export interface SessionExercise {
 
 export interface TrainingSession {
   id: ID;
-  userId: string; // <-- AÑADIDO: Asocia la sesión de entrenamiento al usuario
+  userId: string;
   routineId: ID | null;
   routineName: string;
   date: number;
@@ -64,12 +73,20 @@ export interface TrainingSession {
   completed: boolean;
   createdAt: number;
   updatedAt: number;
-  deletedAt?: number; // Protege la papelera
+  deletedAt?: number;
 }
 
 export type MutationOp =
-  | { kind: 'upsert'; table: 'exercises' | 'routines' | 'sessions' | 'metrics'; record: Record<string, unknown> }
-  | { kind: 'delete'; table: 'exercises' | 'routines' | 'sessions' | 'metrics'; id: ID };
+  | {
+      kind: 'upsert';
+      table: 'exercises' | 'routines' | 'sessions' | 'metrics';
+      record: Record<string, unknown>;
+    }
+  | {
+      kind: 'delete';
+      table: 'exercises' | 'routines' | 'sessions' | 'metrics';
+      id: ID;
+    };
 
 export interface MutationQueueEntry {
   id: ID;
@@ -78,12 +95,10 @@ export interface MutationQueueEntry {
   synced: 0 | 1;
 }
 
-// --- TIPOS AÑADIDOS PARA MÉTRICAS Y BACKUP JSON ---
-
 export interface BodyMetric {
   id: ID;
-  userId: string; // <-- AÑADIDO: Asocia las métricas corporales al usuario
-  date: number; // Timestamp
+  userId: string;
+  date: number;
   weightKg?: number;
   bodyFatPercentage?: number;
   chestCm?: number;

@@ -1,5 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
-import { ListChecks, Plus, Check, Trash2, Play, Calendar, CheckCircle2, Clock, X, Save, RotateCcw, Activity, ChevronDown, BellRing } from 'lucide-react';
+import {
+  ListChecks,
+  Plus,
+  Check,
+  Trash2,
+  Play,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  X,
+  Save,
+  RotateCcw,
+  Activity,
+  ChevronDown,
+  BellRing,
+} from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
@@ -14,9 +29,9 @@ import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/Feedback';
 import { Calendar as CalendarPicker } from '@/components/ui/Calendar';
 
-function fmtDate(ts: number): string { 
+function fmtDate(ts: number): string {
   if (!ts) return 'Sin fecha';
-  return new Date(ts).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); 
+  return new Date(ts).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function formatRestTime(seconds?: number): string | null {
@@ -29,13 +44,14 @@ function formatRestTime(seconds?: number): string | null {
   return `${secs} s`;
 }
 
-// AudioContext global reutilizable
 let globalAudioCtx: AudioContext | null = null;
 
 function unlockAudioContext() {
   try {
     if (!globalAudioCtx) {
-      const AudioCtxClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtxClass =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       globalAudioCtx = new AudioCtxClass();
     }
     if (globalAudioCtx.state === 'suspended') {
@@ -57,10 +73,10 @@ function playTimerBeep() {
     const playChord = (freq: number, delay: number, duration: number) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      
+
       osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, nowTime + delay);
-      
+
       gain.gain.setValueAtTime(0.4, nowTime + delay);
       gain.gain.exponentialRampToValueAtTime(0.0001, nowTime + delay + duration);
 
@@ -73,7 +89,7 @@ function playTimerBeep() {
 
     playChord(523.25, 0, 0.25);
     playChord(659.25, 0.15, 0.25);
-    playChord(783.99, 0.30, 0.6);
+    playChord(783.99, 0.3, 0.6);
 
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       navigator.vibrate([300, 100, 300, 100, 500]);
@@ -83,47 +99,65 @@ function playTimerBeep() {
   }
 }
 
-export function SessionView({ activeSessionId, onActiveSessionChange }: { activeSessionId: string | null; onActiveSessionChange: (id: string | null) => void }) {
+export function SessionView({
+  activeSessionId,
+  onActiveSessionChange,
+}: {
+  activeSessionId: string | null;
+  onActiveSessionChange: (id: string | null) => void;
+}) {
   const { user } = useAuth();
   const currentUserId = user?.id;
 
-  // Consulta filtrada estrictamente por el userId activo
-  const rawSessions = useLiveQuery(async () => {
-    if (!currentUserId) return [];
-    const list = await db.sessions.where('userId').equals(currentUserId).toArray();
-    return list.sort((a, b) => (b.date || 0) - (a.date || 0));
-  }, [currentUserId], [] as TrainingSession[]);
-  
+  const rawSessions = useLiveQuery(
+    async () => {
+      if (!currentUserId) return [];
+      const list = await db.sessions.where('userId').equals(currentUserId).toArray();
+      return list.sort((a, b) => (b.date || 0) - (a.date || 0));
+    },
+    [currentUserId],
+    [] as TrainingSession[]
+  );
+
   const allSessions = rawSessions.map((s) => ({
     ...s,
     exercises: (s.exercises || []).map((ex) => ({
       ...ex,
-      sets: ex.sets ? ex.sets.map((st) => ({
-        ...st,
-        reps: st.reps ?? 0,
-        weight: st.weight ?? 0,
-        completed: !!st.completed,
-        rir: st.rir !== undefined ? st.rir : undefined,
-      })) : undefined,
+      sets: ex.sets
+        ? ex.sets.map((st) => ({
+            ...st,
+            reps: st.reps ?? 0,
+            weight: st.weight ?? 0,
+            completed: !!st.completed,
+            rir: st.rir !== undefined ? st.rir : undefined,
+          }))
+        : undefined,
     })),
   }));
 
-  const sessions = allSessions.filter((s) => !(s as TrainingSession & { deletedAt?: number }).deletedAt);
-  const trashSessions = allSessions.filter((s) => (s as TrainingSession & { deletedAt?: number }).deletedAt);
+  const sessions = allSessions.filter((s) => !s.deletedAt);
+  const trashSessions = allSessions.filter((s) => s.deletedAt);
 
-  // Consultas de Ejercicios y Rutinas aisladas por el usuario actual
-  const exercises = useLiveQuery(async () => {
-    if (!currentUserId) return [];
-    const all = await db.exercises.toArray();
-    return all
-      .filter((e) => !e.userId || e.userId === currentUserId)
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [currentUserId], [] as Exercise[]);
+  const exercises = useLiveQuery(
+    async () => {
+      if (!currentUserId) return [];
+      const all = await db.exercises.toArray();
+      return all
+        .filter((e) => !e.userId || e.userId === currentUserId)
+        .sort((a, b) => a.name.localeCompare(b.name));
+    },
+    [currentUserId],
+    [] as Exercise[]
+  );
 
-  const routines = useLiveQuery(async () => {
-    if (!currentUserId) return [];
-    return db.routines.where('userId').equals(currentUserId).sortBy('name');
-  }, [currentUserId], [] as Routine[]);
+  const routines = useLiveQuery(
+    async () => {
+      if (!currentUserId) return [];
+      return db.routines.where('userId').equals(currentUserId).sortBy('name');
+    },
+    [currentUserId],
+    [] as Routine[]
+  );
 
   const activeSessionRaw = useLiveQuery<TrainingSession | undefined>(
     async () => {
@@ -132,22 +166,26 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
       return target && target.userId === currentUserId ? target : undefined;
     },
     [activeSessionId, currentUserId],
-    undefined,
+    undefined
   );
 
-  const activeSession: TrainingSession | undefined = activeSessionRaw ? {
-    ...activeSessionRaw,
-    exercises: (activeSessionRaw.exercises || []).map((ex) => ({
-      ...ex,
-      sets: ex.sets ? ex.sets.map((st) => ({
-        ...st,
-        reps: st.reps ?? 0,
-        weight: st.weight ?? 0,
-        completed: !!st.completed,
-        rir: st.rir !== undefined ? st.rir : undefined,
-      })) : undefined,
-    })),
-  } : undefined;
+  const activeSession: TrainingSession | undefined = activeSessionRaw
+    ? {
+        ...activeSessionRaw,
+        exercises: (activeSessionRaw.exercises || []).map((ex) => ({
+          ...ex,
+          sets: ex.sets
+            ? ex.sets.map((st) => ({
+                ...st,
+                reps: st.reps ?? 0,
+                weight: st.weight ?? 0,
+                completed: !!st.completed,
+                rir: st.rir !== undefined ? st.rir : undefined,
+              }))
+            : undefined,
+        })),
+      }
+    : undefined;
 
   const currentRoutine = routines.find((r) => r.id === activeSession?.routineId);
 
@@ -193,7 +231,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
           playTimerBeep();
           triggerScreenFlash();
           setIsTimerFinished(true);
-          
+
           setTimeout(() => {
             setActiveRestSeconds(null);
             setIsTimerFinished(false);
@@ -242,7 +280,14 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   };
 
   const totalVolume = (s: TrainingSession) =>
-    (s.exercises || []).reduce((sum, ex) => sum + (ex.sets ? ex.sets.reduce((a, set) => a + (set.completed ? (set.reps || 0) * (set.weight || 0) : 0), 0) : 0), 0);
+    (s.exercises || []).reduce(
+      (sum, ex) =>
+        sum +
+        (ex.sets
+          ? ex.sets.reduce((a, set) => a + (set.completed ? (set.reps || 0) * (set.weight || 0) : 0), 0)
+          : 0),
+      0
+    );
 
   const completedSets = (s: TrainingSession) =>
     (s.exercises || []).reduce((sum, ex) => {
@@ -266,7 +311,12 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     unlockAudioContext();
     const isNowCompleted = !s.exercises[exIdx]?.sets?.[setIdx]?.completed;
     const exercisesCopy = s.exercises.map((ex, i) =>
-      i !== exIdx || !ex.sets ? ex : { ...ex, sets: ex.sets.map((set, j) => (j === setIdx ? { ...set, completed: !set.completed } : set)) }
+      i !== exIdx || !ex.sets
+        ? ex
+        : {
+            ...ex,
+            sets: ex.sets.map((set, j) => (j === setIdx ? { ...set, completed: !set.completed } : set)),
+          }
     );
     await updateSession({ ...s, exercises: exercisesCopy });
 
@@ -280,7 +330,12 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
 
   const updateSet = async (s: TrainingSession, exIdx: number, setIdx: number, patch: Partial<SessionSet>) => {
     const exercisesCopy = s.exercises.map((ex, i) =>
-      i !== exIdx || !ex.sets ? ex : { ...ex, sets: ex.sets.map((set, j) => (j === setIdx ? { ...set, ...patch } : set)) }
+      i !== exIdx || !ex.sets
+        ? ex
+        : {
+            ...ex,
+            sets: ex.sets.map((set, j) => (j === setIdx ? { ...set, ...patch } : set)),
+          }
     );
     await updateSession({ ...s, exercises: exercisesCopy });
   };
@@ -291,9 +346,12 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
       const currentSets = ex.sets || [];
       const nextNum = currentSets.length + 1;
       const last = currentSets[currentSets.length - 1];
-      return { 
-        ...ex, 
-        sets: [...currentSets, { setNumber: nextNum, reps: last?.reps ?? 10, weight: last?.weight ?? 0, rir: last?.rir ?? 2, completed: false }] 
+      return {
+        ...ex,
+        sets: [
+          ...currentSets,
+          { setNumber: nextNum, reps: last?.reps ?? 10, weight: last?.weight ?? 0, rir: last?.rir ?? 2, completed: false },
+        ],
       };
     });
     await updateSession({ ...s, exercises: exercisesCopy });
@@ -301,12 +359,21 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
 
   const removeSet = async (s: TrainingSession, exIdx: number, setIdx: number) => {
     const exercisesCopy = s.exercises.map((ex, i) =>
-      i !== exIdx || !ex.sets ? ex : { ...ex, sets: ex.sets.filter((_, j) => j !== setIdx).map((set, j) => ({ ...set, setNumber: j + 1 })) }
+      i !== exIdx || !ex.sets
+        ? ex
+        : {
+            ...ex,
+            sets: ex.sets.filter((_, j) => j !== setIdx).map((set, j) => ({ ...set, setNumber: j + 1 })),
+          }
     );
     await updateSession({ ...s, exercises: exercisesCopy });
   };
 
-  const updateCardioDetails = async (s: TrainingSession, exIdx: number, patch: Partial<NonNullable<SessionExercise['cardioDetails']>>) => {
+  const updateCardioDetails = async (
+    s: TrainingSession,
+    exIdx: number,
+    patch: Partial<NonNullable<SessionExercise['cardioDetails']>>
+  ) => {
     const exercisesCopy = s.exercises.map((ex, i) => {
       if (i !== exIdx || !ex.cardioDetails) return ex;
       return { ...ex, cardioDetails: { ...ex.cardioDetails, ...patch } };
@@ -318,7 +385,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     await updateSession({ ...s, date: newDate });
   };
 
-  const finishSession = async (s: TrainingSession) => { 
+  const finishSession = async (s: TrainingSession) => {
     const filteredExercises = (s.exercises || []).filter((ex) => {
       if (ex.cardioDetails) {
         return ex.cardioDetails.completed === true;
@@ -326,9 +393,9 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
       return true;
     });
 
-    await updateSession({ ...s, exercises: filteredExercises, completed: true, notes: localNotes }); 
+    await updateSession({ ...s, exercises: filteredExercises, completed: true, notes: localNotes });
     showToast('🎉 Sesión finalizada y guardada con éxito.');
-    onActiveSessionChange(null); 
+    onActiveSessionChange(null);
   };
 
   const moveToTrash = async (id: string) => {
@@ -344,7 +411,8 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
   const restoreSession = async (id: string) => {
     const target = allSessions.find((s) => s.id === id);
     if (!target) return;
-    const updated = { ...target, deletedAt: undefined, updatedAt: now() };
+    const { deletedAt, ...rest } = target;
+    const updated: TrainingSession = { ...rest, updatedAt: now() };
     await db.sessions.put(updated);
     await enqueue({ kind: 'upsert', table: 'sessions', record: updated as unknown as Record<string, unknown> });
     showToast('Sesión restaurada correctamente');
@@ -375,18 +443,14 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     let routineName = 'Sesión Libre';
     let sessionExercises: SessionExercise[] = [];
 
-    const lastSessionWithRoutine = routineId 
-      ? sessions.find((s) => s.routineId === routineId && s.completed)
-      : null;
+    const lastSessionWithRoutine = routineId ? sessions.find((s) => s.routineId === routineId && s.completed) : null;
 
     if (routineId) {
       const r = routines.find((rt) => rt.id === routineId);
       if (r) {
         routineName = r.name;
         sessionExercises = r.exercises.map((re) => {
-          const lastExMatch = lastSessionWithRoutine?.exercises.find(
-            (ex) => ex.exerciseId === re.exerciseId
-          );
+          const lastExMatch = lastSessionWithRoutine?.exercises.find((ex) => ex.exerciseId === re.exerciseId);
 
           if (isCardio(re.exerciseId)) {
             return {
@@ -415,12 +479,12 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
 
           return {
             exerciseId: re.exerciseId,
-            sets: Array.from({ length: re.sets ?? 3 }, (_, i) => ({ 
-              setNumber: i + 1, 
-              reps: re.targetReps ?? 10, 
-              weight: 0, 
-              rir: 2, 
-              completed: false 
+            sets: Array.from({ length: re.sets ?? 3 }, (_, i) => ({
+              setNumber: i + 1,
+              reps: re.targetReps ?? 10,
+              weight: 0,
+              rir: 2,
+              completed: false,
             })),
           };
         });
@@ -428,16 +492,16 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     }
 
     const ts = now();
-    const session: TrainingSession = { 
-      id: uuid(), 
-      userId: currentUserId, 
-      routineId: routineId ?? null, 
-      routineName, 
-      date: ts, 
-      exercises: sessionExercises, 
-      completed: false, 
-      createdAt: ts, 
-      updatedAt: ts 
+    const session: TrainingSession = {
+      id: uuid(),
+      userId: currentUserId,
+      routineId: routineId ?? null,
+      routineName,
+      date: ts,
+      exercises: sessionExercises,
+      completed: false,
+      createdAt: ts,
+      updatedAt: ts,
     };
 
     await db.sessions.add(session);
@@ -450,7 +514,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
     const key = `${exIdx}-${setIdx}`;
     const cleanVal = rawVal.replace(/[^0-9.,]/g, '');
     const sanitized = cleanVal.replace(',', '.');
-    
+
     if (sanitized === '' || /^\d*\.?\d*$/.test(sanitized)) {
       setWeightInputs((prev) => ({ ...prev, [key]: cleanVal }));
       const parsed = parseFloat(sanitized);
@@ -486,10 +550,10 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
       )}
 
       {activeRestSeconds !== null && (
-        <div 
+        <div
           className={`fixed bottom-6 left-6 z-50 px-5 py-4 sm:px-6 sm:py-5 rounded-3xl shadow-2xl flex items-center gap-4 transition-all duration-300 border-2 ${
-            isTimerFinished 
-              ? 'bg-emerald-600 border-emerald-400 text-white animate-bounce ring-4 ring-emerald-300/50' 
+            isTimerFinished
+              ? 'bg-emerald-600 border-emerald-400 text-white animate-bounce ring-4 ring-emerald-300/50'
               : 'bg-brand-500 border-brand-400 text-white animate-pulse'
           }`}
         >
@@ -504,15 +568,14 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
               {isTimerFinished ? '¡A ENTRENAR!' : 'DESCANSO ACTIVO'}
             </span>
             <span className="text-3xl sm:text-4xl font-black font-mono tracking-tight leading-none mt-0.5">
-              {isTimerFinished 
-                ? '00:00' 
-                : `${Math.floor(restRemaining / 60)}:${(restRemaining % 60).toString().padStart(2, '0')}`
-              }
+              {isTimerFinished
+                ? '00:00'
+                : `${Math.floor(restRemaining / 60)}:${(restRemaining % 60).toString().padStart(2, '0')}`}
             </span>
           </div>
 
-          <button 
-            onClick={cancelRestTimer} 
+          <button
+            onClick={cancelRestTimer}
             className="ml-2 bg-white/20 hover:bg-white/30 text-white p-2.5 rounded-2xl transition-colors shrink-0"
             title="Cerrar temporizador"
           >
@@ -532,17 +595,40 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <Badge color={activeSession.completed ? 'green' : 'amber'}>
-                      {activeSession.completed ? <><CheckCircle2 size={12} />Completada</> : <><Clock size={12} />En progreso</>}
+                      {activeSession.completed ? (
+                        <>
+                          <CheckCircle2 size={12} />
+                          Completada
+                        </>
+                      ) : (
+                        <>
+                          <Clock size={12} />
+                          En progreso
+                        </>
+                      )}
                     </Badge>
                   </div>
-                  <h2 className="font-condensed text-xl sm:text-2xl font-bold tracking-tight break-words">{activeSession.routineName}</h2>
+                  <h2 className="font-condensed text-xl sm:text-2xl font-bold tracking-tight break-words">
+                    {activeSession.routineName}
+                  </h2>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  {!activeSession.completed && <Button onClick={() => finishSession(activeSession)}><Check size={18} />Finalizar</Button>}
-                  <Button variant="outline" onClick={async () => {
-                    await updateSession({ ...activeSession, notes: localNotes });
-                    onActiveSessionChange(null);
-                  }}><X size={18} />Cerrar</Button>
+                  {!activeSession.completed && (
+                    <Button onClick={() => finishSession(activeSession)}>
+                      <Check size={18} />
+                      Finalizar
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      await updateSession({ ...activeSession, notes: localNotes });
+                      onActiveSessionChange(null);
+                    }}
+                  >
+                    <X size={18} />
+                    Cerrar
+                  </Button>
                 </div>
               </div>
 
@@ -551,14 +637,43 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
               </div>
 
               <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                <Card><CardBody><div className="text-center py-3 sm:py-4"><p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">{done}/{total}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Bloques</p></div></CardBody></Card>
-                <Card><CardBody><div className="text-center py-3 sm:py-4"><p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">{vol.toFixed(1)}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Volumen kg</p></div></CardBody></Card>
-                <Card><CardBody><div className="text-center py-3 sm:py-4"><p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">{activeSession.exercises.length}</p><p className="text-xs text-gray-400 mt-0.5 break-words">Ejercicios</p></div></CardBody></Card>
+                <Card>
+                  <CardBody>
+                    <div className="text-center py-3 sm:py-4">
+                      <p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">
+                        {done}/{total}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5 break-words">Bloques</p>
+                    </div>
+                  </CardBody>
+                </Card>
+                <Card>
+                  <CardBody>
+                    <div className="text-center py-3 sm:py-4">
+                      <p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">
+                        {vol.toFixed(1)}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5 break-words">Volumen kg</p>
+                    </div>
+                  </CardBody>
+                </Card>
+                <Card>
+                  <CardBody>
+                    <div className="text-center py-3 sm:py-4">
+                      <p className="text-xl sm:text-2xl font-bold text-brand-500 break-words">
+                        {activeSession.exercises.length}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5 break-words">Ejercicios</p>
+                    </div>
+                  </CardBody>
+                </Card>
               </div>
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2">📝 Observaciones de la sesión</CardTitle>
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    📝 Observaciones de la sesión
+                  </CardTitle>
                 </CardHeader>
                 <CardBody>
                   <textarea
@@ -577,13 +692,19 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
               <div className="space-y-4">
                 {activeSession.exercises.map((ex, exIdx) => {
                   const isExCardio = isCardio(ex.exerciseId) || !!ex.cardioDetails;
-                  const cardioData = ex.cardioDetails ?? { cardioType: 'Cinta', durationMinutes: 30, completed: false };
+                  const cardioData = ex.cardioDetails ?? {
+                    cardioType: 'Cinta',
+                    durationMinutes: 30,
+                    completed: false,
+                  };
 
                   const routineEx = currentRoutine?.exercises.find((re) => re.exerciseId === ex.exerciseId);
                   const formattedRest = formatRestTime(routineEx?.restSeconds);
 
                   const distanceKey = `cardio-${exIdx}`;
-                  const displayDistance = distanceInputs[distanceKey] ?? (cardioData.distanceKm !== undefined ? String(cardioData.distanceKm) : '');
+                  const displayDistance =
+                    distanceInputs[distanceKey] ??
+                    (cardioData.distanceKm !== undefined ? String(cardioData.distanceKm) : '');
 
                   const prevSets = !isExCardio ? getPreviousSetsForExercise(ex.exerciseId) : null;
 
@@ -596,7 +717,7 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                               {isExCardio && <Activity size={18} className="text-blue-500 shrink-0" />}
                               {exName(ex.exerciseId)}
                             </CardTitle>
-                            
+
                             {formattedRest && (
                               <button
                                 onClick={() => routineEx?.restSeconds && startRestTimer(routineEx.restSeconds)}
@@ -610,7 +731,15 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                           </div>
 
                           {!isExCardio && (
-                            <Button size="sm" variant="ghost" onClick={() => addSet(activeSession, exIdx)} className="shrink-0"><Plus size={14} />Serie</Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => addSet(activeSession, exIdx)}
+                              className="shrink-0"
+                            >
+                              <Plus size={14} />
+                              Serie
+                            </Button>
                           )}
                         </div>
                       </CardHeader>
@@ -622,7 +751,9 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                 <Label>Tipo de Cardio</Label>
                                 <Select
                                   value={cardioData.cardioType}
-                                  onChange={(e) => updateCardioDetails(activeSession, exIdx, { cardioType: e.target.value })}
+                                  onChange={(e) =>
+                                    updateCardioDetails(activeSession, exIdx, { cardioType: e.target.value })
+                                  }
                                 >
                                   <option value="Cinta">Cinta / Trote</option>
                                   <option value="Bicicleta">Bicicleta</option>
@@ -643,7 +774,9 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                   onFocus={(e) => e.target.select()}
                                   onChange={(e) => {
                                     const cleanVal = e.target.value.replace(/[^0-9]/g, '');
-                                    updateCardioDetails(activeSession, exIdx, { durationMinutes: Math.max(0, parseInt(cleanVal) || 0) });
+                                    updateCardioDetails(activeSession, exIdx, {
+                                      durationMinutes: Math.max(0, parseInt(cleanVal, 10) || 0),
+                                    });
                                   }}
                                 />
                               </div>
@@ -661,9 +794,13 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                               </div>
 
                               <button
-                                onClick={() => updateCardioDetails(activeSession, exIdx, { completed: !cardioData.completed })}
+                                onClick={() =>
+                                  updateCardioDetails(activeSession, exIdx, { completed: !cardioData.completed })
+                                }
                                 className={`h-10 px-4 rounded-xl flex items-center justify-center gap-2 font-medium text-sm transition-colors cursor-pointer ${
-                                  cardioData.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+                                  cardioData.completed
+                                    ? 'bg-emerald-500 text-white'
+                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
                                 }`}
                               >
                                 <Check size={16} />
@@ -691,9 +828,16 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                     const prevSet = prevSets?.[setIdx];
 
                                     return (
-                                      <tr key={setIdx} className={`border-b border-gray-50 dark:border-gray-800/50 ${set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
+                                      <tr
+                                        key={setIdx}
+                                        className={`border-b border-gray-50 dark:border-gray-800/50 ${
+                                          set.completed ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''
+                                        }`}
+                                      >
                                         <td className="px-1 py-2.5 whitespace-nowrap align-middle text-center">
-                                          <div className="font-bold text-sm text-gray-900 dark:text-gray-100">{set.setNumber}</div>
+                                          <div className="font-bold text-sm text-gray-900 dark:text-gray-100">
+                                            {set.setNumber}
+                                          </div>
                                         </td>
 
                                         <td className="px-1 py-2.5 text-center align-middle">
@@ -702,11 +846,13 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                               type="text"
                                               inputMode="numeric"
                                               value={set.reps || ''}
-                                              placeholder={prevSet ? String(prevSet.reps) : "0"}
+                                              placeholder={prevSet ? String(prevSet.reps) : '0'}
                                               onFocus={(e) => e.target.select()}
                                               onChange={(e) => {
                                                 const cleanVal = e.target.value.replace(/[^0-9]/g, '');
-                                                updateSet(activeSession, exIdx, setIdx, { reps: cleanVal === '' ? 0 : parseInt(cleanVal, 10) });
+                                                updateSet(activeSession, exIdx, setIdx, {
+                                                  reps: cleanVal === '' ? 0 : parseInt(cleanVal, 10),
+                                                });
                                               }}
                                               className="w-[56px] min-w-[56px] h-9 text-center text-sm font-medium placeholder:text-gray-300 dark:placeholder:text-gray-600 block !px-1"
                                             />
@@ -724,9 +870,11 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                               type="text"
                                               inputMode="decimal"
                                               value={displayWeight}
-                                              placeholder={prevSet ? String(prevSet.weight) : "0"}
+                                              placeholder={prevSet ? String(prevSet.weight) : '0'}
                                               onFocus={(e) => e.target.select()}
-                                              onChange={(e) => handleWeightInputChange(activeSession, exIdx, setIdx, e.target.value)}
+                                              onChange={(e) =>
+                                                handleWeightInputChange(activeSession, exIdx, setIdx, e.target.value)
+                                              }
                                               className="w-[60px] min-w-[60px] h-9 text-center text-sm font-medium placeholder:text-gray-300 dark:placeholder:text-gray-600 block !px-1"
                                             />
                                             {prevSet && prevSet.weight !== undefined && (
@@ -743,7 +891,11 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                               <button
                                                 key={val}
                                                 type="button"
-                                                onClick={() => updateSet(activeSession, exIdx, setIdx, { rir: set.rir === val ? undefined : val })}
+                                                onClick={() =>
+                                                  updateSet(activeSession, exIdx, setIdx, {
+                                                    rir: set.rir === val ? undefined : val,
+                                                  })
+                                                }
                                                 className={`px-1.5 py-1 text-[11px] font-semibold rounded border transition-colors ${
                                                   set.rir === val
                                                     ? 'bg-brand-500 text-white border-brand-500'
@@ -759,12 +911,22 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                                           {((set.reps || 0) * (set.weight || 0)).toFixed(0)}
                                         </td>
                                         <td className="px-1 py-2.5 text-center align-middle">
-                                          <button onClick={() => toggleSet(activeSession, exIdx, setIdx)} className={`h-7 w-7 mx-auto rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600'}`}>
+                                          <button
+                                            onClick={() => toggleSet(activeSession, exIdx, setIdx)}
+                                            className={`h-7 w-7 mx-auto rounded-lg flex items-center justify-center transition-colors ${
+                                              set.completed
+                                                ? 'bg-emerald-500 text-white'
+                                                : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600'
+                                            }`}
+                                          >
                                             <Check size={14} />
                                           </button>
                                         </td>
                                         <td className="px-1 py-2.5 text-center align-middle">
-                                          <button onClick={() => removeSet(activeSession, exIdx, setIdx)} className="p-1 mx-auto text-gray-300 hover:text-red-500 flex justify-center">
+                                          <button
+                                            onClick={() => removeSet(activeSession, exIdx, setIdx)}
+                                            className="p-1 mx-auto text-gray-300 hover:text-red-500 flex justify-center"
+                                          >
                                             <X size={14} />
                                           </button>
                                         </td>
@@ -788,19 +950,39 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="font-condensed text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2"><ListChecks size={24} className="text-brand-500" />Sesión de Entrenamiento</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 break-words">Inicia una rutina o crea una sesión libre.</p>
+              <h2 className="font-condensed text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+                <ListChecks size={24} className="text-brand-500" />
+                Sesión de Entrenamiento
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 break-words">
+                Inicia una rutina o crea una sesión libre.
+              </p>
             </div>
             <div className="flex gap-2 shrink-0 flex-wrap">
               <Button variant="outline" onClick={() => setIsTrashOpen(true)}>
                 <Trash2 size={18} /> Papelera ({trashSessions.length})
               </Button>
-              <Button onClick={() => setCreateOpen(true)}><Plus size={18} />Nueva sesión</Button>
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus size={18} />
+                Nueva sesión
+              </Button>
             </div>
           </div>
 
           {sessions.length === 0 ? (
-            <Card><EmptyState icon={<ListChecks size={32} />} title="Sin sesiones" description="Inicia una rutina desde la pestaña Rutinas o crea una sesión libre aquí." action={<Button onClick={() => setCreateOpen(true)}><Plus size={18} />Nueva sesión</Button>} /></Card>
+            <Card>
+              <EmptyState
+                icon={<ListChecks size={32} />}
+                title="Sin sesiones"
+                description="Inicia una rutina desde la pestaña Rutinas o crea una sesión libre aquí."
+                action={
+                  <Button onClick={() => setCreateOpen(true)}>
+                    <Plus size={18} />
+                    Nueva sesión
+                  </Button>
+                }
+              />
+            </Card>
           ) : (
             <>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -821,15 +1003,24 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
                               )}
                             </p>
                           </div>
-                          <Badge color={s.completed ? 'green' : 'amber'}>{s.completed ? 'Completada' : 'En progreso'}</Badge>
+                          <Badge color={s.completed ? 'green' : 'amber'}>
+                            {s.completed ? 'Completada' : 'En progreso'}
+                          </Badge>
                         </div>
                         <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400 break-words">
-                          <span>{completedSets(s)}/{totalSets(s)} bloques</span>
+                          <span>
+                            {completedSets(s)}/{totalSets(s)} bloques
+                          </span>
                           <span>{totalVolume(s).toFixed(1)} kg vol.</span>
                         </div>
                         <div className="flex gap-2 pt-1">
-                          <Button size="sm" onClick={() => onActiveSessionChange(s.id)} className="flex-1"><Play size={14} />Abrir</Button>
-                          <Button size="sm" variant="danger" onClick={() => moveToTrash(s.id)}><Trash2 size={14} /></Button>
+                          <Button size="sm" onClick={() => onActiveSessionChange(s.id)} className="flex-1">
+                            <Play size={14} />
+                            Abrir
+                          </Button>
+                          <Button size="sm" variant="danger" onClick={() => moveToTrash(s.id)}>
+                            <Trash2 size={14} />
+                          </Button>
                         </div>
                       </div>
                     </CardBody>
@@ -848,42 +1039,84 @@ export function SessionView({ activeSessionId, onActiveSessionChange }: { active
             </>
           )}
 
-          <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Nueva sesión"
-            footer={<><Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancelar</Button><Button onClick={() => createBlankSession()}><Save size={16} />Crear libre</Button></>}>
+          <Modal
+            open={createOpen}
+            onClose={() => setCreateOpen(false)}
+            title="Nueva sesión"
+            footer={
+              <>
+                <Button variant="ghost" onClick={() => setCreateOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={() => createBlankSession()}>
+                  <Save size={16} />
+                  Crear libre
+                </Button>
+              </>
+            }
+          >
             <div className="space-y-4">
               <div>
                 <Label>Iniciar desde rutina</Label>
                 <div className="grid gap-2">
-                  {routines.length === 0 ? <p className="text-sm text-gray-400 break-words">No hay rutinas creadas aún.</p> : routines.map((r) => (
-                    <button key={r.id} onClick={() => createBlankSession(r.id)} className="flex items-center justify-between gap-2 p-3 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/5 transition-colors text-left">
-                      <div className="min-w-0"><p className="font-semibold break-words">{r.name}</p><p className="text-xs text-gray-400 break-words">{r.exercises.length} ejercicios</p></div>
-                      <Play size={16} className="text-brand-500 shrink-0" />
-                    </button>
-                  ))}
+                  {routines.length === 0 ? (
+                    <p className="text-sm text-gray-400 break-words">No hay rutinas creadas aún.</p>
+                  ) : (
+                    routines.map((r) => (
+                      <button
+                        key={r.id}
+                        onClick={() => createBlankSession(r.id)}
+                        className="flex items-center justify-between gap-2 p-3 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/5 transition-colors text-left"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-semibold break-words">{r.name}</p>
+                          <p className="text-xs text-gray-400 break-words">{r.exercises.length} ejercicios</p>
+                        </div>
+                        <Play size={16} className="text-brand-500 shrink-0" />
+                      </button>
+                    ))
+                  )}
                 </div>
               </div>
-              <div className="pt-2 border-t border-gray-100 dark:border-gray-800"><p className="text-xs text-gray-400 text-center break-words">O crea una sesión en blanco sin plantilla.</p></div>
+              <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
+                <p className="text-xs text-gray-400 text-center break-words">
+                  O crea una sesión en blanco sin plantilla.
+                </p>
+              </div>
             </div>
           </Modal>
 
-          <Modal open={isTrashOpen} onClose={() => setIsTrashOpen(false)} title="Papelera de Reciclaje"
+          <Modal
+            open={isTrashOpen}
+            onClose={() => setIsTrashOpen(false)}
+            title="Papelera de Reciclaje"
             footer={
               <>
-                <Button variant="ghost" onClick={() => setIsTrashOpen(false)}>Cerrar</Button>
+                <Button variant="ghost" onClick={() => setIsTrashOpen(false)}>
+                  Cerrar
+                </Button>
                 {trashSessions.length > 0 && (
-                  <Button variant="danger" onClick={emptyTrash}>Vaciar papelera</Button>
+                  <Button variant="danger" onClick={emptyTrash}>
+                    Vaciar papelera
+                  </Button>
                 )}
               </>
-            }>
+            }
+          >
             <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
               {trashSessions.length === 0 ? (
                 <p className="text-sm text-gray-400 text-center py-8">La papelera está vacía.</p>
               ) : (
                 trashSessions.map((s) => (
-                  <div key={s.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
+                  <div
+                    key={s.id}
+                    className="flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50"
+                  >
                     <div className="min-w-0">
                       <p className="font-semibold text-sm truncate">{s.routineName}</p>
-                      <p className="text-xs text-gray-400">{fmtDate(s.date)} • {completedSets(s)}/{totalSets(s)} bloques</p>
+                      <p className="text-xs text-gray-400">
+                        {fmtDate(s.date)} • {completedSets(s)}/{totalSets(s)} bloques
+                      </p>
                     </div>
                     <div className="flex gap-1.5 shrink-0">
                       <Button size="sm" variant="outline" onClick={() => restoreSession(s.id)}>

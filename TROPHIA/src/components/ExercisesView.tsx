@@ -13,7 +13,16 @@ import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/Feedback';
 
-const MUSCLE_GROUPS: MuscleGroup[] = ['Pecho', 'Espalda', 'Piernas', 'Hombros', 'Brazos', 'Core', 'Glúteos', 'Cardio'];
+const MUSCLE_GROUPS: MuscleGroup[] = [
+  'Pecho',
+  'Espalda',
+  'Piernas',
+  'Hombros',
+  'Brazos',
+  'Core',
+  'Glúteos',
+  'Cardio',
+];
 
 const GROUP_COLORS: Record<MuscleGroup, 'brand' | 'green' | 'blue' | 'amber' | 'red' | 'gray'> = {
   Pecho: 'brand',
@@ -43,13 +52,12 @@ export function ExercisesView() {
 
   const rawExercises = useLiveQuery(() => db.exercises.orderBy('name').toArray(), [], [] as Exercise[]);
 
-  // Filtrar ejercicios de manera estricta para el usuario actual + globales
   const exercises = useMemo(() => {
     if (!user) return [];
-    return rawExercises.filter((e: any) => {
+    return rawExercises.filter((e) => {
       const exUserId = e.userId || e.user_id;
-      if (!exUserId) return true; // Ejercicio global/base disponible para todos
-      return exUserId === user.id; // Ejercicio exclusivo del usuario autenticado
+      if (!exUserId) return true;
+      return exUserId === user.id;
     });
   }, [rawExercises, user?.id]);
 
@@ -100,7 +108,6 @@ export function ExercisesView() {
     const cleanName = form.name.trim();
     if (!cleanName) return;
 
-    // Validación estricta: Bloquear si ya existe un ejercicio con el mismo nombre para este usuario
     const nameExists = exercises.some(
       (ex) => ex.name.toLowerCase() === cleanName.toLowerCase() && (!editing || ex.id !== editing.id)
     );
@@ -111,10 +118,9 @@ export function ExercisesView() {
     }
 
     const ts = now();
-    const isGlobal = editing && !editing.userId && !(editing as any).user_id;
+    const isGlobal = editing && !editing.userId && !editing.user_id;
 
     if (editing && !isGlobal) {
-      // Editar un ejercicio propio del usuario
       const updated: Exercise = {
         ...editing,
         userId: user.id,
@@ -130,8 +136,7 @@ export function ExercisesView() {
         record: updated as unknown as Record<string, unknown>,
       });
     } else {
-      // Crear un ejercicio NUEVO
-      const created = {
+      const created: Exercise = {
         id: uuid(),
         name: cleanName,
         muscleGroup: form.muscleGroup,
@@ -139,7 +144,7 @@ export function ExercisesView() {
         createdAt: ts,
         updatedAt: ts,
         userId: user.id,
-      } as Exercise;
+      };
 
       await db.exercises.add(created);
       await enqueue({
@@ -154,12 +159,10 @@ export function ExercisesView() {
   const remove = async (exercise: Exercise) => {
     if (!confirm(`¿Eliminar el ejercicio "${exercise.name}"?`)) return;
 
-    const isGlobal = !exercise.userId && !(exercise as any).user_id;
+    const isGlobal = !exercise.userId && !exercise.user_id;
 
-    // Eliminar localmente de forma inmediata
     await db.exercises.delete(exercise.id);
 
-    // Si es un ejercicio propio del usuario, enviamos la orden de borrado a la sincronización remota
     if (!isGlobal) {
       await enqueue({ kind: 'delete', table: 'exercises', id: exercise.id });
     }
@@ -266,7 +269,7 @@ export function ExercisesView() {
             <Button variant="ghost" onClick={() => setModalOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={save} type="submit" form="exercise-form">
+            <Button type="submit" form="exercise-form">
               {editing ? 'Guardar' : 'Crear'}
             </Button>
           </>

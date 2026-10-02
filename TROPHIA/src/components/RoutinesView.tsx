@@ -28,7 +28,6 @@ const INITIAL_FORM: FormState = {
 export function RoutinesView() {
   const { user } = useAuth();
 
-  // Filtra las rutinas en IndexedDB según el user.id autenticado
   const routines = useLiveQuery(
     async () => {
       if (!user) return [];
@@ -41,10 +40,10 @@ export function RoutinesView() {
 
   const rawExercises = useLiveQuery(() => db.exercises.orderBy('name').toArray(), [], [] as Exercise[]);
 
-  // Filtrar ejercicios visibles (los del usuario actual + base/legacy)
-  const exercises = rawExercises.filter((e: any) => {
-    if (!e.userId && !e.user_id) return true;
-    return e.userId === user?.id || e.user_id === user?.id;
+  const exercises = rawExercises.filter((e) => {
+    const exUserId = e.userId || e.user_id;
+    if (!exUserId) return true;
+    return exUserId === user?.id;
   });
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -62,11 +61,10 @@ export function RoutinesView() {
 
   const openEdit = (r: Routine) => {
     setEditing(r);
-    // Al editar, asignamos un identificador temporal único (_tempId) a cada ejercicio para evitar conflictos en el render
     const validExercises = r.exercises
       .filter((re) => !!getExercise(re.exerciseId))
       .map((re) => ({ ...re, _tempId: uuid() }));
-    
+
     setForm({
       name: r.name,
       description: r.description ?? '',
@@ -94,8 +92,24 @@ export function RoutinesView() {
       exercises: f.exercises.map((e) => {
         if (e._tempId !== tempId) return e;
         return cardio
-          ? { ...e, exerciseId: newExerciseId, cardioType: 'Cinta', durationMinutes: 30, sets: undefined, targetReps: undefined, restSeconds: undefined }
-          : { ...e, exerciseId: newExerciseId, sets: 3, targetReps: 10, restSeconds: 90, cardioType: undefined, durationMinutes: undefined };
+          ? {
+              ...e,
+              exerciseId: newExerciseId,
+              cardioType: 'Cinta',
+              durationMinutes: 30,
+              sets: undefined,
+              targetReps: undefined,
+              restSeconds: undefined,
+            }
+          : {
+              ...e,
+              exerciseId: newExerciseId,
+              sets: 3,
+              targetReps: 10,
+              restSeconds: 90,
+              cardioType: undefined,
+              durationMinutes: undefined,
+            };
       }),
     }));
   };
@@ -145,13 +159,15 @@ export function RoutinesView() {
             let updatedSets: SessionSet[] = [];
 
             if (existingSets.length < targetSetCount) {
-              const addedSets: SessionSet[] = Array.from({ length: targetSetCount - existingSets.length }).map((_, i) => ({
-                setNumber: existingSets.length + i + 1,
-                reps: re.targetReps || 10,
-                weight: 0,
-                rir: 2,
-                completed: false,
-              }));
+              const addedSets: SessionSet[] = Array.from({ length: targetSetCount - existingSets.length }).map(
+                (_, i) => ({
+                  setNumber: existingSets.length + i + 1,
+                  reps: re.targetReps || 10,
+                  weight: 0,
+                  rir: 2,
+                  completed: false,
+                })
+              );
               updatedSets = [...existingSets, ...addedSets];
             } else if (existingSets.length > targetSetCount) {
               updatedSets = existingSets.slice(0, targetSetCount);
@@ -199,7 +215,11 @@ export function RoutinesView() {
         };
 
         await db.sessions.put(updatedSession);
-        await enqueue({ kind: 'upsert', table: 'sessions', record: updatedSession as unknown as Record<string, unknown> });
+        await enqueue({
+          kind: 'upsert',
+          table: 'sessions',
+          record: updatedSession as unknown as Record<string, unknown>,
+        });
       }
     } catch (err) {
       console.error('Error sincronizando rutina con sesiones:', err);
@@ -212,15 +232,16 @@ export function RoutinesView() {
     const cleanName = form.name.trim();
     if (!cleanName || form.exercises.length === 0) return;
 
-    // Limpiamos la propiedad temporal _tempId antes de guardar en la base de datos
-    const cleanedExercises: RoutineExercise[] = form.exercises.map(({ exerciseId, sets, targetReps, restSeconds, cardioType, durationMinutes }) => ({
-      exerciseId,
-      ...(sets !== undefined ? { sets } : {}),
-      ...(targetReps !== undefined ? { targetReps } : {}),
-      ...(restSeconds !== undefined ? { restSeconds } : {}),
-      ...(cardioType !== undefined ? { cardioType } : {}),
-      ...(durationMinutes !== undefined ? { durationMinutes } : {}),
-    }));
+    const cleanedExercises: RoutineExercise[] = form.exercises.map(
+      ({ exerciseId, sets, targetReps, restSeconds, cardioType, durationMinutes }) => ({
+        exerciseId,
+        ...(sets !== undefined ? { sets } : {}),
+        ...(targetReps !== undefined ? { targetReps } : {}),
+        ...(restSeconds !== undefined ? { restSeconds } : {}),
+        ...(cardioType !== undefined ? { cardioType } : {}),
+        ...(durationMinutes !== undefined ? { durationMinutes } : {}),
+      })
+    );
 
     const ts = now();
     if (editing) {
@@ -233,7 +254,11 @@ export function RoutinesView() {
         updatedAt: ts,
       };
       await db.routines.put(updated);
-      await enqueue({ kind: 'upsert', table: 'routines', record: updated as unknown as Record<string, unknown> });
+      await enqueue({
+        kind: 'upsert',
+        table: 'routines',
+        record: updated as unknown as Record<string, unknown>,
+      });
 
       await syncRoutineToSessions(updated);
     } else {
@@ -247,7 +272,11 @@ export function RoutinesView() {
         updatedAt: ts,
       };
       await db.routines.add(created);
-      await enqueue({ kind: 'upsert', table: 'routines', record: created as unknown as Record<string, unknown> });
+      await enqueue({
+        kind: 'upsert',
+        table: 'routines',
+        record: created as unknown as Record<string, unknown>,
+      });
     }
     setModalOpen(false);
   };
@@ -342,7 +371,7 @@ export function RoutinesView() {
             <Button variant="ghost" onClick={() => setModalOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={save} type="submit" form="routine-form">
+            <Button type="submit" form="routine-form">
               {editing ? 'Guardar' : 'Crear'}
             </Button>
           </>
@@ -419,7 +448,9 @@ export function RoutinesView() {
                               type="number"
                               min={1}
                               value={re.durationMinutes ?? 30}
-                              onChange={(e) => updateExercise(re._tempId, { durationMinutes: Math.max(1, Number(e.target.value)) })}
+                              onChange={(e) =>
+                                updateExercise(re._tempId, { durationMinutes: Math.max(1, Number(e.target.value)) })
+                              }
                             />
                           </div>
                         </>
@@ -431,7 +462,9 @@ export function RoutinesView() {
                               type="number"
                               min={1}
                               value={re.sets ?? 3}
-                              onChange={(e) => updateExercise(re.targetReps ? re._tempId : re._tempId, { sets: Math.max(1, Number(e.target.value)) })}
+                              onChange={(e) =>
+                                updateExercise(re._tempId, { sets: Math.max(1, Number(e.target.value)) })
+                              }
                             />
                           </div>
                           <div className="w-16">
@@ -440,7 +473,9 @@ export function RoutinesView() {
                               type="number"
                               min={1}
                               value={re.targetReps ?? 10}
-                              onChange={(e) => updateExercise(re._tempId, { targetReps: Math.max(1, Number(e.target.value)) })}
+                              onChange={(e) =>
+                                updateExercise(re._tempId, { targetReps: Math.max(1, Number(e.target.value)) })
+                              }
                             />
                           </div>
                           <div className="w-20">
@@ -449,7 +484,9 @@ export function RoutinesView() {
                               type="number"
                               min={0}
                               value={re.restSeconds ?? 90}
-                              onChange={(e) => updateExercise(re._tempId, { restSeconds: Math.max(0, Number(e.target.value)) })}
+                              onChange={(e) =>
+                                updateExercise(re._tempId, { restSeconds: Math.max(0, Number(e.target.value)) })
+                              }
                             />
                           </div>
                         </>

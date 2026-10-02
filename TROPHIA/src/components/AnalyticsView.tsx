@@ -1,5 +1,17 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
-import { BarChart3, TrendingUp, Activity, Calendar, FileDown, Dumbbell, ChevronDown, ChevronUp, Flame, Zap, Award } from 'lucide-react';
+import {
+  BarChart3,
+  TrendingUp,
+  Activity,
+  Calendar,
+  FileDown,
+  Dumbbell,
+  ChevronDown,
+  ChevronUp,
+  Flame,
+  Zap,
+  Award,
+} from 'lucide-react';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
 import { useLiveQuery } from '@/lib/useLiveQuery';
@@ -9,10 +21,22 @@ import type { TrainingSession, Exercise } from '@/lib/types';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
 import { useTheme } from '@/lib/theme';
-import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell } from 'recharts';
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  Cell,
+} from 'recharts';
 
-function fmtDate(ts: number): string { 
-  return new Date(ts).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); 
+function fmtDate(ts: number): string {
+  return new Date(ts).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function calculate1RM(weight: number, reps: number): number {
@@ -23,26 +47,34 @@ function calculate1RM(weight: number, reps: number): number {
 
 type TimeRange = '1M' | '3M' | '6M' | '1Y' | 'ALL';
 
-interface DayVolume { 
-  date: string; 
-  timestamp: number; 
-  volume: number; 
-  sets: number; 
-  cardioMinutes: number; 
+interface DayVolume {
+  date: string;
+  timestamp: number;
+  volume: number;
+  sets: number;
+  cardioMinutes: number;
 }
 
-interface ExerciseProgress { 
-  date: string; 
-  timestamp: number; 
-  weight: number; 
-  volume: number; 
-  estimated1RM: number; 
-  avgRir?: number; 
-  durationMinutes?: number; 
-  distanceKm?: number; 
+interface ExerciseProgress {
+  date: string;
+  timestamp: number;
+  weight: number;
+  volume: number;
+  estimated1RM: number;
+  avgRir?: number;
+  durationMinutes?: number;
+  distanceKm?: number;
 }
 
-function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name?: string; value?: number; color?: string }>; label?: string }) {
+function CustomTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ name?: string; value?: number; color?: string }>;
+  label?: string;
+}) {
   if (!active || !payload || payload.length === 0) return null;
   return (
     <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-xl p-3.5 min-w-[170px] animate-in fade-in zoom-in-95 duration-150 z-50">
@@ -74,7 +106,7 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 function ConsistencyHeatmap({ sessions }: { sessions: TrainingSession[] }) {
   const datesSet = useMemo(() => {
     const set = new Set<string>();
-    (sessions || []).forEach(s => {
+    (sessions || []).forEach((s) => {
       if (s?.completed && !s?.deletedAt && s?.date) {
         const d = new Date(s.date);
         set.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
@@ -94,7 +126,7 @@ function ConsistencyHeatmap({ sessions }: { sessions: TrainingSession[] }) {
         date: d,
         key,
         active: datesSet.has(key),
-        formatted: d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })
+        formatted: d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
       });
     }
     return days;
@@ -115,8 +147,8 @@ function ConsistencyHeatmap({ sessions }: { sessions: TrainingSession[] }) {
               key={day.key}
               title={`${day.formatted}: ${day.active ? 'Entrenamiento completado' : 'Sin registro'}`}
               className={`w-3.5 h-3.5 rounded-sm transition-transform hover:scale-125 ${
-                day.active 
-                  ? 'bg-brand-500 shadow-sm shadow-brand-500/50 print:bg-black' 
+                day.active
+                  ? 'bg-brand-500 shadow-sm shadow-brand-500/50 print:bg-black'
                   : 'bg-gray-100 dark:bg-gray-800/60 print:bg-gray-200'
               }`}
             />
@@ -131,14 +163,14 @@ export function AnalyticsView() {
   const { user } = useAuth();
 
   const sessions = useLiveQuery(
-    () => (user?.id ? db.sessions.where('userId').equals(user.id).toArray() : Promise.resolve([])), 
-    [user?.id], 
+    () => (user?.id ? db.sessions.where('userId').equals(user.id).toArray() : Promise.resolve([])),
+    [user?.id],
     [] as TrainingSession[]
   );
 
   const exercises = useLiveQuery(() => db.exercises.toArray(), [], [] as Exercise[]);
   const [theme] = useTheme();
-  
+
   const [timeRange, setTimeRange] = useState<TimeRange>('3M');
   const [selectedExercise, setSelectedExercise] = useState<string>('all');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -172,16 +204,17 @@ export function AnalyticsView() {
     if (timeRange === '1Y') now.setFullYear(now.getFullYear() - 1);
     return now.getTime();
   }, [timeRange]);
-  
-  const completedSessions = useMemo(() => 
-    (sessions || [])
-      .filter((s) => s && s.completed && !s.deletedAt && s.date >= rangeCutoff)
-      .sort((a, b) => b.date - a.date), 
+
+  const completedSessions = useMemo(
+    () =>
+      (sessions || [])
+        .filter((s) => s && s.completed && !s.deletedAt && s.date >= rangeCutoff)
+        .sort((a, b) => b.date - a.date),
     [sessions, rangeCutoff]
   );
 
-  const visibleSessions = useMemo(() => 
-    completedSessions.slice(0, visibleCount), 
+  const visibleSessions = useMemo(
+    () => completedSessions.slice(0, visibleCount),
     [completedSessions, visibleCount]
   );
 
@@ -191,7 +224,9 @@ export function AnalyticsView() {
 
   const expandAll = useCallback(() => {
     const allExpanded: Record<string, boolean> = {};
-    completedSessions.forEach((s) => { if (s?.id) allExpanded[s.id] = true; });
+    completedSessions.forEach((s) => {
+      if (s?.id) allExpanded[s.id] = true;
+    });
     setExpandedSessions(allExpanded);
   }, [completedSessions]);
 
@@ -210,11 +245,11 @@ export function AnalyticsView() {
       if (!element) return;
 
       const opt = {
-        margin:       [0.3, 0.3, 0.3, 0.3] as [number, number, number, number],
-        filename:     `Reporte_Entrenamiento_${new Date().toISOString().slice(0, 10)}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: false },
-        jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+        margin: [0.3, 0.3, 0.3, 0.3] as [number, number, number, number],
+        filename: `Reporte_Entrenamiento_${new Date().toISOString().slice(0, 10)}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
       };
 
       // @ts-ignore
@@ -230,7 +265,7 @@ export function AnalyticsView() {
     const map = new Map<number, DayVolume>();
     completedSessions.forEach((s) => {
       if (!s || !s.date) return;
-      const day = new Date(s.date); 
+      const day = new Date(s.date);
       day.setHours(0, 0, 0, 0);
       const ts = day.getTime();
 
@@ -249,9 +284,9 @@ export function AnalyticsView() {
       });
 
       const existing = map.get(ts);
-      if (existing) { 
-        existing.volume += vol; 
-        existing.sets += sets; 
+      if (existing) {
+        existing.volume += vol;
+        existing.sets += sets;
         existing.cardioMinutes += cardioMinutes;
       } else {
         map.set(ts, { date: fmtDate(ts), timestamp: ts, volume: Math.round(vol), sets, cardioMinutes });
@@ -263,31 +298,35 @@ export function AnalyticsView() {
   const globalAvgRir = useMemo(() => {
     let totalRir = 0;
     let count = 0;
-    completedSessions.forEach((s) => (s?.exercises || []).forEach((ex) => {
-      (ex?.sets || []).forEach((set) => {
-        if (set && set.completed && typeof set.rir === 'number') {
-          totalRir += set.rir;
-          count++;
-        }
-      });
-    }));
-    return count > 0 ? (totalRir / count) : null;
+    completedSessions.forEach((s) =>
+      (s?.exercises || []).forEach((ex) => {
+        (ex?.sets || []).forEach((set) => {
+          if (set && set.completed && typeof set.rir === 'number') {
+            totalRir += set.rir;
+            count++;
+          }
+        });
+      })
+    );
+    return count > 0 ? totalRir / count : null;
   }, [completedSessions]);
 
   const muscleGroupVolume = useMemo(() => {
     const map = new Map<string, number>();
     const safeExercises = exercises || [];
 
-    completedSessions.forEach((s) => (s?.exercises || []).forEach((ex) => {
-      if (!ex) return;
-      const exercise = safeExercises.find((e) => e?.id === ex.exerciseId);
-      if (!exercise || !exercise.muscleGroup) return;
+    completedSessions.forEach((s) =>
+      (s?.exercises || []).forEach((ex) => {
+        if (!ex) return;
+        const exercise = safeExercises.find((e) => e?.id === ex.exerciseId);
+        if (!exercise || !exercise.muscleGroup) return;
 
-      const group = exercise.muscleGroup;
-      const setList = ex.sets || [];
-      const vol = setList.reduce((a, set) => a + (set && set.completed ? (set.reps || 0) * (set.weight || 0) : 0), 0);
-      map.set(group, (map.get(group) || 0) + vol);
-    }));
+        const group = exercise.muscleGroup;
+        const setList = ex.sets || [];
+        const vol = setList.reduce((a, set) => a + (set && set.completed ? (set.reps || 0) * (set.weight || 0) : 0), 0);
+        map.set(group, (map.get(group) || 0) + vol);
+      })
+    );
 
     return Array.from(map.entries())
       .map(([group, volume]) => ({ group, volume: Math.round(volume) }))
@@ -295,59 +334,89 @@ export function AnalyticsView() {
   }, [completedSessions, exercises]);
 
   const exerciseProgress = useMemo<ExerciseProgress[]>(() => {
-    const map = new Map<number, { weight: number; volume: number; durationMinutes: number; distanceKm: number; rirSum: number; rirCount: number; max1RM: number }>();
-    
-    completedSessions.forEach((s) => (s?.exercises || []).forEach((ex) => {
-      if (!ex || (selectedExercise !== 'all' && ex.exerciseId !== selectedExercise)) return;
-      
-      const day = new Date(s.date); 
-      day.setHours(0, 0, 0, 0);
-      const ts = day.getTime();
-
-      if (ex.cardioDetails) {
-        if (!ex.cardioDetails.completed) return;
-        const existing = map.get(ts);
-        const mins = ex.cardioDetails.durationMinutes || 0;
-        const dist = ex.cardioDetails.distanceKm || 0;
-        if (existing) {
-          existing.durationMinutes += mins;
-          existing.distanceKm += dist;
-        } else {
-          map.set(ts, { weight: 0, volume: 0, durationMinutes: mins, distanceKm: dist, rirSum: 0, rirCount: 0, max1RM: 0 });
-        }
-      } else {
-        const setList = ex.sets || [];
-        const completedSets = setList.filter((set) => set && set.completed);
-        const topWeight = completedSets.length > 0 ? Math.max(...completedSets.map((set) => set.weight || 0), 0) : 0;
-        const vol = completedSets.reduce((a, set) => a + (set.reps || 0) * (set.weight || 0), 0);
-        
-        let dayMax1RM = 0;
-        let rirSum = 0;
-        let rirCount = 0;
-        completedSets.forEach((set) => {
-          const estimated = calculate1RM(set.weight || 0, set.reps || 0);
-          if (estimated > dayMax1RM) dayMax1RM = estimated;
-
-          if (typeof set.rir === 'number') {
-            rirSum += set.rir;
-            rirCount++;
-          }
-        });
-
-        if (topWeight === 0 && vol === 0) return;
-        
-        const existing = map.get(ts);
-        if (existing) { 
-          existing.weight = Math.max(existing.weight, topWeight); 
-          existing.volume += vol; 
-          existing.max1RM = Math.max(existing.max1RM, dayMax1RM);
-          existing.rirSum += rirSum;
-          existing.rirCount += rirCount;
-        } else {
-          map.set(ts, { weight: topWeight, volume: Math.round(vol), durationMinutes: 0, distanceKm: 0, rirSum, rirCount, max1RM: dayMax1RM });
-        }
+    const map = new Map<
+      number,
+      {
+        weight: number;
+        volume: number;
+        durationMinutes: number;
+        distanceKm: number;
+        rirSum: number;
+        rirCount: number;
+        max1RM: number;
       }
-    }));
+    >();
+
+    completedSessions.forEach((s) =>
+      (s?.exercises || []).forEach((ex) => {
+        if (!ex || (selectedExercise !== 'all' && ex.exerciseId !== selectedExercise)) return;
+
+        const day = new Date(s.date);
+        day.setHours(0, 0, 0, 0);
+        const ts = day.getTime();
+
+        if (ex.cardioDetails) {
+          if (!ex.cardioDetails.completed) return;
+          const existing = map.get(ts);
+          const mins = ex.cardioDetails.durationMinutes || 0;
+          const dist = ex.cardioDetails.distanceKm || 0;
+          if (existing) {
+            existing.durationMinutes += mins;
+            existing.distanceKm += dist;
+          } else {
+            map.set(ts, {
+              weight: 0,
+              volume: 0,
+              durationMinutes: mins,
+              distanceKm: dist,
+              rirSum: 0,
+              rirCount: 0,
+              max1RM: 0,
+            });
+          }
+        } else {
+          const setList = ex.sets || [];
+          const completedSets = setList.filter((set) => set && set.completed);
+          const topWeight =
+            completedSets.length > 0 ? Math.max(...completedSets.map((set) => set.weight || 0), 0) : 0;
+          const vol = completedSets.reduce((a, set) => a + (set.reps || 0) * (set.weight || 0), 0);
+
+          let dayMax1RM = 0;
+          let rirSum = 0;
+          let rirCount = 0;
+          completedSets.forEach((set) => {
+            const estimated = calculate1RM(set.weight || 0, set.reps || 0);
+            if (estimated > dayMax1RM) dayMax1RM = estimated;
+
+            if (typeof set.rir === 'number') {
+              rirSum += set.rir;
+              rirCount++;
+            }
+          });
+
+          if (topWeight === 0 && vol === 0) return;
+
+          const existing = map.get(ts);
+          if (existing) {
+            existing.weight = Math.max(existing.weight, topWeight);
+            existing.volume += vol;
+            existing.max1RM = Math.max(existing.max1RM, dayMax1RM);
+            existing.rirSum += rirSum;
+            existing.rirCount += rirCount;
+          } else {
+            map.set(ts, {
+              weight: topWeight,
+              volume: Math.round(vol),
+              durationMinutes: 0,
+              distanceKm: 0,
+              rirSum,
+              rirCount,
+              max1RM: dayMax1RM,
+            });
+          }
+        }
+      })
+    );
 
     return Array.from(map.entries())
       .map(([ts, data]) => ({
@@ -358,7 +427,7 @@ export function AnalyticsView() {
         estimated1RM: data.max1RM,
         durationMinutes: data.durationMinutes || undefined,
         distanceKm: data.distanceKm || undefined,
-        avgRir: data.rirCount > 0 ? Number((data.rirSum / data.rirCount).toFixed(1)) : undefined
+        avgRir: data.rirCount > 0 ? Number((data.rirSum / data.rirCount).toFixed(1)) : undefined,
       }))
       .sort((a, b) => a.timestamp - b.timestamp);
   }, [completedSessions, selectedExercise]);
@@ -372,18 +441,21 @@ export function AnalyticsView() {
   const totalSets = useMemo(() => dailyVolume.reduce((sum, d) => sum + d.sets, 0), [dailyVolume]);
   const totalCardioMinutes = useMemo(() => dailyVolume.reduce((sum, d) => sum + d.cardioMinutes, 0), [dailyVolume]);
 
-  const currentExercise = useMemo(() => (exercises || []).find((e) => e?.id === selectedExercise), [exercises, selectedExercise]);
+  const currentExercise = useMemo(
+    () => (exercises || []).find((e) => e?.id === selectedExercise),
+    [exercises, selectedExercise]
+  );
   const isSelectedCardio = currentExercise?.muscleGroup === 'Cardio';
-  const currentExerciseName = selectedExercise === 'all' 
-    ? 'Todos los ejercicios' 
-    : currentExercise?.name ?? 'Seleccionar ejercicio';
+  const currentExerciseName =
+    selectedExercise === 'all' ? 'Todos los ejercicios' : currentExercise?.name ?? 'Seleccionar ejercicio';
 
   return (
     <div className="space-y-6 printable-area">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <BarChart3 size={24} className="text-brand-500" />Análisis de Rendimiento
+            <BarChart3 size={24} className="text-brand-500" />
+            Análisis de Rendimiento
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Estadísticas exclusivas del usuario actual.</p>
         </div>
@@ -398,19 +470,53 @@ export function AnalyticsView() {
         </button>
       </div>
 
-      {/* Métricas KPI */}
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
-        <Card><CardBody className="text-center py-4"><Activity size={18} className="text-brand-500 mx-auto mb-1" /><p className="text-xl font-bold">{completedSessions.length}</p><p className="text-xs text-gray-400">Sesiones</p></CardBody></Card>
-        <Card><CardBody className="text-center py-4"><TrendingUp size={18} className="text-brand-500 mx-auto mb-1" /><p className="text-xl font-bold">{totalVolume.toLocaleString('es-ES')}</p><p className="text-xs text-gray-400">Volumen kg</p></CardBody></Card>
-        <Card><CardBody className="text-center py-4"><Dumbbell size={18} className="text-brand-500 mx-auto mb-1" /><p className="text-xl font-bold">{totalSets}</p><p className="text-xs text-gray-400">Series</p></CardBody></Card>
-        <Card><CardBody className="text-center py-4"><Award size={18} className="text-amber-500 mx-auto mb-1" /><p className="text-xl font-bold">{maxOverall1RM} kg</p><p className="text-xs text-gray-400">1RM Máx</p></CardBody></Card>
-        <Card><CardBody className="text-center py-4"><Zap size={18} className="text-purple-500 mx-auto mb-1" /><p className="text-xl font-bold">{globalAvgRir !== null ? globalAvgRir.toFixed(1) : 'N/A'}</p><p className="text-xs text-gray-400">RIR Prom</p></CardBody></Card>
-        <Card><CardBody className="text-center py-4"><Flame size={18} className="text-blue-500 mx-auto mb-1" /><p className="text-xl font-bold">{totalCardioMinutes}m</p><p className="text-xs text-gray-400">Cardio</p></CardBody></Card>
+        <Card>
+          <CardBody className="text-center py-4">
+            <Activity size={18} className="text-brand-500 mx-auto mb-1" />
+            <p className="text-xl font-bold">{completedSessions.length}</p>
+            <p className="text-xs text-gray-400">Sesiones</p>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody className="text-center py-4">
+            <TrendingUp size={18} className="text-brand-500 mx-auto mb-1" />
+            <p className="text-xl font-bold">{totalVolume.toLocaleString('es-ES')}</p>
+            <p className="text-xs text-gray-400">Volumen kg</p>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody className="text-center py-4">
+            <Dumbbell size={18} className="text-brand-500 mx-auto mb-1" />
+            <p className="text-xl font-bold">{totalSets}</p>
+            <p className="text-xs text-gray-400">Series</p>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody className="text-center py-4">
+            <Award size={18} className="text-amber-500 mx-auto mb-1" />
+            <p className="text-xl font-bold">{maxOverall1RM} kg</p>
+            <p className="text-xs text-gray-400">1RM Máx</p>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody className="text-center py-4">
+            <Zap size={18} className="text-purple-500 mx-auto mb-1" />
+            <p className="text-xl font-bold">{globalAvgRir !== null ? globalAvgRir.toFixed(1) : 'N/A'}</p>
+            <p className="text-xs text-gray-400">RIR Prom</p>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody className="text-center py-4">
+            <Flame size={18} className="text-blue-500 mx-auto mb-1" />
+            <p className="text-xl font-bold">{totalCardioMinutes}m</p>
+            <p className="text-xs text-gray-400">Cardio</p>
+          </CardBody>
+        </Card>
       </div>
 
       <ConsistencyHeatmap sessions={sessions || []} />
 
-      {/* Filtros */}
       <div className="no-print flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
         <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
           {(['1M', '3M', '6M', '1Y', 'ALL'] as TimeRange[]).map((range) => (
@@ -443,9 +549,14 @@ export function AnalyticsView() {
           {isDropdownOpen && (
             <div className="absolute right-0 mt-2 w-full sm:w-72 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xl z-50 p-2 max-h-72 overflow-y-auto no-scrollbar">
               <button
-                onClick={() => { setSelectedExercise('all'); setIsDropdownOpen(false); }}
+                onClick={() => {
+                  setSelectedExercise('all');
+                  setIsDropdownOpen(false);
+                }}
                 className={`w-full text-left px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-colors ${
-                  selectedExercise === 'all' ? 'bg-brand-500/10 text-brand-500 font-bold' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                  selectedExercise === 'all'
+                    ? 'bg-brand-500/10 text-brand-500 font-bold'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
               >
                 Todos los ejercicios (General)
@@ -453,9 +564,14 @@ export function AnalyticsView() {
               {(exercises || []).map((ex) => (
                 <button
                   key={ex.id}
-                  onClick={() => { setSelectedExercise(ex.id); setIsDropdownOpen(false); }}
+                  onClick={() => {
+                    setSelectedExercise(ex.id);
+                    setIsDropdownOpen(false);
+                  }}
                   className={`w-full text-left px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-colors truncate ${
-                    selectedExercise === ex.id ? 'bg-brand-500/10 text-brand-500 font-bold' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                    selectedExercise === ex.id
+                      ? 'bg-brand-500/10 text-brand-500 font-bold'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-800'
                   }`}
                 >
                   {ex.name} <span className="text-[10px] text-gray-400">({ex.muscleGroup})</span>
@@ -466,7 +582,6 @@ export function AnalyticsView() {
         </div>
       </div>
 
-      {/* Gráficos */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
@@ -479,7 +594,11 @@ export function AnalyticsView() {
         </CardHeader>
         <CardBody>
           {dailyVolume.length === 0 ? (
-            <EmptyState icon={<TrendingUp size={24} className="text-gray-400" />} title="Sin datos de volumen" description="Registra entrenamientos completados para ver tu evolución gráfica." />
+            <EmptyState
+              icon={<TrendingUp size={24} className="text-gray-400" />}
+              title="Sin datos de volumen"
+              description="Registra entrenamientos completados para ver tu evolución gráfica."
+            />
           ) : (
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -494,7 +613,15 @@ export function AnalyticsView() {
                   <XAxis dataKey="date" stroke={axisColor} fontSize={11} tickLine={false} />
                   <YAxis stroke={axisColor} fontSize={11} tickLine={false} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="volume" name="Volumen (kg)" stroke="#f97316" strokeWidth={2.5} fillOpacity={1} fill="url(#volGradient)" />
+                  <Area
+                    type="monotone"
+                    dataKey="volume"
+                    name="Volumen (kg)"
+                    stroke="#f97316"
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#volGradient)"
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -512,13 +639,24 @@ export function AnalyticsView() {
           </CardHeader>
           <CardBody>
             {muscleGroupVolume.length === 0 ? (
-              <EmptyState icon={<Dumbbell size={24} className="text-gray-400" />} title="Sin datos musculares" description="Asocia ejercicios con grupos musculares para ver esta gráfica." />
+              <EmptyState
+                icon={<Dumbbell size={24} className="text-gray-400" />}
+                title="Sin datos musculares"
+                description="Asocia ejercicios con grupos musculares para ver esta gráfica."
+              />
             ) : (
               <div className="h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={muscleGroupVolume} margin={{ top: 10, right: 10, left: -20, bottom: 25 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-                    <XAxis dataKey="group" stroke={axisColor} fontSize={11} tickLine={false} angle={-25} textAnchor="end" />
+                    <XAxis
+                      dataKey="group"
+                      stroke={axisColor}
+                      fontSize={11}
+                      tickLine={false}
+                      angle={-25}
+                      textAnchor="end"
+                    />
                     <YAxis stroke={axisColor} fontSize={11} tickLine={false} />
                     <Tooltip content={<CustomTooltip />} cursor={false} />
                     <Bar dataKey="volume" name="Volumen (kg)" fill="#f97316" radius={[6, 6, 0, 0]}>
@@ -544,7 +682,11 @@ export function AnalyticsView() {
           </CardHeader>
           <CardBody>
             {exerciseProgress.length === 0 ? (
-              <EmptyState icon={<Award size={24} className="text-gray-400" />} title="Sin registros para este ejercicio" description="Selecciona otro ejercicio o registra series completadas." />
+              <EmptyState
+                icon={<Award size={24} className="text-gray-400" />}
+                title="Sin registros para este ejercicio"
+                description="Selecciona otro ejercicio o registra series completadas."
+              />
             ) : (
               <div className="h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -558,17 +700,50 @@ export function AnalyticsView() {
                     <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
                     <XAxis dataKey="date" stroke={axisColor} fontSize={11} tickLine={false} />
                     <YAxis yAxisId="left" stroke={axisColor} fontSize={11} tickLine={false} />
-                    <YAxis yAxisId="right" orientation="right" domain={[0, 5]} stroke={axisColor} fontSize={11} tickLine={false} />
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      domain={[0, 5]}
+                      stroke={axisColor}
+                      fontSize={11}
+                      tickLine={false}
+                    />
                     <Tooltip content={<CustomTooltip />} />
                     <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '5px' }} />
                     {!isSelectedCardio && (
-                      <Area yAxisId="left" type="monotone" dataKey="estimated1RM" name="1RM Estimado (kg)" stroke="#3b82f6" strokeWidth={2.5} fillOpacity={1} fill="url(#rm1Gradient)" />
+                      <Area
+                        yAxisId="left"
+                        type="monotone"
+                        dataKey="estimated1RM"
+                        name="1RM Estimado (kg)"
+                        stroke="#3b82f6"
+                        strokeWidth={2.5}
+                        fillOpacity={1}
+                        fill="url(#rm1Gradient)"
+                      />
                     )}
                     {!isSelectedCardio && (
-                      <Area yAxisId="right" type="monotone" dataKey="avgRir" name="RIR Promedio" stroke="#10b981" strokeWidth={2} fill="none" />
+                      <Area
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="avgRir"
+                        name="RIR Promedio"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                        fill="none"
+                      />
                     )}
                     {isSelectedCardio && (
-                      <Area yAxisId="left" type="monotone" dataKey="durationMinutes" name="Duración (min)" stroke="#8b5cf6" strokeWidth={2.5} fillOpacity={1} fill="url(#rm1Gradient)" />
+                      <Area
+                        yAxisId="left"
+                        type="monotone"
+                        dataKey="durationMinutes"
+                        name="Duración (min)"
+                        stroke="#8b5cf6"
+                        strokeWidth={2.5}
+                        fillOpacity={1}
+                        fill="url(#rm1Gradient)"
+                      />
                     )}
                   </AreaChart>
                 </ResponsiveContainer>
@@ -578,7 +753,6 @@ export function AnalyticsView() {
         </Card>
       </div>
 
-      {/* Historial Detallado */}
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -604,31 +778,56 @@ export function AnalyticsView() {
         </CardHeader>
         <CardBody>
           {completedSessions.length === 0 ? (
-            <EmptyState icon={<Activity size={24} className="text-gray-400" />} title="No hay sesiones completadas" description="Finaliza sesiones en la pestaña Sesión para ver el desglose detallado." />
+            <EmptyState
+              icon={<Activity size={24} className="text-gray-400" />}
+              title="No hay sesiones completadas"
+              description="Finaliza sesiones en la pestaña Sesión para ver el desglose detallado."
+            />
           ) : (
             <div className="space-y-4">
               {visibleSessions.map((session) => {
                 const isExpanded = expandedSessions[session.id] || false;
                 const sessionVol = (session.exercises || []).reduce((acc, ex) => {
                   const setList = ex?.sets || [];
-                  return acc + setList.reduce((sAcc, set) => sAcc + (set && set.completed ? (set.reps || 0) * (set.weight || 0) : 0), 0);
+                  return (
+                    acc +
+                    setList.reduce(
+                      (sAcc, set) => sAcc + (set && set.completed ? (set.reps || 0) * (set.weight || 0) : 0),
+                      0
+                    )
+                  );
                 }, 0);
-                const completedSetsCount = (session.exercises || []).reduce((acc, ex) => acc + (ex?.sets?.filter(s => s && s.completed).length || 0), 0);
+                const completedSetsCount = (session.exercises || []).reduce(
+                  (acc, ex) => acc + (ex?.sets?.filter((s) => s && s.completed).length || 0),
+                  0
+                );
 
                 return (
-                  <div key={session.id} className="border border-gray-200 dark:border-gray-800 rounded-2xl p-4 bg-white/50 dark:bg-gray-900/50 transition-all">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 cursor-pointer" onClick={() => toggleSession(session.id)}>
+                  <div
+                    key={session.id}
+                    className="border border-gray-200 dark:border-gray-800 rounded-2xl p-4 bg-white/50 dark:bg-gray-900/50 transition-all"
+                  >
+                    <div
+                      className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 cursor-pointer"
+                      onClick={() => toggleSession(session.id)}
+                    >
                       <div>
                         <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-sm sm:text-base text-gray-900 dark:text-gray-100">{session.routineName || 'Entrenamiento'}</h4>
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold">Completada</span>
+                          <h4 className="font-bold text-sm sm:text-base text-gray-900 dark:text-gray-100">
+                            {session.routineName || 'Entrenamiento'}
+                          </h4>
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold">
+                            Completada
+                          </span>
                         </div>
                         <p className="text-xs text-gray-400 mt-0.5">{fmtDate(session.date)}</p>
                       </div>
                       <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
                         <div className="text-right">
                           <p className="text-xs text-gray-400">Volumen</p>
-                          <p className="text-sm font-bold font-mono">{Math.round(sessionVol).toLocaleString('es-ES')} kg</p>
+                          <p className="text-sm font-bold font-mono">
+                            {Math.round(sessionVol).toLocaleString('es-ES')} kg
+                          </p>
                         </div>
                         <div className="text-right">
                           <p className="text-xs text-gray-400">Series</p>
@@ -643,26 +842,40 @@ export function AnalyticsView() {
                     {isExpanded && (
                       <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 space-y-3 animate-fade-in">
                         {(session.exercises || []).map((ex, idx) => {
-                          const exerciseObj = (exercises || []).find(e => e?.id === ex.exerciseId);
+                          const exerciseObj = (exercises || []).find((e) => e?.id === ex.exerciseId);
                           const setList = ex?.sets || [];
                           return (
                             <div key={idx} className="bg-gray-50 dark:bg-gray-800/40 rounded-xl p-3">
                               <p className="font-semibold text-xs sm:text-sm text-brand-600 dark:text-brand-400 mb-2">
-                                {exerciseObj?.name || 'Ejercicio'} <span className="text-[11px] text-gray-400 font-normal">({exerciseObj?.muscleGroup || 'General'})</span>
+                                {exerciseObj?.name || 'Ejercicio'}{' '}
+                                <span className="text-[11px] text-gray-400 font-normal">
+                                  ({exerciseObj?.muscleGroup || 'General'})
+                                </span>
                               </p>
                               {setList.length > 0 && (
                                 <div className="space-y-1.5">
                                   {setList.map((set, sIdx) => (
-                                    <div key={sIdx} className="flex items-center justify-between text-xs font-mono bg-white dark:bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-gray-800">
+                                    <div
+                                      key={sIdx}
+                                      className="flex items-center justify-between text-xs font-mono bg-white dark:bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-gray-800"
+                                    >
                                       <div className="flex items-center gap-3">
                                         <span className="text-gray-400 font-sans font-bold">#{sIdx + 1}</span>
-                                        <span>{set.weight || 0} kg × {set.reps || 0} reps</span>
+                                        <span>
+                                          {set.weight || 0} kg × {set.reps || 0} reps
+                                        </span>
                                       </div>
                                       <div className="flex items-center gap-3">
                                         {typeof set.rir === 'number' && (
-                                          <span className="px-2 py-0.5 rounded bg-brand-500/10 text-brand-500 font-bold">RIR: {set.rir}</span>
+                                          <span className="px-2 py-0.5 rounded bg-brand-500/10 text-brand-500 font-bold">
+                                            RIR: {set.rir}
+                                          </span>
                                         )}
-                                        <span className={set.completed ? 'text-emerald-500 font-bold' : 'text-gray-400'}>
+                                        <span
+                                          className={
+                                            set.completed ? 'text-emerald-500 font-bold' : 'text-gray-400'
+                                          }
+                                        >
                                           {set.completed ? 'Completada' : 'Pendiente'}
                                         </span>
                                       </div>
@@ -675,7 +888,9 @@ export function AnalyticsView() {
                         })}
                         {session.notes && (
                           <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 text-xs text-gray-600 dark:text-gray-300">
-                            <span className="font-bold text-amber-600 dark:text-amber-400 block mb-1">Notas de la sesión:</span>
+                            <span className="font-bold text-amber-600 dark:text-amber-400 block mb-1">
+                              Notas de la sesión:
+                            </span>
                             {session.notes}
                           </div>
                         )}
@@ -688,7 +903,7 @@ export function AnalyticsView() {
               {visibleCount < completedSessions.length && (
                 <div className="no-print text-center pt-4">
                   <button
-                    onClick={() => setVisibleCount(prev => prev + 5)}
+                    onClick={() => setVisibleCount((prev) => prev + 5)}
                     className="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer"
                   >
                     Cargar más sesiones ({completedSessions.length - visibleCount} restantes)
