@@ -99,7 +99,7 @@ function playTimerBeep() {
   }
 }
 
-export function SessionView({
+export function ExercisesView({
   activeSessionId,
   onActiveSessionChange,
 }: {
@@ -1157,3 +1157,6 @@ export function SessionView({
     </>
   );
 }
+
+export { ExercisesView as SessionView };
+export default ExercisesView;
