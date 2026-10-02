@@ -1,5 +1,3 @@
-// Reemplaza todo el contenido de tu archivo src/components/AnalyticsView.tsx con el siguiente código:
-
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import {
   BarChart3,
@@ -14,6 +12,10 @@ import {
   Zap,
   Award,
   FileText,
+  Sparkles,
+  BookOpen,
+  X,
+  HelpCircle,
 } from 'lucide-react';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
@@ -106,6 +108,83 @@ function CustomTooltip({
   );
 }
 
+// --- MODAL GUÍA DE MÉTRICAS ---
+function AnalyticsGuideModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in no-print">
+      <div className="relative w-full max-w-lg p-6 bg-white dark:bg-[#1a1a1b] border border-gray-200 dark:border-gray-800 rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-full transition-colors"
+        >
+          <X size={18} />
+        </button>
+
+        <div className="flex items-center gap-3 mb-5">
+          <div className="p-2.5 rounded-2xl bg-brand-500/10 text-brand-500">
+            <BookOpen size={22} />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Guía de Análisis TROPHIA</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Cómo interpretar tus métricas de sobrecarga</p>
+          </div>
+        </div>
+
+        <div className="space-y-4 text-xs sm:text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+          <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
+            <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-1">
+              <TrendingUp size={16} className="text-brand-500" /> 1. Evolución de Volumen Total (kg)
+            </h4>
+            <p>
+              Calcula la suma acumulada de kilos levantados por sesión (Peso × Repeticiones × Series). Una curva ascendente refleja que estás aplicando sobrecarga progresiva en tu plan global.
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
+            <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-1">
+              <Dumbbell size={16} className="text-brand-500" /> 2. Volumen por Grupo Muscular
+            </h4>
+            <p>
+              Muestra cómo distribuyes el trabajo entre zonas musculares. Te permite verificar si estás equilibrando el volumen semanal o si algún grupo está quedando rezagado.
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
+            <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-1">
+              <Award size={16} className="text-blue-500" /> 3. 1RM Estimado (Fuerza Máxima)
+            </h4>
+            <p>
+              Calcula tu repetición máxima teórica según tus series efectivas. Si la línea azul sube manteniendo un esfuerzo controlado (RIR), estás ganando fuerza real.
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
+            <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-1">
+              <Zap size={16} className="text-emerald-500" /> 4. RIR (Repeticiones en Recámara)
+            </h4>
+            <p>
+              Indica qué tan cerca del fallo muscular ejecutaste tus series:
+              <br />
+              • <strong className="text-gray-900 dark:text-white">RIR 0:</strong> Fallo muscular estricto.
+              <br />
+              • <strong className="text-gray-900 dark:text-white">RIR 1 - 2:</strong> Rango ideal para estimular la hipertrofia sin acumular fatiga excesiva.
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full mt-6 py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-xl text-sm transition-colors shadow-md"
+        >
+          Entendido
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ConsistencyHeatmap({ sessions }: { sessions: TrainingSession[] }) {
   const datesSet = useMemo(() => {
     const set = new Set<string>();
@@ -183,6 +262,7 @@ export function AnalyticsView() {
   const [visibleCount, setVisibleCount] = useState<number>(5);
   const [expandedSessions, setExpandedSessions] = useState<Record<string, boolean>>({});
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [isGuideOpen, setIsGuideOpen] = useState<boolean>(false);
 
   const isDark = theme === 'dark';
   const axisColor = isDark ? '#64748b' : '#94a3b8';
@@ -452,6 +532,52 @@ export function AnalyticsView() {
   const currentExerciseName =
     selectedExercise === 'all' ? 'Todos los ejercicios' : currentExercise?.name ?? 'Seleccionar ejercicio';
 
+  // --- LÓGICA DE DIAGNÓSTICO E INSIGHTS AUTOMÁTICOS ---
+  const analyticsInsight = useMemo(() => {
+    if (completedSessions.length === 0) return null;
+
+    let badgeText = "PROGRESO GENERAL";
+    let text = "";
+
+    if (selectedExercise !== 'all' && exerciseProgress.length > 0) {
+      const first1RM = exerciseProgress[0].estimated1RM;
+      const last1RM = exerciseProgress[exerciseProgress.length - 1].estimated1RM;
+      const diffPct = first1RM > 0 ? Math.round(((last1RM - first1RM) / first1RM) * 100) : 0;
+      const validRirList = exerciseProgress.filter((p) => typeof p.avgRir === 'number');
+      const avgRirEx = validRirList.length > 0 
+        ? validRirList.reduce((a, b) => a + (b.avgRir || 0), 0) / validRirList.length 
+        : null;
+
+      if (diffPct > 0) {
+        badgeText = `+${diffPct}% FUERZA`;
+        text = `Tu 1RM estimado en ${currentExerciseName} ha aumentado un ${diffPct}% en el período seleccionado. ${
+          avgRirEx !== null ? `Con un RIR promedio de ${avgRirEx.toFixed(1)}, estás logrando una sobrecarga progresiva limpia y sostenida.` : ''
+        }`;
+      } else if (diffPct === 0) {
+        badgeText = "NIVEL ESTABLE";
+        text = `Tu nivel de fuerza máxima estimada en ${currentExerciseName} se mantiene firme en ${last1RM} kg. ${
+          avgRirEx !== null ? `Tu RIR medio es ${avgRirEx.toFixed(1)}, adecuado para consolidar técnica y volumen.` : ''
+        }`;
+      } else {
+        badgeText = "AJUSTE DE CARGA";
+        text = `Tu estimación de 1RM ha registrado variaciones. Si el esfuerzo percibido es elevado, considera una semana de descarga ligera (Deload) para optimizar la recuperación.`;
+      }
+    } else {
+      const topMuscle = muscleGroupVolume.length > 0 ? muscleGroupVolume[0].group : 'General';
+      const rirText = globalAvgRir !== null ? globalAvgRir.toFixed(1) : 'N/A';
+
+      if (globalAvgRir !== null && globalAvgRir <= 2.5) {
+        badgeText = "ESTÍMULO EFICIENTE";
+        text = `Has acumulado ${totalVolume.toLocaleString('es-ES')} kg en ${completedSessions.length} sesiones. Tu RIR promedio global de ${rirText} refleja un nivel de intensidad cercano al fallo ideal para hipertrofia, enfocando el mayor volumen en ${topMuscle}.`;
+      } else {
+        badgeText = "VOLUMEN REGISTRADO";
+        text = `Llevas un volumen acumulado de ${totalVolume.toLocaleString('es-ES')} kg distribuidos en ${completedSessions.length} sesiones completadas. Tu zona muscular con mayor trabajo es ${topMuscle}.`;
+      }
+    }
+
+    return { badgeText, text };
+  }, [completedSessions, exerciseProgress, selectedExercise, currentExerciseName, muscleGroupVolume, globalAvgRir, totalVolume]);
+
   return (
     <div className="space-y-6 printable-area">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -460,17 +586,31 @@ export function AnalyticsView() {
             <BarChart3 size={24} className="text-brand-500" />
             Análisis de Rendimiento
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Estadísticas exclusivas del usuario actual.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Métricas avanzadas y evolución de tu sobrecarga progresiva.
+          </p>
         </div>
-        <button
-          type="button"
-          onClick={handleExportPDF}
-          disabled={isExporting}
-          className="no-print flex items-center gap-2 px-3.5 py-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white font-medium rounded-xl transition-all shadow-md text-xs sm:text-sm cursor-pointer"
-        >
-          <FileDown size={16} />
-          {isExporting ? 'Generando PDF...' : 'Exportar PDF'}
-        </button>
+        
+        <div className="no-print flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsGuideOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold rounded-xl transition-colors text-xs sm:text-sm cursor-pointer border border-gray-200 dark:border-gray-700"
+          >
+            <BookOpen size={16} className="text-brand-500" />
+            <span>Guía de Métricas</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={isExporting}
+            className="flex items-center gap-2 px-3.5 py-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white font-medium rounded-xl transition-all shadow-md text-xs sm:text-sm cursor-pointer"
+          >
+            <FileDown size={16} />
+            {isExporting ? 'Generando PDF...' : 'Exportar PDF'}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
@@ -585,15 +725,43 @@ export function AnalyticsView() {
         </div>
       </div>
 
+      {/* --- TARJETA DE DIAGNÓSTICO E INSIGHTS AUTOMÁTICOS --- */}
+      {analyticsInsight && (
+        <div className="p-4 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-start gap-3.5 shadow-sm animate-fade-in">
+          <div className="p-2 rounded-xl bg-brand-500/20 text-brand-500 shrink-0 mt-0.5">
+            <Sparkles size={20} />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <h4 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">
+                Diagnóstico de Sobrecarga
+              </h4>
+              <span className="px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-brand-500 text-white rounded-full">
+                {analyticsInsight.badgeText}
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+              {analyticsInsight.text}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* --- EVOLUCIÓN DE VOLUMEN TOTAL --- */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <TrendingUp size={18} className="text-brand-500" />
-              Evolución de Volumen Total (kg)
-            </span>
-            <span className="text-xs font-normal text-gray-400">Volumen por sesión</span>
-          </CardTitle>
+          <div className="flex flex-col space-y-1">
+            <CardTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <TrendingUp size={18} className="text-brand-500" />
+                Evolución de Volumen Total (kg)
+              </span>
+              <span className="text-xs font-normal text-gray-400">Volumen por sesión</span>
+            </CardTitle>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Suma acumulada de kilos levantados (Peso × Reps × Series). Muestra la tendencia general de tu trabajo físico.
+            </p>
+          </div>
         </CardHeader>
         <CardBody>
           {dailyVolume.length === 0 ? (
@@ -633,12 +801,18 @@ export function AnalyticsView() {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* --- VOLUMEN POR GRUPO MUSCULAR --- */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Dumbbell size={18} className="text-brand-500" />
-              Volumen por Grupo Muscular
-            </CardTitle>
+            <div className="flex flex-col space-y-1">
+              <CardTitle className="flex items-center gap-2">
+                <Dumbbell size={18} className="text-brand-500" />
+                Volumen por Grupo Muscular
+              </CardTitle>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Distribución del estímulo total por grupo muscular para prevenir desequilibrios.
+              </p>
+            </div>
           </CardHeader>
           <CardBody>
             {muscleGroupVolume.length === 0 ? (
@@ -674,14 +848,28 @@ export function AnalyticsView() {
           </CardBody>
         </Card>
 
+        {/* --- PROGRESO POR EJERCICIO (1RM VS RIR) --- */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Award size={18} className="text-brand-500" />
-                Progreso: {currentExerciseName}
-              </span>
-            </CardTitle>
+            <div className="flex flex-col space-y-1">
+              <CardTitle className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Award size={18} className="text-brand-500" />
+                  Progreso: {currentExerciseName}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsGuideOpen(true)}
+                  className="text-gray-400 hover:text-brand-500 transition-colors"
+                  title="¿Cómo leer este gráfico?"
+                >
+                  <HelpCircle size={16} />
+                </button>
+              </CardTitle>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                1RM estimado (fuerza máxima teórica) vs RIR promedio (cercanía al fallo).
+              </p>
+            </div>
           </CardHeader>
           <CardBody>
             {exerciseProgress.length === 0 ? (
@@ -856,7 +1044,6 @@ export function AnalyticsView() {
                                 </span>
                               </p>
 
-                              {/* Nota del ejercicio individual */}
                               {ex.notes && (
                                 <p className="text-xs text-gray-600 dark:text-gray-300 italic mb-2 flex items-center gap-1">
                                   <FileText size={12} className="text-gray-400 shrink-0" />
@@ -899,7 +1086,6 @@ export function AnalyticsView() {
                           );
                         })}
 
-                        {/* Nota general de la sesión completa */}
                         {session.notes && (
                           <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 text-xs text-gray-600 dark:text-gray-300">
                             <span className="font-bold text-amber-600 dark:text-amber-400 block mb-1">
@@ -928,6 +1114,9 @@ export function AnalyticsView() {
           )}
         </CardBody>
       </Card>
+
+      {/* MODAL GUÍA DE MÉTRICAS */}
+      <AnalyticsGuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
     </div>
   );
 }
