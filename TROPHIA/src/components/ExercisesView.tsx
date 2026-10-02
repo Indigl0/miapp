@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dumbbell, Plus, Trash2, Search, X } from 'lucide-react';
+import { Dumbbell, Plus, Trash2, Search, X, Filter } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
@@ -129,9 +129,9 @@ export function ExercisesView() {
         </Button>
       </div>
 
-      {/* Buscador y Menú de Filtros */}
-      <div className="space-y-3">
-        <div className="relative w-full">
+      {/* Controles de Búsqueda y Filtro Desplegable */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
           <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
@@ -142,34 +142,25 @@ export function ExercisesView() {
           />
         </div>
 
-        {/* Menú de filtros hacia abajo con salto de línea automático */}
-        <div className="flex flex-wrap gap-2 pt-1">
-          <button
-            onClick={() => setSelectedMuscle('Todos')}
-            className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
-              selectedMuscle === 'Todos'
-                ? 'bg-brand-500 text-white shadow-sm'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
+        <div className="sm:w-64 relative">
+          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10">
+            <Filter size={16} />
+          </div>
+          <Select
+            value={selectedMuscle}
+            onChange={(e) => setSelectedMuscle(e.target.value)}
+            className="pl-9"
           >
-            Todos ({exercises.length})
-          </button>
-          {MUSCLE_GROUPS.map((mg) => {
-            const count = exercises.filter((e) => e.muscleGroup === mg).length;
-            return (
-              <button
-                key={mg}
-                onClick={() => setSelectedMuscle(mg)}
-                className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
-                  selectedMuscle === mg
-                    ? 'bg-brand-500 text-white shadow-sm'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                }`}
-              >
-                {mg} ({count})
-              </button>
-            );
-          })}
+            <option value="Todos">Todos los grupos ({exercises.length})</option>
+            {MUSCLE_GROUPS.map((mg) => {
+              const count = exercises.filter((e) => e.muscleGroup === mg).length;
+              return (
+                <option key={mg} value={mg}>
+                  {mg} ({count})
+                </option>
+              );
+            })}
+          </Select>
         </div>
       </div>
 
