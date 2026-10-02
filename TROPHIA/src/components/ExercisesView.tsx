@@ -25,6 +25,20 @@ const MUSCLE_GROUPS = [
   'Otro'
 ];
 
+const getMuscleBadgeColor = (muscle: string): 'red' | 'blue' | 'green' | 'gray' | 'brand' | 'amber' => {
+  switch (muscle) {
+    case 'Pecho': return 'red';
+    case 'Espalda': return 'blue';
+    case 'Piernas': return 'green';
+    case 'Hombros': return 'brand';
+    case 'Bíceps': return 'amber';
+    case 'Tríceps': return 'blue';
+    case 'Abdominales': return 'red';
+    case 'Cardio': return 'green';
+    default: return 'gray';
+  }
+};
+
 export function ExercisesView() {
   const { user } = useAuth();
   const currentUserId = user?.id;
@@ -34,7 +48,7 @@ export function ExercisesView() {
       if (!currentUserId) return [];
       const all = await db.exercises.toArray();
       return all
-        .filter((e) => !e.userId || e.userId === currentUserId)
+        .filter((e) => e.userId === currentUserId)
         .sort((a, b) => a.name.localeCompare(b.name));
     },
     [currentUserId],
@@ -88,7 +102,7 @@ export function ExercisesView() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-3 sm:px-0 pb-16">
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-gray-900 text-white dark:bg-white dark:text-gray-900 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-bounce">
           <span className="text-sm font-medium">{toastMessage}</span>
@@ -98,63 +112,64 @@ export function ExercisesView() {
         </div>
       )}
 
+      {/* Cabecera responsiva */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="font-condensed text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Dumbbell size={24} className="text-brand-500" />
+            <Dumbbell size={24} className="text-brand-500 shrink-0" />
             Biblioteca de Ejercicios
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Administra los ejercicios disponibles para tus rutinas.
+            Administra tus ejercicios personalizados para tus rutinas.
           </p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
+        <Button onClick={() => setIsCreateOpen(true)} className="w-full sm:w-auto justify-center">
           <Plus size={18} />
           Nuevo ejercicio
         </Button>
       </div>
 
-      {/* Filtros y Búsqueda */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+      {/* Buscador y Menú de Filtros */}
+      <div className="space-y-3">
+        <div className="relative w-full">
           <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar ejercicio por nombre..."
+            placeholder="Buscar ejercicio..."
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1a1a1b] text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
         </div>
-        <div className="overflow-x-auto no-scrollbar pb-1 sm:pb-0">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setSelectedMuscle('Todos')}
-              className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
-                selectedMuscle === 'Todos'
-                  ? 'bg-brand-500 text-white shadow-sm'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-              }`}
-            >
-              Todos ({exercises.length})
-            </button>
-            {MUSCLE_GROUPS.map((mg) => {
-              const count = exercises.filter((e) => e.muscleGroup === mg).length;
-              return (
-                <button
-                  key={mg}
-                  onClick={() => setSelectedMuscle(mg)}
-                  className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
-                    selectedMuscle === mg
-                      ? 'bg-brand-500 text-white shadow-sm'
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  {mg} ({count})
-                </button>
-              );
-            })}
-          </div>
+
+        {/* Menú de filtros hacia abajo con salto de línea automático */}
+        <div className="flex flex-wrap gap-2 pt-1">
+          <button
+            onClick={() => setSelectedMuscle('Todos')}
+            className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
+              selectedMuscle === 'Todos'
+                ? 'bg-brand-500 text-white shadow-sm'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+          >
+            Todos ({exercises.length})
+          </button>
+          {MUSCLE_GROUPS.map((mg) => {
+            const count = exercises.filter((e) => e.muscleGroup === mg).length;
+            return (
+              <button
+                key={mg}
+                onClick={() => setSelectedMuscle(mg)}
+                className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
+                  selectedMuscle === mg
+                    ? 'bg-brand-500 text-white shadow-sm'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                {mg} ({count})
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -173,20 +188,22 @@ export function ExercisesView() {
           />
         </Card>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {filteredExercises.map((ex) => (
             <Card key={ex.id} className="hover:shadow-md transition-shadow">
               <CardBody>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="font-semibold text-base truncate">{ex.name}</h3>
+                    <h3 className="font-semibold text-base truncate text-gray-900 dark:text-gray-100">{ex.name}</h3>
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      <Badge color="blue">{ex.muscleGroup}</Badge>
+                      <Badge color={getMuscleBadgeColor(ex.muscleGroup)}>
+                        {ex.muscleGroup}
+                      </Badge>
                     </div>
                   </div>
                   <button
                     onClick={() => handleDeleteExercise(ex.id)}
-                    className="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10"
+                    className="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 shrink-0"
                     title="Eliminar ejercicio"
                   >
                     <Trash2 size={16} />
