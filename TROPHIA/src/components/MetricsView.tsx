@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-// @ts-ignore
-import { supabase } from '../supabase';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { useTheme } from '@/lib/theme';
 import { 
