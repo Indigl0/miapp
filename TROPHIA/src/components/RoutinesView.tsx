@@ -235,11 +235,11 @@ export function RoutinesView() {
     const cleanedExercises: RoutineExercise[] = form.exercises.map(
       ({ exerciseId, sets, targetReps, restSeconds, cardioType, durationMinutes }) => ({
         exerciseId,
-        ...(sets !== undefined ? { sets } : {}),
-        ...(targetReps !== undefined ? { targetReps } : {}),
-        ...(restSeconds !== undefined ? { restSeconds } : {}),
+        ...(sets !== undefined && sets !== null ? { sets: sets || 3 } : {}),
+        ...(targetReps !== undefined && targetReps !== null ? { targetReps: targetReps || 10 } : {}),
+        ...(restSeconds !== undefined && restSeconds !== null ? { restSeconds: restSeconds ?? 90 } : {}),
         ...(cardioType !== undefined ? { cardioType } : {}),
-        ...(durationMinutes !== undefined ? { durationMinutes } : {}),
+        ...(durationMinutes !== undefined && durationMinutes !== null ? { durationMinutes: durationMinutes || 30 } : {}),
       })
     );
 
@@ -446,11 +446,16 @@ export function RoutinesView() {
                             <Label>Tiempo (min)</Label>
                             <Input
                               type="number"
+                              inputMode="numeric"
                               min={1}
-                              value={re.durationMinutes ?? 30}
-                              onChange={(e) =>
-                                updateExercise(re._tempId, { durationMinutes: Math.max(1, Number(e.target.value)) })
-                              }
+                              placeholder="30"
+                              value={re.durationMinutes ?? ''}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                const parsed = val === '' ? undefined : parseInt(val, 10);
+                                updateExercise(re._tempId, { durationMinutes: isNaN(parsed as number) ? undefined : parsed });
+                              }}
                             />
                           </div>
                         </>
@@ -460,33 +465,48 @@ export function RoutinesView() {
                             <Label>Series</Label>
                             <Input
                               type="number"
+                              inputMode="numeric"
                               min={1}
-                              value={re.sets ?? 3}
-                              onChange={(e) =>
-                                updateExercise(re._tempId, { sets: Math.max(1, Number(e.target.value)) })
-                              }
+                              placeholder="3"
+                              value={re.sets ?? ''}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                const parsed = val === '' ? undefined : parseInt(val, 10);
+                                updateExercise(re._tempId, { sets: isNaN(parsed as number) ? undefined : parsed });
+                              }}
                             />
                           </div>
                           <div className="w-16">
                             <Label>Reps</Label>
                             <Input
                               type="number"
+                              inputMode="numeric"
                               min={1}
-                              value={re.targetReps ?? 10}
-                              onChange={(e) =>
-                                updateExercise(re._tempId, { targetReps: Math.max(1, Number(e.target.value)) })
-                              }
+                              placeholder="10"
+                              value={re.targetReps ?? ''}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                const parsed = val === '' ? undefined : parseInt(val, 10);
+                                updateExercise(re._tempId, { targetReps: isNaN(parsed as number) ? undefined : parsed });
+                              }}
                             />
                           </div>
                           <div className="w-20">
                             <Label>Descanso(s)</Label>
                             <Input
                               type="number"
+                              inputMode="numeric"
                               min={0}
-                              value={re.restSeconds ?? 90}
-                              onChange={(e) =>
-                                updateExercise(re._tempId, { restSeconds: Math.max(0, Number(e.target.value)) })
-                              }
+                              placeholder="90"
+                              value={re.restSeconds ?? ''}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                const parsed = val === '' ? undefined : parseInt(val, 10);
+                                updateExercise(re._tempId, { restSeconds: isNaN(parsed as number) ? undefined : parsed });
+                              }}
                             />
                           </div>
                         </>
