@@ -5,6 +5,7 @@ export interface Exercise {
   name: string;
   muscleGroup: string;
   userId?: ID;
+  user_id?: ID; // Soporte para nomenclatura snake_case de Supabase/vistas
 }
 
 export interface RoutineExercise {
@@ -19,7 +20,9 @@ export interface RoutineExercise {
 export interface Routine {
   id: ID;
   userId: ID;
+  user_id?: ID; // Soporte para nomenclatura snake_case
   name: string;
+  description?: string; // Campo opcional para las notas/descripción de la rutina
   exercises: RoutineExercise[];
   createdAt?: number;
   updatedAt?: number;
@@ -50,6 +53,7 @@ export interface SessionExercise {
 export interface TrainingSession {
   id: ID;
   userId: ID;
+  user_id?: ID;
   routineId?: ID | null;
   routineName?: string;
   date: number;
