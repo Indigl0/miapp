@@ -1158,5 +1158,4 @@ export function ExercisesView({
   );
 }
 
-export { ExercisesView as SessionView };
 export default ExercisesView;
