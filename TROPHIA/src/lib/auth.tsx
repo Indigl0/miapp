@@ -41,15 +41,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await seedExercises().catch(() => {});
         const stored = localStorage.getItem(SESSION_KEY);
         if (stored) {
-          const { id } = JSON.parse(stored) as { id: string };
-          const { data } = await supabase.from('users').select('*').eq('id', id).maybeSingle();
+          const parsed = JSON.parse(stored) as SupabaseUser;
+          if (parsed && parsed.id && isMounted) {
+            setUser(parsed);
+          }
+
+          const { data } = await supabase.from('users').select('*').eq('id', parsed.id).maybeSingle();
           if (data && isMounted) {
             setUser(data as SupabaseUser);
-            await flush().catch(() => {});
+            localStorage.setItem(SESSION_KEY, JSON.stringify(data));
           }
+          await flush().catch(() => {});
         }
       } catch {
-        localStorage.removeItem(SESSION_KEY);
+        // Mantiene la sesión local activa en caso de fallo de red
       } finally {
         if (isMounted) setReady(true);
       }
@@ -79,8 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error || !data) return false;
 
-      setUser(data as SupabaseUser);
-      localStorage.setItem(SESSION_KEY, JSON.stringify({ id: data.id }));
+      const userData = data as SupabaseUser;
+      setUser(userData);
+      localStorage.setItem(SESSION_KEY, JSON.stringify(userData));
       
       await flush().catch(() => {});
       return true;
@@ -122,7 +128,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (user?.id === id) {
       const { data: fresh } = await supabase.from('users').select('*').eq('id', id).maybeSingle();
-      if (fresh) setUser(fresh as SupabaseUser);
+      if (fresh) {
+        setUser(fresh as SupabaseUser);
+        localStorage.setItem(SESSION_KEY, JSON.stringify(fresh));
+      }
     }
   }, [user?.id]);
 

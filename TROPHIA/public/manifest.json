@@ -1,0 +1,16 @@
+{
+  "short_name": "TROPHIA",
+  "name": "TROPHIA — Training Tracker",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f0f10",
+  "theme_color": "#0f0f10",
+  "display": "standalone"
+}
