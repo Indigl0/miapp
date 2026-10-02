@@ -75,7 +75,7 @@ function DeveloperContactModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
           <p className="text-sm text-brand-500 font-semibold mb-4">Creador de TROPHIA</p>
           
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-            ¿Tienes alguna sugerencia, encontraste un error o quieres hablar sobre entrenamiento? No dudes en escribirme.
+            ¿Tienes alguna sugerencia, encontraste un error o tienes ideas para mejorar la app? No dudes en escribirme.
           </p>
 
           <div className="flex flex-col gap-3 w-full">
