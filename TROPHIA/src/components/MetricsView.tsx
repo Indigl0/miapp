@@ -46,6 +46,13 @@ interface BodyMetricsLog {
   thighs?: number | null;
 }
 
+// CACHÉ EN MEMORIA FUERA DEL COMPONENTE
+let cachedMetricsData: {
+  profile: UserProfile;
+  logs: WeightLog[];
+  bodyLogs: BodyMetricsLog[];
+} | null = null;
+
 const MONTHS_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
 const formatChartDate = (dateStr: string) => {
@@ -80,7 +87,9 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 export function MetricsView() {
   const { user } = useAuth();
   const [theme] = useTheme();
-  const [loading, setLoading] = useState(true);
+  
+  // Si ya existen datos guardados en memoria, evitamos la pantalla de carga
+  const [loading, setLoading] = useState(!cachedMetricsData);
   const [editingProfile, setEditingProfile] = useState(false);
   const [activeTab, setActiveTab] = useState<'weight' | 'measurements'>('weight');
   
@@ -88,15 +97,17 @@ export function MetricsView() {
   const axisColor = isDark ? '#6b7280' : '#9ca3af';
   const gridColor = isDark ? '#1f2937' : '#f3f4f6';
 
-  const [profile, setProfile] = useState<UserProfile>({
-    age: '',
-    height: '',
-    initial_weight: '',
-    goal: 'Ganar Masa Muscular',
-  });
+  const [profile, setProfile] = useState<UserProfile>(
+    cachedMetricsData?.profile || {
+      age: '',
+      height: '',
+      initial_weight: '',
+      goal: 'Ganar Masa Muscular',
+    }
+  );
 
-  const [logs, setLogs] = useState<WeightLog[]>([]);
-  const [bodyLogs, setBodyLogs] = useState<BodyMetricsLog[]>([]);
+  const [logs, setLogs] = useState<WeightLog[]>(cachedMetricsData?.logs || []);
+  const [bodyLogs, setBodyLogs] = useState<BodyMetricsLog[]>(cachedMetricsData?.bodyLogs || []);
 
   const [newWeight, setNewWeight] = useState<string>('');
   const [newWeightDate, setNewWeightDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
@@ -121,7 +132,12 @@ export function MetricsView() {
 
   const fetchData = async () => {
     if (!user?.id) return;
-    setLoading(true);
+    
+    // Muestra pantalla de carga solo si es la primera vez que se entra
+    if (!cachedMetricsData) {
+      setLoading(true);
+    }
+
     try {
       const [profRes, weightRes, bodyRes] = await Promise.all([
         supabase.from('user_profiles').select('*').eq('user_id', user.id).maybeSingle(),
@@ -129,24 +145,42 @@ export function MetricsView() {
         supabase.from('body_metrics_logs').select('*').eq('user_id', user.id).order('date', { ascending: true })
       ]);
 
+      let newProfile: UserProfile = {
+        age: '',
+        height: '',
+        initial_weight: '',
+        goal: 'Ganar Masa Muscular',
+      };
+
       if (profRes.data) {
-        setProfile({
+        newProfile = {
           age: profRes.data.age ?? '',
           height: profRes.data.height ?? '',
           initial_weight: profRes.data.initial_weight ?? '',
           goal: profRes.data.goal || 'Ganar Masa Muscular',
-        });
+        };
+        setProfile(newProfile);
       }
 
-      if (weightRes.data) setLogs(weightRes.data);
+      const newLogs = weightRes.data || [];
+      setLogs(newLogs);
+
+      let newBodyLogs: BodyMetricsLog[] = [];
       if (bodyRes.data) {
-        const normalizedData = bodyRes.data.map((item: any) => ({
+        newBodyLogs = bodyRes.data.map((item: any) => ({
           ...item,
           fat_percentage: item.fat_percentage ?? item.body_fat ?? null,
           hips: item.hips ?? item.hip ?? null
         }));
-        setBodyLogs(normalizedData);
+        setBodyLogs(newBodyLogs);
       }
+
+      // Guardamos el snapshot completo en la caché en memoria
+      cachedMetricsData = {
+        profile: newProfile,
+        logs: newLogs,
+        bodyLogs: newBodyLogs
+      };
 
     } catch (err) {
       console.error('Error cargando métricas:', err);
@@ -177,12 +211,14 @@ export function MetricsView() {
       if (error) throw error;
 
       if (data) {
-        setProfile({
+        const updatedProfile: UserProfile = {
           age: data.age ?? '',
           height: data.height ?? '',
           initial_weight: data.initial_weight ?? '',
           goal: data.goal ?? 'Ganar Masa Muscular',
-        });
+        };
+        setProfile(updatedProfile);
+        if (cachedMetricsData) cachedMetricsData.profile = updatedProfile;
       }
 
       setEditingProfile(false);
@@ -211,7 +247,11 @@ export function MetricsView() {
       if (error) throw error;
 
       if (data && data.length > 0) {
-        setLogs((prev) => [...prev, ...data].sort((a, b) => a.date.localeCompare(b.date)));
+        setLogs((prev) => {
+          const updated = [...prev, ...data].sort((a, b) => a.date.localeCompare(b.date));
+          if (cachedMetricsData) cachedMetricsData.logs = updated;
+          return updated;
+        });
         setNewWeight('');
       }
     } catch (err: any) {
@@ -224,7 +264,11 @@ export function MetricsView() {
     try {
       const { error } = await supabase.from('weight_logs').delete().eq('id', id);
       if (error) throw error;
-      setLogs((prev) => prev.filter((item) => item.id !== id));
+      setLogs((prev) => {
+        const updated = prev.filter((item) => item.id !== id);
+        if (cachedMetricsData) cachedMetricsData.logs = updated;
+        return updated;
+      });
     } catch (err) {
       console.error('Error eliminando registro de peso:', err);
     }
@@ -260,7 +304,12 @@ export function MetricsView() {
           hips: data[0].hip ?? data[0].hips ?? null
         };
 
-        setBodyLogs((prev) => [...prev, addedItem].sort((a, b) => a.date.localeCompare(b.date)));
+        setBodyLogs((prev) => {
+          const updated = [...prev, addedItem].sort((a, b) => a.date.localeCompare(b.date));
+          if (cachedMetricsData) cachedMetricsData.bodyLogs = updated;
+          return updated;
+        });
+
         setNewBodyLog({
           date: new Date().toISOString().split('T')[0],
           fat_percentage: '',
@@ -281,7 +330,11 @@ export function MetricsView() {
     try {
       const { error } = await supabase.from('body_metrics_logs').delete().eq('id', id);
       if (error) throw error;
-      setBodyLogs((prev) => prev.filter((item) => item.id !== id));
+      setBodyLogs((prev) => {
+        const updated = prev.filter((item) => item.id !== id);
+        if (cachedMetricsData) cachedMetricsData.bodyLogs = updated;
+        return updated;
+      });
     } catch (err) {
       console.error('Error eliminando registro de medidas:', err);
     }
