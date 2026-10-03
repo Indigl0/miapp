@@ -11,13 +11,11 @@ export type MutationOp =
 
 async function getCurrentUserId(): Promise<string | null> {
   try {
-    // 1. Intentar obtener el usuario directamente desde la sesión oficial de Supabase
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user?.id) {
       return session.user.id;
     }
 
-    // 2. Buscar automáticamente en el almacenamiento local cualquier token de Supabase (sb-*-auth-token)
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
@@ -30,7 +28,6 @@ async function getCurrentUserId(): Promise<string | null> {
       }
     }
 
-    // 3. Respaldo por ironlog-session si existiera
     const stored = localStorage.getItem('ironlog-session');
     if (stored) {
       const parsed = JSON.parse(stored);
@@ -188,29 +185,11 @@ function remoteToLocal(table: SyncTable, row: Record<string, unknown>): Record<s
   };
 }
 
-async function forcePushAllLocal(userId: string): Promise<void> {
-  const tables: SyncTable[] = ['exercises', 'routines', 'sessions', 'metrics'];
-  for (const table of tables) {
-    try {
-      const localRecords = await db.table(table).toArray();
-      for (const record of localRecords) {
-        const remoteRow = localToRemote(table, record as Record<string, unknown>, userId);
-        await supabase.from(table).upsert(remoteRow);
-      }
-    } catch {}
-  }
-}
-
 async function pushPending(): Promise<number> {
   const userId = await getCurrentUserId();
-  if (!userId) {
-    console.warn("Sync Push: Todavía no se detecta sesión de usuario.");
-    return 0;
-  }
+  if (!userId) return 0;
 
-  // Rescatar y subir todo lo local de inmediato a la nube
-  await forcePushAllLocal(userId);
-
+  // Solo procesamos la cola de elementos pendientes reales (rápido y eficiente)
   const pending = await db.mutationQueue.where('synced').equals(0).toArray();
   if (pending.length === 0) return 0;
   let pushed = 0;
