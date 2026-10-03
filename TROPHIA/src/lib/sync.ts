@@ -11,10 +11,15 @@ export type MutationOp =
 
 async function getCurrentUserId(): Promise<string | null> {
   try {
+    // 1. Intentar obtener el usuario directamente desde Supabase (Fuente oficial y segura)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.id) return session.user.id;
+
+    // 2. Respaldo por localStorage
     const stored = localStorage.getItem('ironlog-session');
     if (!stored) return null;
-    const { id } = JSON.parse(stored) as { id: string };
-    return id ?? null;
+    const parsed = JSON.parse(stored);
+    return parsed?.id ?? parsed?.user?.id ?? null;
   } catch {
     return null;
   }
@@ -164,9 +169,29 @@ function remoteToLocal(table: SyncTable, row: Record<string, unknown>): Record<s
   };
 }
 
+// NUEVO: Función de rescate para asegurar que TODO lo local suba a la nube
+async function forcePushAllLocal(): Promise<void> {
+  const userId = await getCurrentUserId();
+  if (!userId) return;
+
+  const tables: SyncTable[] = ['exercises', 'routines', 'sessions', 'metrics'];
+  for (const table of tables) {
+    try {
+      const localRecords = await db.table(table).toArray();
+      for (const record of localRecords) {
+        const remoteRow = localToRemote(table, record as Record<string, unknown>, userId);
+        await supabase.from(table).upsert(remoteRow);
+      }
+    } catch {}
+  }
+}
+
 async function pushPending(): Promise<number> {
   const userId = await getCurrentUserId();
   if (!userId) return 0;
+
+  // Ejecutamos primero el rescate masivo para atrapar cualquier dato local desamparado
+  await forcePushAllLocal();
 
   const pending = await db.mutationQueue.where('synced').equals(0).toArray();
   if (pending.length === 0) return 0;
@@ -187,7 +212,7 @@ async function pushPending(): Promise<number> {
       await db.mutationQueue.update(entry.id, { synced: 1 } as any);
       pushed++;
     } catch {
-      continue; // CORREGIDO: Usar continue en vez de break para que un error no bloquee el resto
+      continue;
     }
   }
   return pushed;
