@@ -98,12 +98,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     setUser(null);
     localStorage.removeItem(SESSION_KEY);
-    // AÑADIDO: db.exercises.clear() para limpiar ejercicios locales al cerrar sesión
+    // CORREGIDO: Ya no vaciamos las tablas locales de ejercicios/rutinas/sesiones al cerrar sesión
+    // para evitar que se pierdan los datos. Solo limpiamos la cola de mutaciones pendientes.
     await Promise.all([
-      db.exercises.clear(),
-      db.routines.clear(),
-      db.sessions.clear(),
-      db.metrics.clear(),
       db.mutationQueue.clear(),
     ]).catch(() => {});
   }, []);
