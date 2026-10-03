@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dumbbell, Plus, Trash2, Search, X, Filter } from 'lucide-react';
+import { Dumbbell, Plus, Trash2, Search, X, Filter, Pencil } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { db } from '@/lib/db';
@@ -18,6 +18,7 @@ const MUSCLE_GROUPS = [
   'Espalda',
   'Piernas',
   'Hombros',
+  'Brazos',
   'Bíceps',
   'Tríceps',
   'Abdominales',
@@ -31,6 +32,7 @@ const getMuscleBadgeColor = (muscle: string): 'red' | 'blue' | 'green' | 'gray' 
     case 'Espalda': return 'blue';
     case 'Piernas': return 'green';
     case 'Hombros': return 'brand';
+    case 'Brazos': return 'amber';
     case 'Bíceps': return 'amber';
     case 'Tríceps': return 'blue';
     case 'Abdominales': return 'red';
@@ -60,31 +62,62 @@ export function ExercisesView() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Estados para el formulario de nuevo ejercicio
+  // Estados para el formulario y control de edición
   const [name, setName] = useState('');
   const [muscleGroup, setMuscleGroup] = useState('Pecho');
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleCreateExercise = async (e: React.FormEvent) => {
+  const handleOpenCreate = () => {
+    setEditingId(null);
+    setName('');
+    setMuscleGroup('Pecho');
+    setIsCreateOpen(true);
+  };
+
+  const handleOpenEdit = (ex: Exercise) => {
+    setEditingId(ex.id);
+    setName(ex.name);
+    setMuscleGroup(ex.muscleGroup);
+    setIsCreateOpen(true);
+  };
+
+  const handleSaveExercise = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUserId || !name.trim()) return;
 
-    const newExercise: Exercise = {
-      id: uuid(),
-      userId: currentUserId,
-      name: name.trim(),
-      muscleGroup,
-    };
+    if (editingId) {
+      // Actualizar ejercicio existente
+      const updatedExercise: Exercise = {
+        id: editingId,
+        userId: currentUserId,
+        name: name.trim(),
+        muscleGroup,
+      };
 
-    await db.exercises.add(newExercise);
-    await enqueue({ kind: 'upsert', table: 'exercises', record: newExercise as unknown as Record<string, unknown> });
-    
-    showToast('Ejercicio creado exitosamente');
+      await db.exercises.put(updatedExercise);
+      await enqueue({ kind: 'upsert', table: 'exercises', record: updatedExercise as unknown as Record<string, unknown> });
+      showToast('Ejercicio actualizado exitosamente');
+    } else {
+      // Crear nuevo ejercicio
+      const newExercise: Exercise = {
+        id: uuid(),
+        userId: currentUserId,
+        name: name.trim(),
+        muscleGroup,
+      };
+
+      await db.exercises.add(newExercise);
+      await enqueue({ kind: 'upsert', table: 'exercises', record: newExercise as unknown as Record<string, unknown> });
+      showToast('Ejercicio creado exitosamente');
+    }
+
     setName('');
+    setEditingId(null);
     setIsCreateOpen(false);
   };
 
@@ -123,7 +156,7 @@ export function ExercisesView() {
             Administra tus ejercicios personalizados para tus rutinas.
           </p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)} className="w-full sm:w-auto justify-center">
+        <Button onClick={handleOpenCreate} className="w-full sm:w-auto justify-center">
           <Plus size={18} />
           Nuevo ejercicio
         </Button>
@@ -171,7 +204,7 @@ export function ExercisesView() {
             title="No se encontraron ejercicios"
             description={searchQuery || selectedMuscle !== 'Todos' ? 'Prueba cambiando los filtros de búsqueda.' : 'Agrega tu primer ejercicio personalizado.'}
             action={
-              <Button onClick={() => setIsCreateOpen(true)}>
+              <Button onClick={handleOpenCreate}>
                 <Plus size={18} />
                 Nuevo ejercicio
               </Button>
@@ -192,13 +225,22 @@ export function ExercisesView() {
                       </Badge>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleDeleteExercise(ex.id)}
-                    className="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 shrink-0"
-                    title="Eliminar ejercicio"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => handleOpenEdit(ex)}
+                      className="p-2 text-gray-400 hover:text-brand-500 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                      title="Editar ejercicio"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteExercise(ex.id)}
+                      className="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10"
+                      title="Eliminar ejercicio"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               </CardBody>
             </Card>
@@ -206,23 +248,23 @@ export function ExercisesView() {
         </div>
       )}
 
-      {/* Modal Crear Ejercicio - Optimizado para celulares con teclado abierto */}
+      {/* Modal Crear / Editar Ejercicio */}
       <Modal
         open={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        title="Crear Nuevo Ejercicio"
+        title={editingId ? 'Editar Ejercicio' : 'Crear Nuevo Ejercicio'}
         footer={
           <>
             <Button variant="ghost" onClick={() => setIsCreateOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleCreateExercise}>
-              Guardar ejercicio
+            <Button onClick={handleSaveExercise}>
+              {editingId ? 'Guardar cambios' : 'Guardar ejercicio'}
             </Button>
           </>
         }
       >
-        <form onSubmit={handleCreateExercise} className="space-y-4 max-h-[55vh] overflow-y-auto px-1">
+        <form onSubmit={handleSaveExercise} className="space-y-4 max-h-[55vh] overflow-y-auto px-1">
           <div>
             <Label>Nombre del ejercicio</Label>
             <Input

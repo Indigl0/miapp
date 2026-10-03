@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback, type ReactNode } from 'react';
 import { supabase } from './supabase';
-import { seedExercises } from './seed';
+// REMOVIDO: seedExercises para evitar la inyección de ejercicios globales o compartidos
 import { startSyncLoop, pendingCount, flush } from './sync';
 import { db } from './db';
 
@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     (async () => {
       try {
-        await seedExercises().catch(() => {});
+        // ELIMINADO: seedExercises() ya no se ejecuta al iniciar la app
         const stored = localStorage.getItem(SESSION_KEY);
         if (stored) {
           const parsed = JSON.parse(stored) as SupabaseUser;
@@ -98,7 +98,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     setUser(null);
     localStorage.removeItem(SESSION_KEY);
+    // AÑADIDO: db.exercises.clear() para limpiar ejercicios locales al cerrar sesión
     await Promise.all([
+      db.exercises.clear(),
       db.routines.clear(),
       db.sessions.clear(),
       db.metrics.clear(),
@@ -137,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const deleteUser = useCallback(async (id: string) => {
     await Promise.all([
+      supabase.from('exercises').delete().eq('user_id', id),
       supabase.from('routines').delete().eq('user_id', id),
       supabase.from('sessions').delete().eq('user_id', id),
       supabase.from('metrics').delete().eq('user_id', id),
@@ -146,6 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw new Error(error.message);
 
     await Promise.all([
+      db.exercises.clear(),
       db.routines.clear(),
       db.sessions.clear(),
       db.metrics.clear(),

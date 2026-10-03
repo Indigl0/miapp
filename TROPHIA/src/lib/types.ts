@@ -64,3 +64,24 @@ export interface TrainingSession {
   createdAt?: number;
   updatedAt?: number;
 }
+
+export interface MutationQueueEntry {
+  id: ID;
+  kind: 'upsert' | 'delete';
+  table: string;
+  record?: Record<string, unknown>;
+  timestamp?: number;
+  synced?: boolean; // Añadido para que coincida con el índice de db.ts
+}
+
+export interface BodyMetric {
+  id: ID;
+  userId: ID;
+  user_id?: ID;
+  date: number;
+  weight?: number;
+  bodyFatPercentage?: number;
+  notes?: string;
+  createdAt?: number;
+  updatedAt?: number;
+}
