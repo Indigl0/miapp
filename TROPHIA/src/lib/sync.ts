@@ -1,9 +1,14 @@
 import { db } from './db';
 import { supabase } from './supabase';
 import { uuid, now } from './uuid';
-import type { MutationOp, MutationQueueEntry, Exercise, Routine, TrainingSession, BodyMetric } from './types';
+import type { Exercise, Routine, TrainingSession, BodyMetric } from './types';
 
 export type SyncTable = 'exercises' | 'routines' | 'sessions' | 'metrics';
+
+// Definimos la estructura de la mutación localmente para evitar conflictos con types.ts
+export type MutationOp = 
+  | { kind: 'upsert'; table: SyncTable; record: Record<string, unknown> }
+  | { kind: 'delete'; table: SyncTable; id: string };
 
 async function getCurrentUserId(): Promise<string | null> {
   try {
@@ -17,7 +22,7 @@ async function getCurrentUserId(): Promise<string | null> {
 }
 
 export async function enqueue(op: MutationOp): Promise<void> {
-  const entry: MutationQueueEntry = { id: uuid(), op, createdAt: now(), synced: 0 };
+  const entry = { id: uuid(), op, createdAt: now(), synced: 0 } as any;
   await db.mutationQueue.add(entry);
   flush().catch(() => {});
 }
@@ -46,31 +51,31 @@ function localToRemote(table: SyncTable, record: Record<string, unknown>, userId
   const baseData = finalUserId ? { user_id: finalUserId } : {};
 
   if (table === 'exercises') {
-    const e = record as unknown as Exercise;
+    const e = record as any;
     return {
       ...baseData,
       id: e.id,
       name: e.name,
       muscle_group: e.muscleGroup,
       notes: e.notes ?? null,
-      created_at: new Date(e.createdAt).toISOString(),
-      updated_at: new Date(e.updatedAt).toISOString(),
+      created_at: new Date(e.createdAt || Date.now()).toISOString(),
+      updated_at: new Date(e.updatedAt || Date.now()).toISOString(),
     };
   }
   if (table === 'routines') {
-    const r = record as unknown as Routine;
+    const r = record as any;
     return {
       ...baseData,
       id: r.id,
       name: r.name,
       description: r.description ?? null,
       exercises: r.exercises,
-      created_at: new Date(r.createdAt).toISOString(),
-      updated_at: new Date(r.updatedAt).toISOString(),
+      created_at: new Date(r.createdAt || Date.now()).toISOString(),
+      updated_at: new Date(r.updatedAt || Date.now()).toISOString(),
     };
   }
   if (table === 'sessions') {
-    const s = record as unknown as TrainingSession;
+    const s = record as any;
     return {
       ...baseData,
       id: s.id,
@@ -80,12 +85,12 @@ function localToRemote(table: SyncTable, record: Record<string, unknown>, userId
       exercises: s.exercises,
       notes: s.notes ?? null,
       completed: s.completed,
-      created_at: new Date(s.createdAt).toISOString(),
-      updated_at: new Date(s.updatedAt).toISOString(),
+      created_at: new Date(s.createdAt || Date.now()).toISOString(),
+      updated_at: new Date(s.updatedAt || Date.now()).toISOString(),
     };
   }
 
-  const m = record as unknown as BodyMetric;
+  const m = record as any;
   return {
     ...baseData,
     id: m.id,
@@ -99,7 +104,7 @@ function localToRemote(table: SyncTable, record: Record<string, unknown>, userId
     thighs_cm: m.thighsCm ?? null,
     notes: m.notes ?? null,
     created_at: m.createdAt ? new Date(m.createdAt).toISOString() : new Date().toISOString(),
-    updated_at: new Date(m.updatedAt).toISOString(),
+    updated_at: m.updatedAt ? new Date(m.updatedAt).toISOString() : new Date().toISOString(),
   };
 }
 
@@ -113,8 +118,8 @@ function remoteToLocal(table: SyncTable, row: Record<string, unknown>): Record<s
       name: row.name,
       muscleGroup: row.muscle_group,
       notes: row.notes ?? undefined,
-      createdAt: new Date(row.created_at as string).getTime(),
-      updatedAt: new Date(row.updated_at as string).getTime(),
+      createdAt: row.created_at ? new Date(row.created_at as string).getTime() : Date.now(),
+      updatedAt: row.updated_at ? new Date(row.updated_at as string).getTime() : Date.now(),
     };
   }
   if (table === 'routines') {
@@ -124,8 +129,8 @@ function remoteToLocal(table: SyncTable, row: Record<string, unknown>): Record<s
       name: row.name,
       description: row.description ?? undefined,
       exercises: parseJsonField(row.exercises),
-      createdAt: new Date(row.created_at as string).getTime(),
-      updatedAt: new Date(row.updated_at as string).getTime(),
+      createdAt: row.created_at ? new Date(row.created_at as string).getTime() : Date.now(),
+      updatedAt: row.updated_at ? new Date(row.updated_at as string).getTime() : Date.now(),
     };
   }
   if (table === 'sessions') {
@@ -138,8 +143,8 @@ function remoteToLocal(table: SyncTable, row: Record<string, unknown>): Record<s
       exercises: parseJsonField(row.exercises),
       notes: row.notes ?? undefined,
       completed: row.completed,
-      createdAt: new Date(row.created_at as string).getTime(),
-      updatedAt: new Date(row.updated_at as string).getTime(),
+      createdAt: row.created_at ? new Date(row.created_at as string).getTime() : Date.now(),
+      updatedAt: row.updated_at ? new Date(row.updated_at as string).getTime() : Date.now(),
     };
   }
 
@@ -156,7 +161,7 @@ function remoteToLocal(table: SyncTable, row: Record<string, unknown>): Record<s
     thighsCm: row.thighs_cm ?? undefined,
     notes: row.notes ?? undefined,
     createdAt: row.created_at ? new Date(row.created_at as string).getTime() : Date.now(),
-    updatedAt: new Date(row.updated_at as string).getTime(),
+    updatedAt: row.updated_at ? new Date(row.updated_at as string).getTime() : Date.now(),
   };
 }
 
@@ -168,8 +173,9 @@ async function pushPending(): Promise<number> {
   if (pending.length === 0) return 0;
   let pushed = 0;
 
-  for (const entry of pending) {
-    const { op } = entry;
+  for (const rawEntry of pending) {
+    const entry = rawEntry as any;
+    const op = entry.op as MutationOp;
     try {
       if (op.kind === 'upsert') {
         const remoteRow = localToRemote(op.table as SyncTable, op.record, userId);
@@ -179,7 +185,7 @@ async function pushPending(): Promise<number> {
         const { error } = await supabase.from(op.table).delete().eq('id', op.id);
         if (error) throw error;
       }
-      await db.mutationQueue.update(entry.id, { synced: 1 });
+      await db.mutationQueue.update(entry.id, { synced: 1 } as any);
       pushed++;
     } catch {
       break;
@@ -206,14 +212,14 @@ async function pullTable(table: SyncTable): Promise<number> {
 
   const pendingDeleteIds = new Set(
     pendingMutations
-      .filter((m: MutationQueueEntry) => m.op.kind === 'delete' && m.op.table === table)
-      .map((m: MutationQueueEntry) => (m.op as Extract<MutationOp, { kind: 'delete' }>).id)
+      .filter((m: any) => m.op?.kind === 'delete' && m.op?.table === table)
+      .map((m: any) => m.op?.id)
   );
 
   const pendingUpsertIds = new Set(
     pendingMutations
-      .filter((m: MutationQueueEntry) => m.op.kind === 'upsert' && m.op.table === table)
-      .map((m: MutationQueueEntry) => ((m.op as Extract<MutationOp, { kind: 'upsert' }>).record as { id: string }).id)
+      .filter((m: any) => m.op?.kind === 'upsert' && m.op?.table === table)
+      .map((m: any) => m.op?.record?.id)
   );
 
   const dexieTable = db.table(table);
