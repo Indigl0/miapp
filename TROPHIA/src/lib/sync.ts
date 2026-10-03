@@ -11,16 +11,13 @@ export type MutationOp =
 
 async function getCurrentUserId(): Promise<string | null> {
   try {
-    // 1. Intentar obtener el usuario directamente desde Supabase (Fuente oficial y segura)
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user?.id) return session.user.id;
-
-    // 2. Respaldo por localStorage
+    // Lectura directa y segura de tu sesión local
     const stored = localStorage.getItem('ironlog-session');
     if (!stored) return null;
     const parsed = JSON.parse(stored);
-    return parsed?.id ?? parsed?.user?.id ?? null;
-  } catch {
+    return parsed?.id ?? parsed?.user?.id ?? parsed?.userId ?? null;
+  } catch (err) {
+    console.error("Error leyendo ID de usuario:", err);
     return null;
   }
 }
@@ -169,29 +166,33 @@ function remoteToLocal(table: SyncTable, row: Record<string, unknown>): Record<s
   };
 }
 
-// NUEVO: Función de rescate para asegurar que TODO lo local suba a la nube
-async function forcePushAllLocal(): Promise<void> {
-  const userId = await getCurrentUserId();
-  if (!userId) return;
-
+async function forcePushAllLocal(userId: string): Promise<void> {
   const tables: SyncTable[] = ['exercises', 'routines', 'sessions', 'metrics'];
   for (const table of tables) {
     try {
       const localRecords = await db.table(table).toArray();
       for (const record of localRecords) {
         const remoteRow = localToRemote(table, record as Record<string, unknown>, userId);
-        await supabase.from(table).upsert(remoteRow);
+        const { error } = await supabase.from(table).upsert(remoteRow);
+        if (error) {
+          console.error(`Error en forcePush para la tabla ${table}:`, error);
+        }
       }
-    } catch {}
+    } catch (err) {
+      console.error(`Excepción en forcePush para ${table}:`, err);
+    }
   }
 }
 
 async function pushPending(): Promise<number> {
   const userId = await getCurrentUserId();
-  if (!userId) return 0;
+  if (!userId) {
+    console.warn("Sync Push: No se encontró ID de usuario en localStorage.");
+    return 0;
+  }
 
-  // Ejecutamos primero el rescate masivo para atrapar cualquier dato local desamparado
-  await forcePushAllLocal();
+  // Rescate masivo de datos locales hacia Supabase
+  await forcePushAllLocal(userId);
 
   const pending = await db.mutationQueue.where('synced').equals(0).toArray();
   if (pending.length === 0) return 0;
@@ -211,7 +212,8 @@ async function pushPending(): Promise<number> {
       }
       await db.mutationQueue.update(entry.id, { synced: 1 } as any);
       pushed++;
-    } catch {
+    } catch (err) {
+      console.error("Error al sincronizar elemento pendiente:", err);
       continue;
     }
   }
@@ -230,7 +232,11 @@ async function pullTable(table: SyncTable): Promise<number> {
   }
 
   const { data, error } = await query;
-  if (error || !data) return 0;
+  if (error) {
+    console.error(`Error en pullTable (${table}):`, error);
+    return 0;
+  }
+  if (!data) return 0;
 
   const pendingMutations = await db.mutationQueue.where('synced').equals(0).toArray();
 
@@ -292,8 +298,14 @@ async function pullAll(): Promise<number> {
 
 export async function flush(): Promise<{ pushed: number; pulled: number }> {
   if (!isOnline()) return { pushed: 0, pulled: 0 };
-  const pushed = await pushPending().catch(() => 0);
-  const pulled = await pullAll().catch(() => 0);
+  const pushed = await pushPending().catch((err) => {
+    console.error("Error en flush -> pushPending:", err);
+    return 0;
+  });
+  const pulled = await pullAll().catch((err) => {
+    console.error("Error en flush -> pullAll:", err);
+    return 0;
+  });
   return { pushed, pulled };
 }
 
