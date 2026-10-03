@@ -40,11 +40,22 @@ export function RoutinesView() {
 
   const rawExercises = useLiveQuery(() => db.exercises.orderBy('name').toArray(), [], [] as Exercise[]);
 
-  const exercises = rawExercises.filter((e) => {
-    const exUserId = e.userId || e.user_id;
-    if (!exUserId) return true;
-    return exUserId === user?.id;
-  });
+  // Filtro y deduplicación estricta para evitar ejercicios duplicados o "fantasma" en los desplegables
+  const exercises = useMemo(() => {
+    const userExercises = rawExercises.filter((e) => {
+      const exUserId = e.userId || e.user_id;
+      if (!exUserId) return true;
+      return exUserId === user?.id;
+    });
+
+    const seenNames = new Set<string>();
+    return userExercises.filter((e) => {
+      const nameKey = e.name.trim().toLowerCase();
+      if (seenNames.has(nameKey)) return false;
+      seenNames.add(nameKey);
+      return true;
+    });
+  }, [rawExercises, user?.id]);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);

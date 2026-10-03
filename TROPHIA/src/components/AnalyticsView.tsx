@@ -244,14 +244,41 @@ function ConsistencyHeatmap({ sessions }: { sessions: TrainingSession[] }) {
 export function AnalyticsView() {
   const { user } = useAuth();
 
+  // Obtener sesiones filtradas estrictamente para el usuario actual
   const sessions = useLiveQuery(
-    () => (user?.id ? db.sessions.where('userId').equals(user.id).toArray() : Promise.resolve([])),
+    async () => {
+      if (!user?.id) return [];
+      const all = await db.sessions.toArray();
+      return all.filter((s) => {
+        const sUserId = s.userId || (s as any).user_id;
+        return sUserId === user.id;
+      });
+    },
     [user?.id],
     [] as TrainingSession[]
   );
 
-  const exercises = useLiveQuery(() => db.exercises.toArray(), [], [] as Exercise[]);
+  // Obtener ejercicios crudos de la base de datos
+  const rawExercises = useLiveQuery(() => db.exercises.toArray(), [], [] as Exercise[]);
   const [theme] = useTheme();
+
+  // Filtrado estricto de ejercicios propios del usuario y deduplicación por nombre
+  const exercises = useMemo(() => {
+    if (!user?.id) return [];
+    const userExercises = rawExercises.filter((e) => {
+      const exUserId = e.userId || (e as any).user_id;
+      if (!exUserId) return false; // Descartar huérfanos o muestras globales ajenas
+      return exUserId === user.id;
+    });
+
+    const seenNames = new Set<string>();
+    return userExercises.filter((e) => {
+      const nameKey = e.name.trim().toLowerCase();
+      if (seenNames.has(nameKey)) return false;
+      seenNames.add(nameKey);
+      return true;
+    });
+  }, [rawExercises, user?.id]);
 
   const [timeRange, setTimeRange] = useState<TimeRange>('3M');
   const [selectedExercise, setSelectedExercise] = useState<string>('all');
