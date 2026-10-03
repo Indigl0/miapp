@@ -5,7 +5,6 @@ import type { Exercise, Routine, TrainingSession, BodyMetric } from './types';
 
 export type SyncTable = 'exercises' | 'routines' | 'sessions' | 'metrics';
 
-// Definimos la estructura de la mutación localmente para evitar conflictos con types.ts
 export type MutationOp = 
   | { kind: 'upsert'; table: SyncTable; record: Record<string, unknown> }
   | { kind: 'delete'; table: SyncTable; id: string };
@@ -188,7 +187,7 @@ async function pushPending(): Promise<number> {
       await db.mutationQueue.update(entry.id, { synced: 1 } as any);
       pushed++;
     } catch {
-      break;
+      continue; // CORREGIDO: Usar continue en vez de break para que un error no bloquee el resto
     }
   }
   return pushed;
