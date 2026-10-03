@@ -11,11 +11,33 @@ export type MutationOp =
 
 async function getCurrentUserId(): Promise<string | null> {
   try {
-    // Lectura directa y segura de tu sesión local
+    // 1. Intentar obtener el usuario directamente desde la sesión oficial de Supabase
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.id) {
+      return session.user.id;
+    }
+
+    // 2. Buscar automáticamente en el almacenamiento local cualquier token de Supabase (sb-*-auth-token)
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+        const val = localStorage.getItem(key);
+        if (val) {
+          const parsed = JSON.parse(val);
+          const userId = parsed?.user?.id ?? parsed?.id;
+          if (userId) return userId;
+        }
+      }
+    }
+
+    // 3. Respaldo por ironlog-session si existiera
     const stored = localStorage.getItem('ironlog-session');
-    if (!stored) return null;
-    const parsed = JSON.parse(stored);
-    return parsed?.id ?? parsed?.user?.id ?? parsed?.userId ?? null;
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return parsed?.id ?? parsed?.user?.id ?? parsed?.userId ?? null;
+    }
+
+    return null;
   } catch (err) {
     console.error("Error leyendo ID de usuario:", err);
     return null;
@@ -173,25 +195,20 @@ async function forcePushAllLocal(userId: string): Promise<void> {
       const localRecords = await db.table(table).toArray();
       for (const record of localRecords) {
         const remoteRow = localToRemote(table, record as Record<string, unknown>, userId);
-        const { error } = await supabase.from(table).upsert(remoteRow);
-        if (error) {
-          console.error(`Error en forcePush para la tabla ${table}:`, error);
-        }
+        await supabase.from(table).upsert(remoteRow);
       }
-    } catch (err) {
-      console.error(`Excepción en forcePush para ${table}:`, err);
-    }
+    } catch {}
   }
 }
 
 async function pushPending(): Promise<number> {
   const userId = await getCurrentUserId();
   if (!userId) {
-    console.warn("Sync Push: No se encontró ID de usuario en localStorage.");
+    console.warn("Sync Push: Todavía no se detecta sesión de usuario.");
     return 0;
   }
 
-  // Rescate masivo de datos locales hacia Supabase
+  // Rescatar y subir todo lo local de inmediato a la nube
   await forcePushAllLocal(userId);
 
   const pending = await db.mutationQueue.where('synced').equals(0).toArray();
@@ -212,8 +229,7 @@ async function pushPending(): Promise<number> {
       }
       await db.mutationQueue.update(entry.id, { synced: 1 } as any);
       pushed++;
-    } catch (err) {
-      console.error("Error al sincronizar elemento pendiente:", err);
+    } catch {
       continue;
     }
   }
@@ -232,11 +248,7 @@ async function pullTable(table: SyncTable): Promise<number> {
   }
 
   const { data, error } = await query;
-  if (error) {
-    console.error(`Error en pullTable (${table}):`, error);
-    return 0;
-  }
-  if (!data) return 0;
+  if (error || !data) return 0;
 
   const pendingMutations = await db.mutationQueue.where('synced').equals(0).toArray();
 
@@ -298,14 +310,8 @@ async function pullAll(): Promise<number> {
 
 export async function flush(): Promise<{ pushed: number; pulled: number }> {
   if (!isOnline()) return { pushed: 0, pulled: 0 };
-  const pushed = await pushPending().catch((err) => {
-    console.error("Error en flush -> pushPending:", err);
-    return 0;
-  });
-  const pulled = await pullAll().catch((err) => {
-    console.error("Error en flush -> pullAll:", err);
-    return 0;
-  });
+  const pushed = await pushPending().catch(() => 0);
+  const pulled = await pullAll().catch(() => 0);
   return { pushed, pulled };
 }
 
