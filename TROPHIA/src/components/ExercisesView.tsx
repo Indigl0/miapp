@@ -17,10 +17,9 @@ const MUSCLE_GROUPS = [
   'Pecho',
   'Espalda',
   'Piernas',
+  'Glúteos',
   'Hombros',
   'Brazos',
-  'Bíceps',
-  'Tríceps',
   'Abdominales',
   'Cardio',
   'Otro'
@@ -31,10 +30,9 @@ const getMuscleBadgeColor = (muscle: string): 'red' | 'blue' | 'green' | 'gray' 
     case 'Pecho': return 'red';
     case 'Espalda': return 'blue';
     case 'Piernas': return 'green';
+    case 'Glúteos': return 'green';
     case 'Hombros': return 'brand';
     case 'Brazos': return 'amber';
-    case 'Bíceps': return 'amber';
-    case 'Tríceps': return 'blue';
     case 'Abdominales': return 'red';
     case 'Cardio': return 'green';
     default: return 'gray';
