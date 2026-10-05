@@ -174,13 +174,11 @@ export function ExercisesView() {
         </div>
 
         <div className="sm:w-64 relative">
-          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10">
-            <Filter size={16} />
-          </div>
-          <Select
+          <Filter size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
+          <select
             value={selectedMuscle}
             onChange={(e) => setSelectedMuscle(e.target.value)}
-            className="pl-9"
+            className="w-full pl-10 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1a1a1b] text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
           >
             <option value="Todos">Todos los grupos ({exercises.length})</option>
             {MUSCLE_GROUPS.map((mg) => {
@@ -191,7 +189,7 @@ export function ExercisesView() {
                 </option>
               );
             })}
-          </Select>
+          </select>
         </div>
       </div>
 
