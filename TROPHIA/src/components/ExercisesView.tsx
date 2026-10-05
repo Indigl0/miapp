@@ -178,7 +178,7 @@ export function ExercisesView() {
           <select
             value={selectedMuscle}
             onChange={(e) => setSelectedMuscle(e.target.value)}
-            className="w-full pl-10 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1a1a1b] text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
+            className="w-full appearance-none pl-10 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1a1a1b] text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
           >
             <option value="Todos">Todos los grupos ({exercises.length})</option>
             {MUSCLE_GROUPS.map((mg) => {
