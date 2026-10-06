@@ -260,9 +260,11 @@ export function SessionView({
 
   const [weightInputs, setWeightInputs] = useState<Record<string, string>>({});
   const [distanceInputs, setDistanceInputs] = useState<Record<string, string>>({});
+  const [exerciseNotesInputs, setExerciseNotesInputs] = useState<Record<number, string>>({});
 
   useEffect(() => {
     setLocalNotes(activeSession?.notes ?? '');
+    setExerciseNotesInputs({});
   }, [activeSession?.id]);
 
   const getExercise = (id: string) => exercises.find((e) => e.id === id);
@@ -717,6 +719,8 @@ export function SessionView({
                     distanceInputs[distanceKey] ??
                     (cardioData.distanceKm !== undefined ? String(cardioData.distanceKm) : '');
 
+                  const noteValue = exerciseNotesInputs[exIdx] ?? ex.notes ?? '';
+
                   const prevSets = !isExCardio ? getPreviousSetsForExercise(ex.exerciseId) : null;
 
                   return (
@@ -759,8 +763,12 @@ export function SessionView({
                           <div>
                             <input
                               type="text"
-                              value={ex.notes ?? ''}
-                              onChange={(e) => updateExerciseNotes(activeSession, exIdx, e.target.value)}
+                              value={noteValue}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setExerciseNotesInputs((prev) => ({ ...prev, [exIdx]: val }));
+                                updateExerciseNotes(activeSession, exIdx, val);
+                              }}
                               placeholder="Notas o sensaciones de este ejercicio..."
                               className="w-full px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-brand-500"
                             />
