@@ -128,7 +128,7 @@ function AnalyticsGuideModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           </div>
           <div>
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">Guía de Análisis TROPHIA</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Cómo interpretar tus métricas de sobrecarga</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Cómo interpretar tus métricas de sobrecarga y cardio</p>
           </div>
         </div>
 
@@ -138,25 +138,25 @@ function AnalyticsGuideModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
               <TrendingUp size={16} className="text-brand-500" /> 1. Evolución de Volumen Total (kg)
             </h4>
             <p>
-              Calcula la suma acumulada de kilos levantados por sesión (Peso × Repeticiones × Series). Una curva ascendente refleja que estás aplicando sobrecarga progresiva en tu plan global.
+              Calcula la suma acumulada de kilos levantados por sesión (Peso × Repeticiones × Series). Una curva ascendente refleja sobrecarga progresiva en fuerza.
             </p>
           </div>
 
           <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
             <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-1">
-              <Dumbbell size={16} className="text-brand-500" /> 2. Volumen por Grupo Muscular
+              <Flame size={16} className="text-blue-500" /> 2. Análisis Específico de Cardio
             </h4>
             <p>
-              Muestra cómo distribuyes el trabajo entre zonas musculares. Te permite verificar si estás equilibrando el volumen semanal o si algún grupo está quedando rezagado.
+              Para ejercicios de cardio, la aplicación evalúa de forma independiente la <strong>duración (minutos)</strong> y la <strong>distancia (km)</strong> para medir tu constancia y evolución aeróbica.
             </p>
           </div>
 
           <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
             <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-1">
-              <Award size={16} className="text-blue-500" /> 3. 1RM Estimado (Fuerza Máxima)
+              <Award size={16} className="text-amber-500" /> 3. 1RM Estimado (Fuerza Máxima)
             </h4>
             <p>
-              Calcula tu repetición máxima teórica según tus series efectivas. Si la línea azul sube manteniendo un esfuerzo controlado (RIR), estás ganando fuerza real.
+              Calcula tu repetición máxima teórica según tus series efectivas de fuerza.
             </p>
           </div>
 
@@ -165,11 +165,7 @@ function AnalyticsGuideModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
               <Zap size={16} className="text-emerald-500" /> 4. RIR (Repeticiones en Recámara)
             </h4>
             <p>
-              Indica qué tan cerca del fallo muscular ejecutaste tus series:
-              <br />
-              • <strong className="text-gray-900 dark:text-white">RIR 0:</strong> Fallo muscular estricto.
-              <br />
-              • <strong className="text-gray-900 dark:text-white">RIR 1 - 2:</strong> Rango ideal para estimular la hipertrofia sin acumular fatiga excesiva.
+              Indica qué tan cerca del fallo muscular ejecutaste tus series (RIR 1-2 es el rango ideal para hipertrofia).
             </p>
           </div>
         </div>
@@ -244,7 +240,6 @@ function ConsistencyHeatmap({ sessions }: { sessions: TrainingSession[] }) {
 export function AnalyticsView() {
   const { user } = useAuth();
 
-  // Obtener sesiones filtradas estrictamente para el usuario actual
   const sessions = useLiveQuery(
     async () => {
       if (!user?.id) return [];
@@ -258,16 +253,14 @@ export function AnalyticsView() {
     [] as TrainingSession[]
   );
 
-  // Obtener ejercicios crudos de la base de datos
   const rawExercises = useLiveQuery(() => db.exercises.toArray(), [], [] as Exercise[]);
   const [theme] = useTheme();
 
-  // Filtrado estricto de ejercicios propios del usuario y deduplicación por nombre
   const exercises = useMemo(() => {
     if (!user?.id) return [];
     const userExercises = rawExercises.filter((e) => {
       const exUserId = e.userId || (e as any).user_id;
-      if (!exUserId) return false; // Descartar huérfanos o muestras globales ajenas
+      if (!exUserId) return false;
       return exUserId === user.id;
     });
 
@@ -421,6 +414,7 @@ export function AnalyticsView() {
     return count > 0 ? totalRir / count : null;
   }, [completedSessions]);
 
+  // --- VOLUMEN POR GRUPO MUSCULAR (EXCLUYENDO CARDIO) ---
   const muscleGroupVolume = useMemo(() => {
     const map = new Map<string, number>();
     const safeExercises = exercises || [];
@@ -430,6 +424,9 @@ export function AnalyticsView() {
         if (!ex) return;
         const exercise = safeExercises.find((e) => e?.id === ex.exerciseId);
         if (!exercise || !exercise.muscleGroup) return;
+
+        // Excluir estrictamente los ejercicios de cardio del volumen de fuerza
+        if (exercise.muscleGroup.toLowerCase() === 'cardio' || ex.cardioDetails) return;
 
         const group = exercise.muscleGroup;
         const setList = ex.sets || [];
@@ -442,6 +439,14 @@ export function AnalyticsView() {
       .map(([group, volume]) => ({ group, volume: Math.round(volume) }))
       .sort((a, b) => b.volume - a.volume);
   }, [completedSessions, exercises]);
+
+  const currentExercise = useMemo(
+    () => (exercises || []).find((e) => e?.id === selectedExercise),
+    [exercises, selectedExercise]
+  );
+  const isSelectedCardio = currentExercise?.muscleGroup === 'Cardio';
+  const currentExerciseName =
+    selectedExercise === 'all' ? 'Todos los ejercicios' : currentExercise?.name ?? 'Seleccionar ejercicio';
 
   const exerciseProgress = useMemo<ExerciseProgress[]>(() => {
     const map = new Map<
@@ -547,19 +552,20 @@ export function AnalyticsView() {
     return Math.max(...exerciseProgress.map((p) => p.estimated1RM));
   }, [exerciseProgress]);
 
+  const maxCardioMinutes = useMemo(() => {
+    if (!isSelectedCardio || exerciseProgress.length === 0) return 0;
+    return Math.max(...exerciseProgress.map((p) => p.durationMinutes || 0));
+  }, [isSelectedCardio, exerciseProgress]);
+
+  const totalCardioDist = useMemo(() => {
+    if (!isSelectedCardio || exerciseProgress.length === 0) return 0;
+    return exerciseProgress.reduce((acc, p) => acc + (p.distanceKm || 0), 0);
+  }, [isSelectedCardio, exerciseProgress]);
+
   const totalVolume = useMemo(() => dailyVolume.reduce((sum, d) => sum + d.volume, 0), [dailyVolume]);
   const totalSets = useMemo(() => dailyVolume.reduce((sum, d) => sum + d.sets, 0), [dailyVolume]);
   const totalCardioMinutes = useMemo(() => dailyVolume.reduce((sum, d) => sum + d.cardioMinutes, 0), [dailyVolume]);
 
-  const currentExercise = useMemo(
-    () => (exercises || []).find((e) => e?.id === selectedExercise),
-    [exercises, selectedExercise]
-  );
-  const isSelectedCardio = currentExercise?.muscleGroup === 'Cardio';
-  const currentExerciseName =
-    selectedExercise === 'all' ? 'Todos los ejercicios' : currentExercise?.name ?? 'Seleccionar ejercicio';
-
-  // --- LÓGICA DE DIAGNÓSTICO E INSIGHTS AUTOMÁTICOS ---
   const analyticsInsight = useMemo(() => {
     if (completedSessions.length === 0) return null;
 
@@ -567,27 +573,35 @@ export function AnalyticsView() {
     let text = "";
 
     if (selectedExercise !== 'all' && exerciseProgress.length > 0) {
-      const first1RM = exerciseProgress[0].estimated1RM;
-      const last1RM = exerciseProgress[exerciseProgress.length - 1].estimated1RM;
-      const diffPct = first1RM > 0 ? Math.round(((last1RM - first1RM) / first1RM) * 100) : 0;
-      const validRirList = exerciseProgress.filter((p) => typeof p.avgRir === 'number');
-      const avgRirEx = validRirList.length > 0 
-        ? validRirList.reduce((a, b) => a + (b.avgRir || 0), 0) / validRirList.length 
-        : null;
-
-      if (diffPct > 0) {
-        badgeText = `+${diffPct}% FUERZA`;
-        text = `Tu 1RM estimado en ${currentExerciseName} ha aumentado un ${diffPct}% en el período seleccionado. ${
-          avgRirEx !== null ? `Con un RIR promedio de ${avgRirEx.toFixed(1)}, estás logrando una sobrecarga progresiva limpia y sostenida.` : ''
-        }`;
-      } else if (diffPct === 0) {
-        badgeText = "NIVEL ESTABLE";
-        text = `Tu nivel de fuerza máxima estimada en ${currentExerciseName} se mantiene firme en ${last1RM} kg. ${
-          avgRirEx !== null ? `Tu RIR medio es ${avgRirEx.toFixed(1)}, adecuado para consolidar técnica y volumen.` : ''
-        }`;
+      if (isSelectedCardio) {
+        const totalMins = exerciseProgress.reduce((acc, p) => acc + (p.durationMinutes || 0), 0);
+        const maxMins = Math.max(...exerciseProgress.map((p) => p.durationMinutes || 0));
+        const totalDist = exerciseProgress.reduce((acc, p) => acc + (p.distanceKm || 0), 0);
+        badgeText = "PROGRESO CARDIO";
+        text = `Has registrado un total de ${totalMins} minutos y ${totalDist.toFixed(1)} km en ${currentExerciseName}. Tu sesión con mayor duración alcanzó los ${maxMins} minutos de constancia aeróbica.`;
       } else {
-        badgeText = "AJUSTE DE CARGA";
-        text = `Tu estimación de 1RM ha registrado variaciones. Si el esfuerzo percibido es elevado, considera una semana de descarga ligera (Deload) para optimizar la recuperación.`;
+        const first1RM = exerciseProgress[0].estimated1RM;
+        const last1RM = exerciseProgress[exerciseProgress.length - 1].estimated1RM;
+        const diffPct = first1RM > 0 ? Math.round(((last1RM - first1RM) / first1RM) * 100) : 0;
+        const validRirList = exerciseProgress.filter((p) => typeof p.avgRir === 'number');
+        const avgRirEx = validRirList.length > 0 
+          ? validRirList.reduce((a, b) => a + (b.avgRir || 0), 0) / validRirList.length 
+          : null;
+
+        if (diffPct > 0) {
+          badgeText = `+${diffPct}% FUERZA`;
+          text = `Tu 1RM estimado en ${currentExerciseName} ha aumentado un ${diffPct}% en el período seleccionado. ${
+            avgRirEx !== null ? `Con un RIR promedio de ${avgRirEx.toFixed(1)}, estás logrando una sobrecarga progresiva limpia y sostenida.` : ''
+          }`;
+        } else if (diffPct === 0) {
+          badgeText = "NIVEL ESTABLE";
+          text = `Tu nivel de fuerza máxima estimada en ${currentExerciseName} se mantiene firme en ${last1RM} kg. ${
+            avgRirEx !== null ? `Tu RIR medio es ${avgRirEx.toFixed(1)}, adecuado para consolidar técnica y volumen.` : ''
+          }`;
+        } else {
+          badgeText = "AJUSTE DE CARGA";
+          text = `Tu estimación de 1RM ha registrado variaciones. Si el esfuerzo percibido es elevado, considera una semana de descarga ligera (Deload) para optimizar la recuperación.`;
+        }
       }
     } else {
       const topMuscle = muscleGroupVolume.length > 0 ? muscleGroupVolume[0].group : 'General';
@@ -603,7 +617,7 @@ export function AnalyticsView() {
     }
 
     return { badgeText, text };
-  }, [completedSessions, exerciseProgress, selectedExercise, currentExerciseName, muscleGroupVolume, globalAvgRir, totalVolume]);
+  }, [completedSessions, exerciseProgress, selectedExercise, currentExerciseName, muscleGroupVolume, globalAvgRir, totalVolume, isSelectedCardio]);
 
   return (
     <div className="space-y-6 printable-area">
@@ -614,7 +628,7 @@ export function AnalyticsView() {
             Análisis de Rendimiento
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Métricas avanzadas y evolución de tu sobrecarga progresiva.
+            Métricas avanzadas y evolución de tu sobrecarga y entrenamiento cardiovascular.
           </p>
         </div>
         
@@ -665,15 +679,15 @@ export function AnalyticsView() {
         <Card>
           <CardBody className="text-center py-4">
             <Award size={18} className="text-amber-500 mx-auto mb-1" />
-            <p className="text-xl font-bold">{maxOverall1RM} kg</p>
-            <p className="text-xs text-gray-400">1RM Máx</p>
+            <p className="text-xl font-bold">{isSelectedCardio ? `${maxCardioMinutes}m` : `${maxOverall1RM} kg`}</p>
+            <p className="text-xs text-gray-400">{isSelectedCardio ? 'Duración Máx' : '1RM Máx'}</p>
           </CardBody>
         </Card>
         <Card>
           <CardBody className="text-center py-4">
             <Zap size={18} className="text-purple-500 mx-auto mb-1" />
-            <p className="text-xl font-bold">{globalAvgRir !== null ? globalAvgRir.toFixed(1) : 'N/A'}</p>
-            <p className="text-xs text-gray-400">RIR Prom</p>
+            <p className="text-xl font-bold">{isSelectedCardio ? `${totalCardioDist.toFixed(1)} km` : (globalAvgRir !== null ? globalAvgRir.toFixed(1) : 'N/A')}</p>
+            <p className="text-xs text-gray-400">{isSelectedCardio ? 'Distancia Total' : 'RIR Prom'}</p>
           </CardBody>
         </Card>
         <Card>
@@ -761,7 +775,7 @@ export function AnalyticsView() {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <h4 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">
-                Diagnóstico de Sobrecarga
+                {isSelectedCardio ? 'Diagnóstico de Cardio' : 'Diagnóstico de Sobrecarga'}
               </h4>
               <span className="px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-brand-500 text-white rounded-full">
                 {analyticsInsight.badgeText}
@@ -828,7 +842,7 @@ export function AnalyticsView() {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* --- VOLUMEN POR GRUPO MUSCULAR --- */}
+        {/* --- VOLUMEN POR GRUPO MUSCULAR (SIN CARDIO) --- */}
         <Card>
           <CardHeader>
             <div className="flex flex-col space-y-1">
@@ -875,13 +889,13 @@ export function AnalyticsView() {
           </CardBody>
         </Card>
 
-        {/* --- PROGRESO POR EJERCICIO (1RM VS RIR) --- */}
+        {/* --- PROGRESO POR EJERCICIO (FUERZA O CARDIO ESPECÍFICO) --- */}
         <Card>
           <CardHeader>
             <div className="flex flex-col space-y-1">
               <CardTitle className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
-                  <Award size={18} className="text-brand-500" />
+                  {isSelectedCardio ? <Flame size={18} className="text-blue-500" /> : <Award size={18} className="text-brand-500" />}
                   Progreso: {currentExerciseName}
                 </span>
                 <button
@@ -894,16 +908,18 @@ export function AnalyticsView() {
                 </button>
               </CardTitle>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                1RM estimado (fuerza máxima teórica) vs RIR promedio (cercanía al fallo).
+                {isSelectedCardio 
+                  ? 'Duración (minutos) y distancia (km) en sesiones de cardio.' 
+                  : '1RM estimado (fuerza máxima teórica) vs RIR promedio (cercanía al fallo).'}
               </p>
             </div>
           </CardHeader>
           <CardBody>
             {exerciseProgress.length === 0 ? (
               <EmptyState
-                icon={<Award size={24} className="text-gray-400" />}
+                icon={isSelectedCardio ? <Flame size={24} className="text-gray-400" /> : <Award size={24} className="text-gray-400" />}
                 title="Sin registros para este ejercicio"
-                description="Selecciona otro ejercicio o registra series completadas."
+                description="Selecciona otro ejercicio o registra series/sesiones completadas."
               />
             ) : (
               <div className="h-72 w-full">
@@ -911,8 +927,8 @@ export function AnalyticsView() {
                   <AreaChart data={exerciseProgress} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <defs>
                       <linearGradient id="rm1Gradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
+                        <stop offset="5%" stopColor={isSelectedCardio ? "#8b5cf6" : "#3b82f6"} stopOpacity={0.4} />
+                        <stop offset="95%" stopColor={isSelectedCardio ? "#8b5cf6" : "#3b82f6"} stopOpacity={0.0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
@@ -921,13 +937,15 @@ export function AnalyticsView() {
                     <YAxis
                       yAxisId="right"
                       orientation="right"
-                      domain={[0, 5]}
+                      domain={isSelectedCardio ? [0, 'auto'] : [0, 5]}
                       stroke={axisColor}
                       fontSize={11}
                       tickLine={false}
                     />
                     <Tooltip content={<CustomTooltip />} />
                     <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '5px' }} />
+                    
+                    {/* Gráficos para Fuerza */}
                     {!isSelectedCardio && (
                       <Area
                         yAxisId="left"
@@ -951,6 +969,8 @@ export function AnalyticsView() {
                         fill="none"
                       />
                     )}
+
+                    {/* Gráficos para Cardio */}
                     {isSelectedCardio && (
                       <Area
                         yAxisId="left"
@@ -961,6 +981,17 @@ export function AnalyticsView() {
                         strokeWidth={2.5}
                         fillOpacity={1}
                         fill="url(#rm1Gradient)"
+                      />
+                    )}
+                    {isSelectedCardio && (
+                      <Area
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="distanceKm"
+                        name="Distancia (km)"
+                        stroke="#06b6d4"
+                        strokeWidth={2}
+                        fill="none"
                       />
                     )}
                   </AreaChart>
@@ -1062,6 +1093,7 @@ export function AnalyticsView() {
                         {(session.exercises || []).map((ex, idx) => {
                           const exerciseObj = (exercises || []).find((e) => e?.id === ex.exerciseId);
                           const setList = ex?.sets || [];
+                          const isExCardio = exerciseObj?.muscleGroup === 'Cardio' || ex.cardioDetails;
                           return (
                             <div key={idx} className="bg-gray-50 dark:bg-gray-800/40 rounded-xl p-3">
                               <p className="font-semibold text-xs sm:text-sm text-brand-600 dark:text-brand-400 mb-2">
@@ -1078,7 +1110,19 @@ export function AnalyticsView() {
                                 </p>
                               )}
 
-                              {setList.length > 0 && (
+                              {isExCardio && ex.cardioDetails && (
+                                <div className="text-xs font-mono bg-white dark:bg-gray-900 px-3 py-2 rounded-lg border border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                                  <span className="text-blue-500 font-bold flex items-center gap-1.5">
+                                    <Flame size={14} /> Cardio Registrado
+                                  </span>
+                                  <div className="flex gap-3">
+                                    <span>{ex.cardioDetails.durationMinutes || 0} min</span>
+                                    <span>{ex.cardioDetails.distanceKm || 0} km</span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {!isExCardio && setList.length > 0 && (
                                 <div className="space-y-1.5">
                                   {setList.map((set, sIdx) => (
                                     <div
