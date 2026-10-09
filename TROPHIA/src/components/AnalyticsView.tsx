@@ -211,14 +211,14 @@ function ConsistencyHeatmap({ sessions }: { sessions: TrainingSession[] }) {
   }, [datesSet]);
 
   return (
-    <Card className="print:shadow-none print:border-gray-300">
-      <CardHeader>
+    <Card className="print:shadow-none print:border-gray-300 break-inside-avoid print:p-2">
+      <CardHeader className="print:py-2">
         <CardTitle className="flex items-center gap-2">
           <Calendar size={18} className="text-brand-500 print:text-black" />
           Calendario de Consistencia
         </CardTitle>
       </CardHeader>
-      <CardBody>
+      <CardBody className="print:py-2">
         <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
           {daysGrid.map((day) => (
             <div
@@ -414,7 +414,6 @@ export function AnalyticsView() {
     return count > 0 ? totalRir / count : null;
   }, [completedSessions]);
 
-  // --- VOLUMEN POR GRUPO MUSCULAR (EXCLUYENDO CARDIO) ---
   const muscleGroupVolume = useMemo(() => {
     const map = new Map<string, number>();
     const safeExercises = exercises || [];
@@ -425,7 +424,6 @@ export function AnalyticsView() {
         const exercise = safeExercises.find((e) => e?.id === ex.exerciseId);
         if (!exercise || !exercise.muscleGroup) return;
 
-        // Excluir estrictamente los ejercicios de cardio del volumen de fuerza
         if (exercise.muscleGroup.toLowerCase() === 'cardio' || ex.cardioDetails) return;
 
         const group = exercise.muscleGroup;
@@ -620,8 +618,22 @@ export function AnalyticsView() {
   }, [completedSessions, exerciseProgress, selectedExercise, currentExerciseName, muscleGroupVolume, globalAvgRir, totalVolume, isSelectedCardio]);
 
   return (
-    <div className="space-y-6 printable-area">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="space-y-6 print:space-y-3 printable-area">
+      {/* --- MEMBRETE INSTITUCIONAL EXCLUSIVO PARA PDF --- */}
+      <div className="hidden print:block mb-6 border-b-2 border-brand-500 pb-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">TROPHIA</h1>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Reporte Clínico y de Rendimiento Deportivo</p>
+          </div>
+          <div className="text-right text-xs text-gray-600 space-y-0.5">
+            <p><strong className="text-gray-900">Atleta:</strong> {user?.name || (user as any)?.email || 'Atleta'}</p>
+            <p><strong className="text-gray-900">Fecha de Emisión:</strong> {fmtDate(Date.now())}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 break-inside-avoid">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
             <BarChart3 size={24} className="text-brand-500" />
@@ -654,44 +666,44 @@ export function AnalyticsView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
-        <Card>
-          <CardBody className="text-center py-4">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 break-inside-avoid">
+        <Card className="break-inside-avoid print:p-2">
+          <CardBody className="text-center py-4 print:py-2">
             <Activity size={18} className="text-brand-500 mx-auto mb-1" />
             <p className="text-xl font-bold">{completedSessions.length}</p>
             <p className="text-xs text-gray-400">Sesiones</p>
           </CardBody>
         </Card>
-        <Card>
-          <CardBody className="text-center py-4">
+        <Card className="break-inside-avoid print:p-2">
+          <CardBody className="text-center py-4 print:py-2">
             <TrendingUp size={18} className="text-brand-500 mx-auto mb-1" />
             <p className="text-xl font-bold">{totalVolume.toLocaleString('es-ES')}</p>
             <p className="text-xs text-gray-400">Volumen kg</p>
           </CardBody>
         </Card>
-        <Card>
-          <CardBody className="text-center py-4">
+        <Card className="break-inside-avoid print:p-2">
+          <CardBody className="text-center py-4 print:py-2">
             <Dumbbell size={18} className="text-brand-500 mx-auto mb-1" />
             <p className="text-xl font-bold">{totalSets}</p>
             <p className="text-xs text-gray-400">Series</p>
           </CardBody>
         </Card>
-        <Card>
-          <CardBody className="text-center py-4">
+        <Card className="break-inside-avoid print:p-2">
+          <CardBody className="text-center py-4 print:py-2">
             <Award size={18} className="text-amber-500 mx-auto mb-1" />
             <p className="text-xl font-bold">{isSelectedCardio ? `${maxCardioMinutes}m` : `${maxOverall1RM} kg`}</p>
             <p className="text-xs text-gray-400">{isSelectedCardio ? 'Duración Máx' : '1RM Máx'}</p>
           </CardBody>
         </Card>
-        <Card>
-          <CardBody className="text-center py-4">
+        <Card className="break-inside-avoid print:p-2">
+          <CardBody className="text-center py-4 print:py-2">
             <Zap size={18} className="text-purple-500 mx-auto mb-1" />
             <p className="text-xl font-bold">{isSelectedCardio ? `${totalCardioDist.toFixed(1)} km` : (globalAvgRir !== null ? globalAvgRir.toFixed(1) : 'N/A')}</p>
             <p className="text-xs text-gray-400">{isSelectedCardio ? 'Distancia Total' : 'RIR Prom'}</p>
           </CardBody>
         </Card>
-        <Card>
-          <CardBody className="text-center py-4">
+        <Card className="break-inside-avoid print:p-2">
+          <CardBody className="text-center py-4 print:py-2">
             <Flame size={18} className="text-blue-500 mx-auto mb-1" />
             <p className="text-xl font-bold">{totalCardioMinutes}m</p>
             <p className="text-xs text-gray-400">Cardio</p>
@@ -699,7 +711,9 @@ export function AnalyticsView() {
         </Card>
       </div>
 
-      <ConsistencyHeatmap sessions={sessions || []} />
+      <div className="break-inside-avoid">
+        <ConsistencyHeatmap sessions={sessions || []} />
+      </div>
 
       <div className="no-print flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
         <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
@@ -768,7 +782,7 @@ export function AnalyticsView() {
 
       {/* --- TARJETA DE DIAGNÓSTICO E INSIGHTS AUTOMÁTICOS --- */}
       {analyticsInsight && (
-        <div className="p-4 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-start gap-3.5 shadow-sm animate-fade-in">
+        <div className="p-4 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-start gap-3.5 shadow-sm animate-fade-in break-inside-avoid print:p-2.5">
           <div className="p-2 rounded-xl bg-brand-500/20 text-brand-500 shrink-0 mt-0.5">
             <Sparkles size={20} />
           </div>
@@ -789,8 +803,8 @@ export function AnalyticsView() {
       )}
 
       {/* --- EVOLUCIÓN DE VOLUMEN TOTAL --- */}
-      <Card>
-        <CardHeader>
+      <Card className="break-inside-avoid print:p-2">
+        <CardHeader className="print:py-2">
           <div className="flex flex-col space-y-1">
             <CardTitle className="flex items-center justify-between">
               <span className="flex items-center gap-2">
@@ -804,7 +818,7 @@ export function AnalyticsView() {
             </p>
           </div>
         </CardHeader>
-        <CardBody>
+        <CardBody className="print:py-2">
           {dailyVolume.length === 0 ? (
             <EmptyState
               icon={<TrendingUp size={24} className="text-gray-400" />}
@@ -812,7 +826,7 @@ export function AnalyticsView() {
               description="Registra entrenamientos completados para ver tu evolución gráfica."
             />
           ) : (
-            <div className="h-72 w-full">
+            <div className="h-72 w-full print:h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={dailyVolume} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
@@ -841,10 +855,10 @@ export function AnalyticsView() {
         </CardBody>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 break-inside-avoid">
         {/* --- VOLUMEN POR GRUPO MUSCULAR (SIN CARDIO) --- */}
-        <Card>
-          <CardHeader>
+        <Card className="break-inside-avoid print:p-2">
+          <CardHeader className="print:py-2">
             <div className="flex flex-col space-y-1">
               <CardTitle className="flex items-center gap-2">
                 <Dumbbell size={18} className="text-brand-500" />
@@ -855,7 +869,7 @@ export function AnalyticsView() {
               </p>
             </div>
           </CardHeader>
-          <CardBody>
+          <CardBody className="print:py-2">
             {muscleGroupVolume.length === 0 ? (
               <EmptyState
                 icon={<Dumbbell size={24} className="text-gray-400" />}
@@ -863,7 +877,7 @@ export function AnalyticsView() {
                 description="Asocia ejercicios con grupos musculares para ver esta gráfica."
               />
             ) : (
-              <div className="h-72 w-full">
+              <div className="h-72 w-full print:h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={muscleGroupVolume} margin={{ top: 10, right: 10, left: -20, bottom: 25 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
@@ -890,8 +904,8 @@ export function AnalyticsView() {
         </Card>
 
         {/* --- PROGRESO POR EJERCICIO (FUERZA O CARDIO ESPECÍFICO) --- */}
-        <Card>
-          <CardHeader>
+        <Card className="break-inside-avoid print:p-2">
+          <CardHeader className="print:py-2">
             <div className="flex flex-col space-y-1">
               <CardTitle className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
@@ -914,7 +928,7 @@ export function AnalyticsView() {
               </p>
             </div>
           </CardHeader>
-          <CardBody>
+          <CardBody className="print:py-2">
             {exerciseProgress.length === 0 ? (
               <EmptyState
                 icon={isSelectedCardio ? <Flame size={24} className="text-gray-400" /> : <Award size={24} className="text-gray-400" />}
@@ -922,7 +936,7 @@ export function AnalyticsView() {
                 description="Selecciona otro ejercicio o registra series/sesiones completadas."
               />
             ) : (
-              <div className="h-72 w-full">
+              <div className="h-72 w-full print:h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={exerciseProgress} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <defs>
@@ -1002,189 +1016,192 @@ export function AnalyticsView() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <CardTitle className="flex items-center gap-2">
-              <Activity size={18} className="text-brand-500" />
-              Historial Detallado de Sesiones
-            </CardTitle>
-            <div className="no-print flex items-center gap-2">
-              <button
-                onClick={expandAll}
-                className="px-3 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
-              >
-                Expandir todo
-              </button>
-              <button
-                onClick={collapseAll}
-                className="px-3 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
-              >
-                Colapsar todo
-              </button>
+      {/* --- SALTO DE PÁGINA LIMPIO PARA EL HISTORIAL DETALLADO --- */}
+      <div style={{ pageBreakBefore: 'always' }} className="pt-4 print:pt-0">
+        <Card className="print:p-2">
+          <CardHeader className="print:py-2">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <CardTitle className="flex items-center gap-2">
+                <Activity size={18} className="text-brand-500" />
+                Historial Detallado de Sesiones
+              </CardTitle>
+              <div className="no-print flex items-center gap-2">
+                <button
+                  onClick={expandAll}
+                  className="px-3 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
+                >
+                  Expandir todo
+                </button>
+                <button
+                  onClick={collapseAll}
+                  className="px-3 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
+                >
+                  Colapsar todo
+                </button>
+              </div>
             </div>
-          </div>
-        </CardHeader>
-        <CardBody>
-          {completedSessions.length === 0 ? (
-            <EmptyState
-              icon={<Activity size={24} className="text-gray-400" />}
-              title="No hay sesiones completadas"
-              description="Finaliza sesiones en la pestaña Sesión para ver el desglose detallado."
-            />
-          ) : (
-            <div className="space-y-4">
-              {visibleSessions.map((session) => {
-                const isExpanded = expandedSessions[session.id] || false;
-                const sessionVol = (session.exercises || []).reduce((acc, ex) => {
-                  const setList = ex?.sets || [];
-                  return (
-                    acc +
-                    setList.reduce(
-                      (sAcc, set) => sAcc + (set && set.completed ? (set.reps || 0) * (set.weight || 0) : 0),
-                      0
-                    )
+          </CardHeader>
+          <CardBody className="print:py-2">
+            {completedSessions.length === 0 ? (
+              <EmptyState
+                icon={<Activity size={24} className="text-gray-400" />}
+                title="No hay sesiones completadas"
+                description="Finaliza sesiones en la pestaña Sesión para ver el desglose detallado."
+              />
+            ) : (
+              <div className="space-y-4 print:space-y-2">
+                {visibleSessions.map((session) => {
+                  const isExpanded = expandedSessions[session.id] || false;
+                  const sessionVol = (session.exercises || []).reduce((acc, ex) => {
+                    const setList = ex?.sets || [];
+                    return (
+                      acc +
+                      setList.reduce(
+                        (sAcc, set) => sAcc + (set && set.completed ? (set.reps || 0) * (set.weight || 0) : 0),
+                        0
+                      )
+                    );
+                  }, 0);
+                  const completedSetsCount = (session.exercises || []).reduce(
+                    (acc, ex) => acc + (ex?.sets?.filter((s) => s && s.completed).length || 0),
+                    0
                   );
-                }, 0);
-                const completedSetsCount = (session.exercises || []).reduce(
-                  (acc, ex) => acc + (ex?.sets?.filter((s) => s && s.completed).length || 0),
-                  0
-                );
 
-                return (
-                  <div
-                    key={session.id}
-                    className="border border-gray-200 dark:border-gray-800 rounded-2xl p-4 bg-white/50 dark:bg-gray-900/50 transition-all"
-                  >
+                  return (
                     <div
-                      className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 cursor-pointer"
-                      onClick={() => toggleSession(session.id)}
+                      key={session.id}
+                      className="border border-gray-200 dark:border-gray-800 rounded-2xl p-4 bg-white/50 dark:bg-gray-900/50 transition-all break-inside-avoid mb-3 print:p-2.5 print:mb-2"
                     >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-sm sm:text-base text-gray-900 dark:text-gray-100">
-                            {session.routineName || 'Entrenamiento'}
-                          </h4>
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold">
-                            Completada
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-400 mt-0.5">{fmtDate(session.date)}</p>
-                      </div>
-                      <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                        <div className="text-right">
-                          <p className="text-xs text-gray-400">Volumen</p>
-                          <p className="text-sm font-bold font-mono">
-                            {Math.round(sessionVol).toLocaleString('es-ES')} kg
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs text-gray-400">Series</p>
-                          <p className="text-sm font-bold font-mono">{completedSetsCount}</p>
-                        </div>
-                        <button className="no-print p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
-                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                        </button>
-                      </div>
-                    </div>
-
-                    {isExpanded && (
-                      <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 space-y-3 animate-fade-in">
-                        {(session.exercises || []).map((ex, idx) => {
-                          const exerciseObj = (exercises || []).find((e) => e?.id === ex.exerciseId);
-                          const setList = ex?.sets || [];
-                          const isExCardio = exerciseObj?.muscleGroup === 'Cardio' || ex.cardioDetails;
-                          return (
-                            <div key={idx} className="bg-gray-50 dark:bg-gray-800/40 rounded-xl p-3">
-                              <p className="font-semibold text-xs sm:text-sm text-brand-600 dark:text-brand-400 mb-2">
-                                {exerciseObj?.name || 'Ejercicio'}{' '}
-                                <span className="text-[11px] text-gray-400 font-normal">
-                                  ({exerciseObj?.muscleGroup || 'General'})
-                                </span>
-                              </p>
-
-                              {ex.notes && (
-                                <p className="text-xs text-gray-600 dark:text-gray-300 italic mb-2 flex items-center gap-1">
-                                  <FileText size={12} className="text-gray-400 shrink-0" />
-                                  <span>{ex.notes}</span>
-                                </p>
-                              )}
-
-                              {isExCardio && ex.cardioDetails && (
-                                <div className="text-xs font-mono bg-white dark:bg-gray-900 px-3 py-2 rounded-lg border border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                                  <span className="text-blue-500 font-bold flex items-center gap-1.5">
-                                    <Flame size={14} /> Cardio Registrado
-                                  </span>
-                                  <div className="flex gap-3">
-                                    <span>{ex.cardioDetails.durationMinutes || 0} min</span>
-                                    <span>{ex.cardioDetails.distanceKm || 0} km</span>
-                                  </div>
-                                </div>
-                              )}
-
-                              {!isExCardio && setList.length > 0 && (
-                                <div className="space-y-1.5">
-                                  {setList.map((set, sIdx) => (
-                                    <div
-                                      key={sIdx}
-                                      className="flex items-center justify-between text-xs font-mono bg-white dark:bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-gray-800"
-                                    >
-                                      <div className="flex items-center gap-3">
-                                        <span className="text-gray-400 font-sans font-bold">#{sIdx + 1}</span>
-                                        <span>
-                                          {set.weight || 0} kg × {set.reps || 0} reps
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center gap-3">
-                                        {typeof set.rir === 'number' && (
-                                          <span className="px-2 py-0.5 rounded bg-brand-500/10 text-brand-500 font-bold">
-                                            RIR: {set.rir}
-                                          </span>
-                                        )}
-                                        <span
-                                          className={
-                                            set.completed ? 'text-emerald-500 font-bold' : 'text-gray-400'
-                                          }
-                                        >
-                                          {set.completed ? 'Completada' : 'Pendiente'}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-
-                        {session.notes && (
-                          <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 text-xs text-gray-600 dark:text-gray-300">
-                            <span className="font-bold text-amber-600 dark:text-amber-400 block mb-1">
-                              Notas generales de la sesión:
+                      <div
+                        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 cursor-pointer"
+                        onClick={() => toggleSession(session.id)}
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-bold text-sm sm:text-base text-gray-900 dark:text-gray-100">
+                              {session.routineName || 'Entrenamiento'}
+                            </h4>
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold">
+                              Completada
                             </span>
-                            {session.notes}
                           </div>
-                        )}
+                          <p className="text-xs text-gray-400 mt-0.5">{fmtDate(session.date)}</p>
+                        </div>
+                        <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                          <div className="text-right">
+                            <p className="text-xs text-gray-400">Volumen</p>
+                            <p className="text-sm font-bold font-mono">
+                              {Math.round(sessionVol).toLocaleString('es-ES')} kg
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-gray-400">Series</p>
+                            <p className="text-sm font-bold font-mono">{completedSetsCount}</p>
+                          </div>
+                          <button className="no-print p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
+                            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          </button>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
 
-              {visibleCount < completedSessions.length && (
-                <div className="no-print text-center pt-4">
-                  <button
-                    onClick={() => setVisibleCount((prev) => prev + 5)}
-                    className="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer"
-                  >
-                    Cargar más sesiones ({completedSessions.length - visibleCount} restantes)
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </CardBody>
-      </Card>
+                      {isExpanded && (
+                        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 space-y-3 print:mt-2 print:pt-2 print:space-y-1.5 animate-fade-in">
+                          {(session.exercises || []).map((ex, idx) => {
+                            const exerciseObj = (exercises || []).find((e) => e?.id === ex.exerciseId);
+                            const setList = ex?.sets || [];
+                            const isExCardio = exerciseObj?.muscleGroup === 'Cardio' || ex.cardioDetails;
+                            return (
+                              <div key={idx} className="bg-gray-50 dark:bg-gray-800/40 rounded-xl p-3 print:p-2">
+                                <p className="font-semibold text-xs sm:text-sm text-brand-600 dark:text-brand-400 mb-2 print:mb-1">
+                                  {exerciseObj?.name || 'Ejercicio'}{' '}
+                                  <span className="text-[11px] text-gray-400 font-normal">
+                                    ({exerciseObj?.muscleGroup || 'General'})
+                                  </span>
+                                </p>
+
+                                {ex.notes && (
+                                  <p className="text-xs text-gray-600 dark:text-gray-300 italic mb-2 print:mb-1 flex items-center gap-1">
+                                    <FileText size={12} className="text-gray-400 shrink-0" />
+                                    <span>{ex.notes}</span>
+                                  </p>
+                                )}
+
+                                {isExCardio && ex.cardioDetails && (
+                                  <div className="text-xs font-mono bg-white dark:bg-gray-900 px-3 py-2 print:py-1 rounded-lg border border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                                    <span className="text-blue-500 font-bold flex items-center gap-1.5">
+                                      <Flame size={14} /> Cardio Registrado
+                                    </span>
+                                    <div className="flex gap-3">
+                                      <span>{ex.cardioDetails.durationMinutes || 0} min</span>
+                                      <span>{ex.cardioDetails.distanceKm || 0} km</span>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {!isExCardio && setList.length > 0 && (
+                                  <div className="space-y-1.5 print:space-y-1">
+                                    {setList.map((set, sIdx) => (
+                                      <div
+                                        key={sIdx}
+                                        className="flex items-center justify-between text-xs font-mono bg-white dark:bg-gray-900 px-3 py-1.5 print:py-1 rounded-lg border border-gray-100 dark:border-gray-800"
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          <span className="text-gray-400 font-sans font-bold">#{sIdx + 1}</span>
+                                          <span>
+                                            {set.weight || 0} kg × {set.reps || 0} reps
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                          {typeof set.rir === 'number' && (
+                                            <span className="px-2 py-0.5 rounded bg-brand-500/10 text-brand-500 font-bold">
+                                              RIR: {set.rir}
+                                            </span>
+                                          )}
+                                          <span
+                                            className={
+                                              set.completed ? 'text-emerald-500 font-bold' : 'text-gray-400'
+                                            }
+                                          >
+                                            {set.completed ? 'Completada' : 'Pendiente'}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                          {session.notes && (
+                            <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 print:p-2 text-xs text-gray-600 dark:text-gray-300">
+                              <span className="font-bold text-amber-600 dark:text-amber-400 block mb-1">
+                                Notas generales de la sesión:
+                              </span>
+                              {session.notes}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {visibleCount < completedSessions.length && (
+                  <div className="no-print text-center pt-4">
+                    <button
+                      onClick={() => setVisibleCount((prev) => prev + 5)}
+                      className="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer"
+                    >
+                      Cargar más sesiones ({completedSessions.length - visibleCount} restantes)
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardBody>
+        </Card>
+      </div>
 
       {/* MODAL GUÍA DE MÉTRICAS */}
       <AnalyticsGuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
