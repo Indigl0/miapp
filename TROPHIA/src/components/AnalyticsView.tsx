@@ -82,7 +82,7 @@ function CustomTooltip({
 }) {
   if (!active || !payload || payload.length === 0) return null;
   return (
-    <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-xl p-3.5 min-w-[170px] animate-in fade-in zoom-in-95 duration-150 z-50">
+    <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-xl p-3.5 min-w-[170px] z-50">
       <p className="text-[10px] font-semibold tracking-wider uppercase text-gray-400 dark:text-gray-500 mb-1.5 border-b border-gray-100 dark:border-gray-800/80 pb-1">
         {label}
       </p>
@@ -113,7 +113,7 @@ function AnalyticsGuideModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in no-print">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 no-print">
       <div className="relative w-full max-w-lg p-6 bg-white dark:bg-[#1a1a1b] border border-gray-200 dark:border-gray-800 rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
         <button
           onClick={onClose}
@@ -211,20 +211,20 @@ function ConsistencyHeatmap({ sessions }: { sessions: TrainingSession[] }) {
   }, [datesSet]);
 
   return (
-    <Card className="print:shadow-none print:border-gray-300 break-inside-avoid print:p-2">
-      <CardHeader className="print:py-2">
-        <CardTitle className="flex items-center gap-2">
-          <Calendar size={18} className="text-brand-500 print:text-black" />
+    <Card className="print:shadow-none print:border-gray-300 print:p-2 break-inside-avoid">
+      <CardHeader className="print:py-1">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <Calendar size={16} className="text-brand-500 print:text-black" />
           Calendario de Consistencia
         </CardTitle>
       </CardHeader>
-      <CardBody className="print:py-2">
-        <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
+      <CardBody className="print:py-1">
+        <div className="flex flex-wrap gap-1 justify-center sm:justify-start">
           {daysGrid.map((day) => (
             <div
               key={day.key}
               title={`${day.formatted}: ${day.active ? 'Entrenamiento completado' : 'Sin registro'}`}
-              className={`w-3.5 h-3.5 rounded-sm transition-transform hover:scale-125 ${
+              className={`w-3 h-3 rounded-sm transition-transform hover:scale-125 ${
                 day.active
                   ? 'bg-brand-500 shadow-sm shadow-brand-500/50 print:bg-black'
                   : 'bg-gray-100 dark:bg-gray-800/60 print:bg-gray-200'
@@ -342,15 +342,15 @@ export function AnalyticsView() {
       setIsExporting(true);
       expandAll();
 
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 400));
 
       const element = document.querySelector('.printable-area') as HTMLElement;
       if (!element) return;
 
       const opt = {
-        margin: [0.3, 0.3, 0.3, 0.3] as [number, number, number, number],
+        margin: [0.2, 0.2, 0.2, 0.2] as [number, number, number, number],
         filename: `Reporte_Entrenamiento_${new Date().toISOString().slice(0, 10)}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
+        image: { type: 'jpeg', quality: 0.92 },
         html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
       };
@@ -618,24 +618,24 @@ export function AnalyticsView() {
   }, [completedSessions, exerciseProgress, selectedExercise, currentExerciseName, muscleGroupVolume, globalAvgRir, totalVolume, isSelectedCardio]);
 
   return (
-    <div className="space-y-6 print:space-y-3 printable-area">
-      {/* --- MEMBRETE INSTITUCIONAL EXCLUSIVO PARA PDF --- */}
-      <div className="hidden print:block mb-6 border-b-2 border-brand-500 pb-4">
+    <div className="space-y-6 printable-area bg-white dark:bg-gray-950 p-2 sm:p-4 rounded-3xl">
+      {/* --- MEMBRETE INSTITUCIONAL --- */}
+      <div className="mb-4 border-b-2 border-brand-500 pb-3 break-inside-avoid">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">TROPHIA</h1>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Reporte Clínico y de Rendimiento Deportivo</p>
+            <h1 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">TROPHIA</h1>
+            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Reporte Clínico y de Rendimiento Deportivo</p>
           </div>
-          <div className="text-right text-xs text-gray-600 space-y-0.5">
-            <p><strong className="text-gray-900">Atleta:</strong> {user?.name || (user as any)?.email || 'Atleta'}</p>
-            <p><strong className="text-gray-900">Fecha de Emisión:</strong> {fmtDate(Date.now())}</p>
+          <div className="text-right text-[10px] text-gray-600 dark:text-gray-400 space-y-0.5">
+            <p><strong className="text-gray-900 dark:text-gray-200">Atleta:</strong> {user?.name || (user as any)?.email || 'Atleta'}</p>
+            <p><strong className="text-gray-900 dark:text-gray-200">Emisión:</strong> {fmtDate(Date.now())}</p>
           </div>
         </div>
       </div>
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 break-inside-avoid">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2 text-gray-900 dark:text-white">
             <BarChart3 size={24} className="text-brand-500" />
             Análisis de Rendimiento
           </h2>
@@ -667,46 +667,46 @@ export function AnalyticsView() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 break-inside-avoid">
-        <Card className="break-inside-avoid print:p-2">
-          <CardBody className="text-center py-4 print:py-2">
+        <Card className="break-inside-avoid">
+          <CardBody className="text-center py-3">
             <Activity size={18} className="text-brand-500 mx-auto mb-1" />
-            <p className="text-xl font-bold">{completedSessions.length}</p>
-            <p className="text-xs text-gray-400">Sesiones</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-white">{completedSessions.length}</p>
+            <p className="text-[10px] text-gray-400">Sesiones</p>
           </CardBody>
         </Card>
-        <Card className="break-inside-avoid print:p-2">
-          <CardBody className="text-center py-4 print:py-2">
+        <Card className="break-inside-avoid">
+          <CardBody className="text-center py-3">
             <TrendingUp size={18} className="text-brand-500 mx-auto mb-1" />
-            <p className="text-xl font-bold">{totalVolume.toLocaleString('es-ES')}</p>
-            <p className="text-xs text-gray-400">Volumen kg</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-white">{totalVolume.toLocaleString('es-ES')}</p>
+            <p className="text-[10px] text-gray-400">Volumen kg</p>
           </CardBody>
         </Card>
-        <Card className="break-inside-avoid print:p-2">
-          <CardBody className="text-center py-4 print:py-2">
+        <Card className="break-inside-avoid">
+          <CardBody className="text-center py-3">
             <Dumbbell size={18} className="text-brand-500 mx-auto mb-1" />
-            <p className="text-xl font-bold">{totalSets}</p>
-            <p className="text-xs text-gray-400">Series</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-white">{totalSets}</p>
+            <p className="text-[10px] text-gray-400">Series</p>
           </CardBody>
         </Card>
-        <Card className="break-inside-avoid print:p-2">
-          <CardBody className="text-center py-4 print:py-2">
+        <Card className="break-inside-avoid">
+          <CardBody className="text-center py-3">
             <Award size={18} className="text-amber-500 mx-auto mb-1" />
-            <p className="text-xl font-bold">{isSelectedCardio ? `${maxCardioMinutes}m` : `${maxOverall1RM} kg`}</p>
-            <p className="text-xs text-gray-400">{isSelectedCardio ? 'Duración Máx' : '1RM Máx'}</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-white">{isSelectedCardio ? `${maxCardioMinutes}m` : `${maxOverall1RM} kg`}</p>
+            <p className="text-[10px] text-gray-400">{isSelectedCardio ? 'Duración Máx' : '1RM Máx'}</p>
           </CardBody>
         </Card>
-        <Card className="break-inside-avoid print:p-2">
-          <CardBody className="text-center py-4 print:py-2">
+        <Card className="break-inside-avoid">
+          <CardBody className="text-center py-3">
             <Zap size={18} className="text-purple-500 mx-auto mb-1" />
-            <p className="text-xl font-bold">{isSelectedCardio ? `${totalCardioDist.toFixed(1)} km` : (globalAvgRir !== null ? globalAvgRir.toFixed(1) : 'N/A')}</p>
-            <p className="text-xs text-gray-400">{isSelectedCardio ? 'Distancia Total' : 'RIR Prom'}</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-white">{isSelectedCardio ? `${totalCardioDist.toFixed(1)} km` : (globalAvgRir !== null ? globalAvgRir.toFixed(1) : 'N/A')}</p>
+            <p className="text-[10px] text-gray-400">{isSelectedCardio ? 'Distancia Total' : 'RIR Prom'}</p>
           </CardBody>
         </Card>
-        <Card className="break-inside-avoid print:p-2">
-          <CardBody className="text-center py-4 print:py-2">
+        <Card className="break-inside-avoid">
+          <CardBody className="text-center py-3">
             <Flame size={18} className="text-blue-500 mx-auto mb-1" />
-            <p className="text-xl font-bold">{totalCardioMinutes}m</p>
-            <p className="text-xs text-gray-400">Cardio</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-white">{totalCardioMinutes}m</p>
+            <p className="text-[10px] text-gray-400">Cardio</p>
           </CardBody>
         </Card>
       </div>
@@ -782,9 +782,9 @@ export function AnalyticsView() {
 
       {/* --- TARJETA DE DIAGNÓSTICO E INSIGHTS AUTOMÁTICOS --- */}
       {analyticsInsight && (
-        <div className="p-4 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-start gap-3.5 shadow-sm animate-fade-in break-inside-avoid print:p-2.5">
+        <div className="p-4 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-start gap-3.5 shadow-sm break-inside-avoid">
           <div className="p-2 rounded-xl bg-brand-500/20 text-brand-500 shrink-0 mt-0.5">
-            <Sparkles size={20} />
+            <Sparkles size={18} />
           </div>
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -803,22 +803,22 @@ export function AnalyticsView() {
       )}
 
       {/* --- EVOLUCIÓN DE VOLUMEN TOTAL --- */}
-      <Card className="break-inside-avoid print:p-2">
-        <CardHeader className="print:py-2">
-          <div className="flex flex-col space-y-1">
-            <CardTitle className="flex items-center justify-between">
+      <Card className="break-inside-avoid">
+        <CardHeader className="py-2">
+          <div className="flex flex-col space-y-0.5">
+            <CardTitle className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-2">
-                <TrendingUp size={18} className="text-brand-500" />
+                <TrendingUp size={16} className="text-brand-500" />
                 Evolución de Volumen Total (kg)
               </span>
-              <span className="text-xs font-normal text-gray-400">Volumen por sesión</span>
+              <span className="text-[10px] font-normal text-gray-400">Volumen por sesión</span>
             </CardTitle>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">
               Suma acumulada de kilos levantados (Peso × Reps × Series). Muestra la tendencia general de tu trabajo físico.
             </p>
           </div>
         </CardHeader>
-        <CardBody className="print:py-2">
+        <CardBody className="py-2">
           {dailyVolume.length === 0 ? (
             <EmptyState
               icon={<TrendingUp size={24} className="text-gray-400" />}
@@ -826,7 +826,7 @@ export function AnalyticsView() {
               description="Registra entrenamientos completados para ver tu evolución gráfica."
             />
           ) : (
-            <div className="h-72 w-full print:h-48">
+            <div className="h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={dailyVolume} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
@@ -836,15 +836,15 @@ export function AnalyticsView() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-                  <XAxis dataKey="date" stroke={axisColor} fontSize={11} tickLine={false} />
-                  <YAxis stroke={axisColor} fontSize={11} tickLine={false} />
+                  <XAxis dataKey="date" stroke={axisColor} fontSize={10} tickLine={false} />
+                  <YAxis stroke={axisColor} fontSize={10} tickLine={false} />
                   <Tooltip content={<CustomTooltip />} />
                   <Area
                     type="monotone"
                     dataKey="volume"
                     name="Volumen (kg)"
                     stroke="#f97316"
-                    strokeWidth={2.5}
+                    strokeWidth={2}
                     fillOpacity={1}
                     fill="url(#volGradient)"
                   />
@@ -855,21 +855,21 @@ export function AnalyticsView() {
         </CardBody>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 break-inside-avoid">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* --- VOLUMEN POR GRUPO MUSCULAR (SIN CARDIO) --- */}
-        <Card className="break-inside-avoid print:p-2">
-          <CardHeader className="print:py-2">
-            <div className="flex flex-col space-y-1">
-              <CardTitle className="flex items-center gap-2">
-                <Dumbbell size={18} className="text-brand-500" />
+        <Card className="break-inside-avoid">
+          <CardHeader className="py-2">
+            <div className="flex flex-col space-y-0.5">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Dumbbell size={16} className="text-brand-500" />
                 Volumen por Grupo Muscular
               </CardTitle>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">
                 Distribución del estímulo total por grupo muscular para prevenir desequilibrios.
               </p>
             </div>
           </CardHeader>
-          <CardBody className="print:py-2">
+          <CardBody className="py-2">
             {muscleGroupVolume.length === 0 ? (
               <EmptyState
                 icon={<Dumbbell size={24} className="text-gray-400" />}
@@ -877,21 +877,21 @@ export function AnalyticsView() {
                 description="Asocia ejercicios con grupos musculares para ver esta gráfica."
               />
             ) : (
-              <div className="h-72 w-full print:h-48">
+              <div className="h-56 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={muscleGroupVolume} margin={{ top: 10, right: 10, left: -20, bottom: 25 }}>
+                  <BarChart data={muscleGroupVolume} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
                     <XAxis
                       dataKey="group"
                       stroke={axisColor}
-                      fontSize={11}
+                      fontSize={10}
                       tickLine={false}
-                      angle={-25}
+                      angle={-20}
                       textAnchor="end"
                     />
-                    <YAxis stroke={axisColor} fontSize={11} tickLine={false} />
+                    <YAxis stroke={axisColor} fontSize={10} tickLine={false} />
                     <Tooltip content={<CustomTooltip />} cursor={false} />
-                    <Bar dataKey="volume" name="Volumen (kg)" fill="#f97316" radius={[6, 6, 0, 0]}>
+                    <Bar dataKey="volume" name="Volumen (kg)" fill="#f97316" radius={[4, 4, 0, 0]}>
                       {muscleGroupVolume.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={activeBarIndex === index ? '#ea580c' : '#f97316'} />
                       ))}
@@ -904,12 +904,12 @@ export function AnalyticsView() {
         </Card>
 
         {/* --- PROGRESO POR EJERCICIO (FUERZA O CARDIO ESPECÍFICO) --- */}
-        <Card className="break-inside-avoid print:p-2">
-          <CardHeader className="print:py-2">
-            <div className="flex flex-col space-y-1">
-              <CardTitle className="flex items-center justify-between">
+        <Card className="break-inside-avoid">
+          <CardHeader className="py-2">
+            <div className="flex flex-col space-y-0.5">
+              <CardTitle className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-2">
-                  {isSelectedCardio ? <Flame size={18} className="text-blue-500" /> : <Award size={18} className="text-brand-500" />}
+                  {isSelectedCardio ? <Flame size={16} className="text-blue-500" /> : <Award size={16} className="text-brand-500" />}
                   Progreso: {currentExerciseName}
                 </span>
                 <button
@@ -921,14 +921,14 @@ export function AnalyticsView() {
                   <HelpCircle size={16} />
                 </button>
               </CardTitle>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">
                 {isSelectedCardio 
                   ? 'Duración (minutos) y distancia (km) en sesiones de cardio.' 
                   : '1RM estimado (fuerza máxima teórica) vs RIR promedio (cercanía al fallo).'}
               </p>
             </div>
           </CardHeader>
-          <CardBody className="print:py-2">
+          <CardBody className="py-2">
             {exerciseProgress.length === 0 ? (
               <EmptyState
                 icon={isSelectedCardio ? <Flame size={24} className="text-gray-400" /> : <Award size={24} className="text-gray-400" />}
@@ -936,7 +936,7 @@ export function AnalyticsView() {
                 description="Selecciona otro ejercicio o registra series/sesiones completadas."
               />
             ) : (
-              <div className="h-72 w-full print:h-48">
+              <div className="h-56 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={exerciseProgress} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <defs>
@@ -946,18 +946,18 @@ export function AnalyticsView() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-                    <XAxis dataKey="date" stroke={axisColor} fontSize={11} tickLine={false} />
-                    <YAxis yAxisId="left" stroke={axisColor} fontSize={11} tickLine={false} />
+                    <XAxis dataKey="date" stroke={axisColor} fontSize={10} tickLine={false} />
+                    <YAxis yAxisId="left" stroke={axisColor} fontSize={10} tickLine={false} />
                     <YAxis
                       yAxisId="right"
                       orientation="right"
                       domain={isSelectedCardio ? [0, 'auto'] : [0, 5]}
                       stroke={axisColor}
-                      fontSize={11}
+                      fontSize={10}
                       tickLine={false}
                     />
                     <Tooltip content={<CustomTooltip />} />
-                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '5px' }} />
+                    <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
                     
                     {/* Gráficos para Fuerza */}
                     {!isSelectedCardio && (
@@ -967,7 +967,7 @@ export function AnalyticsView() {
                         dataKey="estimated1RM"
                         name="1RM Estimado (kg)"
                         stroke="#3b82f6"
-                        strokeWidth={2.5}
+                        strokeWidth={2}
                         fillOpacity={1}
                         fill="url(#rm1Gradient)"
                       />
@@ -979,7 +979,7 @@ export function AnalyticsView() {
                         dataKey="avgRir"
                         name="RIR Promedio"
                         stroke="#10b981"
-                        strokeWidth={2}
+                        strokeWidth={1.5}
                         fill="none"
                       />
                     )}
@@ -992,7 +992,7 @@ export function AnalyticsView() {
                         dataKey="durationMinutes"
                         name="Duración (min)"
                         stroke="#8b5cf6"
-                        strokeWidth={2.5}
+                        strokeWidth={2}
                         fillOpacity={1}
                         fill="url(#rm1Gradient)"
                       />
@@ -1004,7 +1004,7 @@ export function AnalyticsView() {
                         dataKey="distanceKm"
                         name="Distancia (km)"
                         stroke="#06b6d4"
-                        strokeWidth={2}
+                        strokeWidth={1.5}
                         fill="none"
                       />
                     )}
@@ -1016,13 +1016,13 @@ export function AnalyticsView() {
         </Card>
       </div>
 
-      {/* --- SALTO DE PÁGINA LIMPIO PARA EL HISTORIAL DETALLADO --- */}
-      <div style={{ pageBreakBefore: 'always' }} className="pt-4 print:pt-0">
-        <Card className="print:p-2">
-          <CardHeader className="print:py-2">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <CardTitle className="flex items-center gap-2">
-                <Activity size={18} className="text-brand-500" />
+      {/* --- HISTORIAL DETALLADO DE SESIONES --- */}
+      <div className="pt-2">
+        <Card className="break-inside-avoid">
+          <CardHeader className="py-2">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Activity size={16} className="text-brand-500" />
                 Historial Detallado de Sesiones
               </CardTitle>
               <div className="no-print flex items-center gap-2">
@@ -1041,7 +1041,7 @@ export function AnalyticsView() {
               </div>
             </div>
           </CardHeader>
-          <CardBody className="print:py-2">
+          <CardBody className="py-2">
             {completedSessions.length === 0 ? (
               <EmptyState
                 icon={<Activity size={24} className="text-gray-400" />}
@@ -1049,7 +1049,7 @@ export function AnalyticsView() {
                 description="Finaliza sesiones en la pestaña Sesión para ver el desglose detallado."
               />
             ) : (
-              <div className="space-y-4 print:space-y-2">
+              <div className="space-y-3">
                 {visibleSessions.map((session) => {
                   const isExpanded = expandedSessions[session.id] || false;
                   const sessionVol = (session.exercises || []).reduce((acc, ex) => {
@@ -1070,66 +1070,66 @@ export function AnalyticsView() {
                   return (
                     <div
                       key={session.id}
-                      className="border border-gray-200 dark:border-gray-800 rounded-2xl p-4 bg-white/50 dark:bg-gray-900/50 transition-all break-inside-avoid mb-3 print:p-2.5 print:mb-2"
+                      className="border border-gray-200 dark:border-gray-800 rounded-2xl p-3 bg-white/50 dark:bg-gray-900/50 transition-all mb-2"
                     >
                       <div
-                        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 cursor-pointer"
+                        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 cursor-pointer"
                         onClick={() => toggleSession(session.id)}
                       >
                         <div>
                           <div className="flex items-center gap-2">
-                            <h4 className="font-bold text-sm sm:text-base text-gray-900 dark:text-gray-100">
+                            <h4 className="font-bold text-xs sm:text-sm text-gray-900 dark:text-gray-100">
                               {session.routineName || 'Entrenamiento'}
                             </h4>
                             <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold">
                               Completada
                             </span>
                           </div>
-                          <p className="text-xs text-gray-400 mt-0.5">{fmtDate(session.date)}</p>
+                          <p className="text-[11px] text-gray-400 mt-0.5">{fmtDate(session.date)}</p>
                         </div>
                         <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
                           <div className="text-right">
-                            <p className="text-xs text-gray-400">Volumen</p>
-                            <p className="text-sm font-bold font-mono">
+                            <p className="text-[10px] text-gray-400">Volumen</p>
+                            <p className="text-xs font-bold font-mono">
                               {Math.round(sessionVol).toLocaleString('es-ES')} kg
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-xs text-gray-400">Series</p>
-                            <p className="text-sm font-bold font-mono">{completedSetsCount}</p>
+                            <p className="text-[10px] text-gray-400">Series</p>
+                            <p className="text-xs font-bold font-mono">{completedSetsCount}</p>
                           </div>
-                          <button className="no-print p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
-                            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          <button className="no-print p-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
+                            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                           </button>
                         </div>
                       </div>
 
                       {isExpanded && (
-                        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 space-y-3 print:mt-2 print:pt-2 print:space-y-1.5 animate-fade-in">
+                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 space-y-2 animate-fade-in">
                           {(session.exercises || []).map((ex, idx) => {
                             const exerciseObj = (exercises || []).find((e) => e?.id === ex.exerciseId);
                             const setList = ex?.sets || [];
                             const isExCardio = exerciseObj?.muscleGroup === 'Cardio' || ex.cardioDetails;
                             return (
-                              <div key={idx} className="bg-gray-50 dark:bg-gray-800/40 rounded-xl p-3 print:p-2">
-                                <p className="font-semibold text-xs sm:text-sm text-brand-600 dark:text-brand-400 mb-2 print:mb-1">
+                              <div key={idx} className="bg-gray-50 dark:bg-gray-800/40 rounded-xl p-2.5 break-inside-avoid">
+                                <p className="font-semibold text-xs text-brand-600 dark:text-brand-400 mb-1.5">
                                   {exerciseObj?.name || 'Ejercicio'}{' '}
-                                  <span className="text-[11px] text-gray-400 font-normal">
+                                  <span className="text-[10px] text-gray-400 font-normal">
                                     ({exerciseObj?.muscleGroup || 'General'})
                                   </span>
                                 </p>
 
                                 {ex.notes && (
-                                  <p className="text-xs text-gray-600 dark:text-gray-300 italic mb-2 print:mb-1 flex items-center gap-1">
-                                    <FileText size={12} className="text-gray-400 shrink-0" />
+                                  <p className="text-[11px] text-gray-600 dark:text-gray-300 italic mb-1 flex items-center gap-1">
+                                    <FileText size={10} className="text-gray-400 shrink-0" />
                                     <span>{ex.notes}</span>
                                   </p>
                                 )}
 
                                 {isExCardio && ex.cardioDetails && (
-                                  <div className="text-xs font-mono bg-white dark:bg-gray-900 px-3 py-2 print:py-1 rounded-lg border border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                                    <span className="text-blue-500 font-bold flex items-center gap-1.5">
-                                      <Flame size={14} /> Cardio Registrado
+                                  <div className="text-[11px] font-mono bg-white dark:bg-gray-900 px-2.5 py-1.5 rounded-lg border border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                                    <span className="text-blue-500 font-bold flex items-center gap-1">
+                                      <Flame size={12} /> Cardio Registrado
                                     </span>
                                     <div className="flex gap-3">
                                       <span>{ex.cardioDetails.durationMinutes || 0} min</span>
@@ -1139,13 +1139,13 @@ export function AnalyticsView() {
                                 )}
 
                                 {!isExCardio && setList.length > 0 && (
-                                  <div className="space-y-1.5 print:space-y-1">
+                                  <div className="space-y-1">
                                     {setList.map((set, sIdx) => (
                                       <div
                                         key={sIdx}
-                                        className="flex items-center justify-between text-xs font-mono bg-white dark:bg-gray-900 px-3 py-1.5 print:py-1 rounded-lg border border-gray-100 dark:border-gray-800"
+                                        className="flex items-center justify-between text-[11px] font-mono bg-white dark:bg-gray-900 px-2.5 py-1 rounded-lg border border-gray-100 dark:border-gray-800"
                                       >
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-2">
                                           <span className="text-gray-400 font-sans font-bold">#{sIdx + 1}</span>
                                           <span>
                                             {set.weight || 0} kg × {set.reps || 0} reps
@@ -1153,7 +1153,7 @@ export function AnalyticsView() {
                                         </div>
                                         <div className="flex items-center gap-3">
                                           {typeof set.rir === 'number' && (
-                                            <span className="px-2 py-0.5 rounded bg-brand-500/10 text-brand-500 font-bold">
+                                            <span className="px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-500 font-bold">
                                               RIR: {set.rir}
                                             </span>
                                           )}
@@ -1174,8 +1174,8 @@ export function AnalyticsView() {
                           })}
 
                           {session.notes && (
-                            <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 print:p-2 text-xs text-gray-600 dark:text-gray-300">
-                              <span className="font-bold text-amber-600 dark:text-amber-400 block mb-1">
+                            <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-2.5 text-[11px] text-gray-600 dark:text-gray-300">
+                              <span className="font-bold text-amber-600 dark:text-amber-400 block mb-0.5">
                                 Notas generales de la sesión:
                               </span>
                               {session.notes}
@@ -1188,7 +1188,7 @@ export function AnalyticsView() {
                 })}
 
                 {visibleCount < completedSessions.length && (
-                  <div className="no-print text-center pt-4">
+                  <div className="no-print text-center pt-2">
                     <button
                       onClick={() => setVisibleCount((prev) => prev + 5)}
                       className="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer"
