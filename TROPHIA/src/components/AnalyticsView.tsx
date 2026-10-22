@@ -732,20 +732,21 @@ export function AnalyticsView() {
           ))}
         </div>
 
-        <div className="relative" ref={dropdownRef}>
+        {/* --- SELECTOR DE EJERCICIOS CON TAMAÑO ESTANDARIZADO --- */}
+        <div className="relative w-full sm:w-80" ref={dropdownRef}>
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center justify-between gap-3 px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700/80 rounded-xl text-xs sm:text-sm font-semibold transition-all w-full sm:w-64"
+            className="flex items-center justify-between gap-3 px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700/80 rounded-xl text-xs sm:text-sm font-semibold transition-all w-full"
           >
-            <div className="flex items-center gap-2 truncate">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
               <Dumbbell size={16} className="text-brand-500 shrink-0" />
-              <span className="truncate">{currentExerciseName}</span>
+              <span className="truncate text-left">{currentExerciseName}</span>
             </div>
-            <ChevronDown size={16} className="text-gray-400 shrink-0" />
+            <ChevronDown size={16} className="text-gray-400 shrink-0 ml-2" />
           </button>
 
           {isDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-full sm:w-72 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xl z-50 p-2 max-h-72 overflow-y-auto no-scrollbar">
+            <div className="absolute right-0 mt-2 w-full bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xl z-50 p-2 max-h-72 overflow-y-auto no-scrollbar">
               <button
                 onClick={() => {
                   setSelectedExercise('all');
@@ -802,6 +803,118 @@ export function AnalyticsView() {
         </div>
       )}
 
+      {/* --- PROGRESO POR EJERCICIO (MOVIDO ARRIBA, BAJO EL DIAGNÓSTICO) --- */}
+      <Card className="break-inside-avoid">
+        <CardHeader className="py-2">
+          <div className="flex flex-col space-y-0.5">
+            <CardTitle className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-2">
+                {isSelectedCardio ? <Flame size={16} className="text-blue-500" /> : <Award size={16} className="text-brand-500" />}
+                Progreso: {currentExerciseName}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsGuideOpen(true)}
+                className="text-gray-400 hover:text-brand-500 transition-colors"
+                title="¿Cómo leer este gráfico?"
+              >
+                <HelpCircle size={16} />
+              </button>
+            </CardTitle>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+              {isSelectedCardio 
+                ? 'Duración (minutos) y distancia (km) en sesiones de cardio.' 
+                : '1RM estimado (fuerza máxima teórica) vs RIR promedio (cercanía al fallo).'}
+            </p>
+          </div>
+        </CardHeader>
+        <CardBody className="py-2">
+          {exerciseProgress.length === 0 ? (
+            <EmptyState
+              icon={isSelectedCardio ? <Flame size={24} className="text-gray-400" /> : <Award size={24} className="text-gray-400" />}
+              title="Sin registros para este ejercicio"
+              description="Selecciona otro ejercicio o registra series/sesiones completadas."
+            />
+          ) : (
+            <div className="h-56 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={exerciseProgress} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="rm1Gradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={isSelectedCardio ? "#8b5cf6" : "#3b82f6"} stopOpacity={0.4} />
+                      <stop offset="95%" stopColor={isSelectedCardio ? "#8b5cf6" : "#3b82f6"} stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+                  <XAxis dataKey="date" stroke={axisColor} fontSize={10} tickLine={false} />
+                  <YAxis yAxisId="left" stroke={axisColor} fontSize={10} tickLine={false} />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    domain={isSelectedCardio ? [0, 'auto'] : [0, 5]}
+                    stroke={axisColor}
+                    fontSize={10}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
+                  
+                  {/* Gráficos para Fuerza */}
+                  {!isSelectedCardio && (
+                    <Area
+                      yAxisId="left"
+                      type="monotone"
+                      dataKey="estimated1RM"
+                      name="1RM Estimado (kg)"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#rm1Gradient)"
+                    />
+                  )}
+                  {!isSelectedCardio && (
+                    <Area
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="avgRir"
+                      name="RIR Promedio"
+                      stroke="#10b981"
+                      strokeWidth={1.5}
+                      fill="none"
+                    />
+                  )}
+
+                  {/* Gráficos para Cardio */}
+                  {isSelectedCardio && (
+                    <Area
+                      yAxisId="left"
+                      type="monotone"
+                      dataKey="durationMinutes"
+                      name="Duración (min)"
+                      stroke="#8b5cf6"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#rm1Gradient)"
+                    />
+                  )}
+                  {isSelectedCardio && (
+                    <Area
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="distanceKm"
+                      name="Distancia (km)"
+                      stroke="#06b6d4"
+                      strokeWidth={1.5}
+                      fill="none"
+                    />
+                  )}
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardBody>
+      </Card>
+
       {/* --- EVOLUCIÓN DE VOLUMEN TOTAL --- */}
       <Card className="break-inside-avoid">
         <CardHeader className="py-2">
@@ -855,166 +968,52 @@ export function AnalyticsView() {
         </CardBody>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* --- VOLUMEN POR GRUPO MUSCULAR (SIN CARDIO) --- */}
-        <Card className="break-inside-avoid">
-          <CardHeader className="py-2">
-            <div className="flex flex-col space-y-0.5">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Dumbbell size={16} className="text-brand-500" />
-                Volumen por Grupo Muscular
-              </CardTitle>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                Distribución del estímulo total por grupo muscular para prevenir desequilibrios.
-              </p>
+      {/* --- VOLUMEN POR GRUPO MUSCULAR (SIN CARDIO) --- */}
+      <Card className="break-inside-avoid">
+        <CardHeader className="py-2">
+          <div className="flex flex-col space-y-0.5">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Dumbbell size={16} className="text-brand-500" />
+              Volumen por Grupo Muscular
+            </CardTitle>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+              Distribución del estímulo total por grupo muscular para prevenir desequilibrios.
+            </p>
+          </div>
+        </CardHeader>
+        <CardBody className="py-2">
+          {muscleGroupVolume.length === 0 ? (
+            <EmptyState
+              icon={<Dumbbell size={24} className="text-gray-400" />}
+              title="Sin datos musculares"
+              description="Asocia ejercicios con grupos musculares para ver esta gráfica."
+            />
+          ) : (
+            <div className="h-56 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={muscleGroupVolume} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+                  <XAxis
+                    dataKey="group"
+                    stroke={axisColor}
+                    fontSize={10}
+                    tickLine={false}
+                    angle={-20}
+                    textAnchor="end"
+                  />
+                  <YAxis stroke={axisColor} fontSize={10} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} cursor={false} />
+                  <Bar dataKey="volume" name="Volumen (kg)" fill="#f97316" radius={[4, 4, 0, 0]}>
+                    {muscleGroupVolume.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={activeBarIndex === index ? '#ea580c' : '#f97316'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-          </CardHeader>
-          <CardBody className="py-2">
-            {muscleGroupVolume.length === 0 ? (
-              <EmptyState
-                icon={<Dumbbell size={24} className="text-gray-400" />}
-                title="Sin datos musculares"
-                description="Asocia ejercicios con grupos musculares para ver esta gráfica."
-              />
-            ) : (
-              <div className="h-56 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={muscleGroupVolume} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-                    <XAxis
-                      dataKey="group"
-                      stroke={axisColor}
-                      fontSize={10}
-                      tickLine={false}
-                      angle={-20}
-                      textAnchor="end"
-                    />
-                    <YAxis stroke={axisColor} fontSize={10} tickLine={false} />
-                    <Tooltip content={<CustomTooltip />} cursor={false} />
-                    <Bar dataKey="volume" name="Volumen (kg)" fill="#f97316" radius={[4, 4, 0, 0]}>
-                      {muscleGroupVolume.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={activeBarIndex === index ? '#ea580c' : '#f97316'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </CardBody>
-        </Card>
-
-        {/* --- PROGRESO POR EJERCICIO (FUERZA O CARDIO ESPECÍFICO) --- */}
-        <Card className="break-inside-avoid">
-          <CardHeader className="py-2">
-            <div className="flex flex-col space-y-0.5">
-              <CardTitle className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2">
-                  {isSelectedCardio ? <Flame size={16} className="text-blue-500" /> : <Award size={16} className="text-brand-500" />}
-                  Progreso: {currentExerciseName}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIsGuideOpen(true)}
-                  className="text-gray-400 hover:text-brand-500 transition-colors"
-                  title="¿Cómo leer este gráfico?"
-                >
-                  <HelpCircle size={16} />
-                </button>
-              </CardTitle>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                {isSelectedCardio 
-                  ? 'Duración (minutos) y distancia (km) en sesiones de cardio.' 
-                  : '1RM estimado (fuerza máxima teórica) vs RIR promedio (cercanía al fallo).'}
-              </p>
-            </div>
-          </CardHeader>
-          <CardBody className="py-2">
-            {exerciseProgress.length === 0 ? (
-              <EmptyState
-                icon={isSelectedCardio ? <Flame size={24} className="text-gray-400" /> : <Award size={24} className="text-gray-400" />}
-                title="Sin registros para este ejercicio"
-                description="Selecciona otro ejercicio o registra series/sesiones completadas."
-              />
-            ) : (
-              <div className="h-56 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={exerciseProgress} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="rm1Gradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={isSelectedCardio ? "#8b5cf6" : "#3b82f6"} stopOpacity={0.4} />
-                        <stop offset="95%" stopColor={isSelectedCardio ? "#8b5cf6" : "#3b82f6"} stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-                    <XAxis dataKey="date" stroke={axisColor} fontSize={10} tickLine={false} />
-                    <YAxis yAxisId="left" stroke={axisColor} fontSize={10} tickLine={false} />
-                    <YAxis
-                      yAxisId="right"
-                      orientation="right"
-                      domain={isSelectedCardio ? [0, 'auto'] : [0, 5]}
-                      stroke={axisColor}
-                      fontSize={10}
-                      tickLine={false}
-                    />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '2px' }} />
-                    
-                    {/* Gráficos para Fuerza */}
-                    {!isSelectedCardio && (
-                      <Area
-                        yAxisId="left"
-                        type="monotone"
-                        dataKey="estimated1RM"
-                        name="1RM Estimado (kg)"
-                        stroke="#3b82f6"
-                        strokeWidth={2}
-                        fillOpacity={1}
-                        fill="url(#rm1Gradient)"
-                      />
-                    )}
-                    {!isSelectedCardio && (
-                      <Area
-                        yAxisId="right"
-                        type="monotone"
-                        dataKey="avgRir"
-                        name="RIR Promedio"
-                        stroke="#10b981"
-                        strokeWidth={1.5}
-                        fill="none"
-                      />
-                    )}
-
-                    {/* Gráficos para Cardio */}
-                    {isSelectedCardio && (
-                      <Area
-                        yAxisId="left"
-                        type="monotone"
-                        dataKey="durationMinutes"
-                        name="Duración (min)"
-                        stroke="#8b5cf6"
-                        strokeWidth={2}
-                        fillOpacity={1}
-                        fill="url(#rm1Gradient)"
-                      />
-                    )}
-                    {isSelectedCardio && (
-                      <Area
-                        yAxisId="right"
-                        type="monotone"
-                        dataKey="distanceKm"
-                        name="Distancia (km)"
-                        stroke="#06b6d4"
-                        strokeWidth={1.5}
-                        fill="none"
-                      />
-                    )}
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </CardBody>
-        </Card>
-      </div>
+          )}
+        </CardBody>
+      </Card>
 
       {/* --- HISTORIAL DETALLADO DE SESIONES --- */}
       <div className="pt-2">
