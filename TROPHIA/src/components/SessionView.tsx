@@ -140,6 +140,9 @@ export function SessionView({
   const sessions = allSessions.filter((s) => !s.deletedAt);
   const trashSessions = allSessions.filter((s) => s.deletedAt);
 
+  const inProgressSessions = sessions.filter((s) => !s.completed);
+  const completedSessionsList = sessions.filter((s) => s.completed);
+
   const exercises = useLiveQuery(
     async () => {
       if (!currentUserId) return [];
@@ -253,7 +256,7 @@ export function SessionView({
 
   const [createOpen, setCreateOpen] = useState(false);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false); // Estado para colapsar/expandir el historial
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [localNotes, setLocalNotes] = useState('');
   const [visibleCount, setVisibleCount] = useState(6);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -1131,7 +1134,52 @@ export function SessionView({
             </CardBody>
           </Card>
 
-          {/* --- SECCIÓN COLAPSABLE (ACORDEÓN) PARA EL HISTORIAL DE SESIONES --- */}
+          {/* --- SESIONES EN PROGRESO (VISIBLES AUTOMÁTICAMENTE) --- */}
+          {inProgressSessions.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white px-1">
+                <Clock size={16} className="text-amber-500 animate-pulse" />
+                <span>Sesiones en progreso ({inProgressSessions.length})</span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {inProgressSessions.map((s) => (
+                  <Card key={s.id} className="border-amber-500/40 bg-amber-500/5 hover:shadow-md transition-shadow">
+                    <CardBody>
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <h3 className="font-semibold break-words leading-tight">{s.routineName}</h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mt-1 flex-wrap">
+                              <Calendar size={12} className="shrink-0" />
+                              {fmtDate(s.date)}
+                            </p>
+                          </div>
+                          <Badge color="amber">En progreso</Badge>
+                        </div>
+                        <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400 break-words">
+                          <span>
+                            {completedSets(s)}/{totalSets(s)} bloques
+                          </span>
+                          <span>{totalVolume(s).toFixed(1)} kg vol.</span>
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <Button size="sm" onClick={() => onActiveSessionChange(s.id)} className="flex-1">
+                            <Play size={14} />
+                            Continuar
+                          </Button>
+                          <Button size="sm" variant="danger" onClick={() => moveToTrash(s.id)}>
+                            <Trash2 size={14} />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardBody>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* --- SECCIÓN COLAPSABLE (ACORDEÓN) PARA EL HISTORIAL DE SESIONES COMPLETADAS --- */}
           <div className="space-y-4 pt-2 border-t border-gray-100 dark:border-gray-800">
             <button
               onClick={() => setHistoryOpen(!historyOpen)}
@@ -1140,7 +1188,7 @@ export function SessionView({
               <div className="flex items-center gap-2">
                 <Calendar size={18} className="text-brand-500" />
                 <span className="font-bold text-sm text-gray-900 dark:text-gray-100">
-                  Historial de Sesiones Anteriores ({sessions.length})
+                  Historial de Sesiones Completadas ({completedSessionsList.length})
                 </span>
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -1154,24 +1202,18 @@ export function SessionView({
 
             {historyOpen && (
               <div className="space-y-4 animate-fadeIn">
-                {sessions.length === 0 ? (
+                {completedSessionsList.length === 0 ? (
                   <Card>
                     <EmptyState
                       icon={<ListChecks size={32} />}
-                      title="Sin sesiones"
-                      description="Inicia una rutina desde la pestaña Rutinas o crea una sesión libre aquí."
-                      action={
-                        <Button onClick={() => setCreateOpen(true)}>
-                          <Plus size={18} />
-                          Nueva sesión
-                        </Button>
-                      }
+                      title="Sin sesiones completadas"
+                      description="Las sesiones que finalices aparecerán aquí en el historial."
                     />
                   </Card>
                 ) : (
                   <>
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      {sessions.slice(0, visibleCount).map((s) => (
+                      {completedSessionsList.slice(0, visibleCount).map((s) => (
                         <Card key={s.id} className="hover:shadow-md transition-shadow">
                           <CardBody>
                             <div className="space-y-3">
@@ -1188,9 +1230,7 @@ export function SessionView({
                                     )}
                                   </p>
                                 </div>
-                                <Badge color={s.completed ? 'green' : 'amber'}>
-                                  {s.completed ? 'Completada' : 'En progreso'}
-                                </Badge>
+                                <Badge color="green">Completada</Badge>
                               </div>
                               <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400 break-words">
                                 <span>
@@ -1213,11 +1253,11 @@ export function SessionView({
                       ))}
                     </div>
 
-                    {visibleCount < sessions.length && (
+                    {visibleCount < completedSessionsList.length && (
                       <div className="text-center pt-2">
                         <Button variant="outline" onClick={() => setVisibleCount((prev) => prev + 6)}>
                           <ChevronDown size={16} className="mr-1" />
-                          Cargar más sesiones ({sessions.length - visibleCount} restantes)
+                          Cargar más sesiones ({completedSessionsList.length - visibleCount} restantes)
                         </Button>
                       </div>
                     )}
