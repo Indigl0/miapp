@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   ListChecks,
   Plus,
@@ -14,6 +14,7 @@ import {
   Activity,
   ChevronDown,
   BellRing,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useLiveQuery } from '@/lib/useLiveQuery';
@@ -159,6 +160,62 @@ export function SessionView({
     [currentUserId],
     [] as Routine[]
   );
+
+  // --- LÓGICA DE SEGUIMIENTO SEMANAL INTELIGENTE (LUNES A DOMINGO) ---
+  const weeklyStatus = useMemo(() => {
+    const nowRef = new Date();
+    const dayOfWeek = nowRef.getDay(); // 0 = Domingo, 1 = Lunes, ...
+    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    
+    const monday = new Date(nowRef);
+    monday.setDate(nowRef.getDate() + diffToMonday);
+    monday.setHours(0, 0, 0, 0);
+    const mondayTs = monday.getTime();
+
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+    const sundayTs = sunday.getTime();
+
+    // Sesiones completadas esta semana
+    const completedThisWeek = sessions.filter(
+      (s) => s.completed && s.date >= mondayTs && s.date <= sundayTs
+    );
+
+    // Días de la semana estructurados
+    const daysMeta = [
+      { name: 'Lunes', index: 1 },
+      { name: 'Martes', index: 2 },
+      { name: 'Miércoles', index: 3 },
+      { name: 'Jueves', index: 4 },
+      { name: 'Viernes', index: 5 },
+      { name: 'Sábado', index: 6 },
+      { name: 'Domingo', index: 0 },
+    ];
+
+    const todayIndex = nowRef.getDay();
+
+    const evaluatedDays = daysMeta.map((d) => {
+      // Buscar si hay una sesión completada en este día de la semana
+      const sessionOnDay = completedThisWeek.find((s) => {
+        const sDate = new Date(s.date);
+        let sDay = sDate.getDay();
+        return sDay === d.index;
+      });
+
+      return {
+        name: d.name,
+        isToday: todayIndex === d.index,
+        completed: !!sessionOnDay,
+        routineName: sessionOnDay?.routineName || null,
+      };
+    });
+
+    return {
+      totalCompleted: completedThisWeek.length,
+      evaluatedDays,
+    };
+  }, [sessions]);
 
   const activeSessionRaw = useLiveQuery<TrainingSession | undefined>(
     async () => {
@@ -997,6 +1054,53 @@ export function SessionView({
               </Button>
             </div>
           </div>
+
+          {/* --- WIDGET INTELIGENTE DE PROGRESO SEMANAL --- */}
+          <Card className="bg-gradient-to-r from-brand-500/10 via-brand-500/5 to-transparent border-brand-500/20">
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm font-bold flex items-center justify-between">
+                <span className="flex items-center gap-2 text-gray-900 dark:text-white">
+                  <Sparkles size={16} className="text-brand-500" />
+                  Progreso Semanal (Lunes - Domingo)
+                </span>
+                <span className="text-xs px-2.5 py-1 bg-brand-500 text-white font-bold rounded-full">
+                  {weeklyStatus.totalCompleted} completados
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardBody className="py-2 pb-4">
+              <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                {weeklyStatus.evaluatedDays.map((d, i) => (
+                  <div
+                    key={i}
+                    className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border transition-all ${
+                      d.completed
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                        : d.isToday
+                        ? 'bg-brand-500/10 border-brand-500/40 text-brand-600 dark:text-brand-400 shadow-sm ring-2 ring-brand-500/20'
+                        : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-800 text-gray-400'
+                    }`}
+                  >
+                    <span className="text-[10px] font-bold uppercase tracking-wider">{d.name.slice(0, 3)}</span>
+                    <div className="mt-1.5">
+                      {d.completed ? (
+                        <CheckCircle2 size={18} className="text-emerald-500" />
+                      ) : d.isToday ? (
+                        <div className="w-4 h-4 rounded-full bg-brand-500 flex items-center justify-center text-[9px] text-white font-bold">
+                          Hoy
+                        </div>
+                      ) : (
+                        <div className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-700" />
+                      )}
+                    </div>
+                    <span className="text-[9px] font-medium mt-1 truncate max-w-full">
+                      {d.completed ? 'Hecho' : d.isToday ? 'Pendiente' : '-'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardBody>
+          </Card>
 
           {sessions.length === 0 ? (
             <Card>
