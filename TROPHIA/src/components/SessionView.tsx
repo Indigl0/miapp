@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   ListChecks,
@@ -15,7 +16,6 @@ import {
   ChevronDown,
   BellRing,
   Sparkles,
-  AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useLiveQuery } from '@/lib/useLiveQuery';
@@ -162,10 +162,10 @@ export function SessionView({
     [] as Routine[]
   );
 
-  // --- LÓGICA DE SEGUIMIENTO SEMANAL E INDEPENDIENTE DEL ORDEN ---
+  // --- LÓGICA DE SEGUIMIENTO SEMANAL INTELIGENTE (LUNES A DOMINGO) ---
   const weeklyStatus = useMemo(() => {
     const nowRef = new Date();
-    const dayOfWeek = nowRef.getDay();
+    const dayOfWeek = nowRef.getDay(); // 0 = Domingo, 1 = Lunes, ...
     const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     
     const monday = new Date(nowRef);
@@ -183,15 +183,7 @@ export function SessionView({
       (s) => s.completed && s.date >= mondayTs && s.date <= sundayTs
     );
 
-    // IDs de las rutinas que YA se hicieron esta semana
-    const completedRoutineIds = new Set(
-      completedThisWeek.filter((s) => s.routineId).map((s) => s.routineId)
-    );
-
-    // Rutinas pendientes (las que existen en tu lista pero no se han completado esta semana)
-    const pendingRoutinesList = routines.filter((r) => !completedRoutineIds.has(r.id));
-
-    // Días de la semana para el calendario visual
+    // Días de la semana estructurados
     const daysMeta = [
       { name: 'Lunes', index: 1 },
       { name: 'Martes', index: 2 },
@@ -205,9 +197,11 @@ export function SessionView({
     const todayIndex = nowRef.getDay();
 
     const evaluatedDays = daysMeta.map((d) => {
+      // Buscar si hay una sesión completada en este día de la semana
       const sessionOnDay = completedThisWeek.find((s) => {
         const sDate = new Date(s.date);
-        return sDate.getDay() === d.index;
+        let sDay = sDate.getDay();
+        return sDay === d.index;
       });
 
       return {
@@ -221,9 +215,8 @@ export function SessionView({
     return {
       totalCompleted: completedThisWeek.length,
       evaluatedDays,
-      pendingRoutines: pendingRoutinesList,
     };
-  }, [sessions, routines]);
+  }, [sessions]);
 
   const activeSessionRaw = useLiveQuery<TrainingSession | undefined>(
     async () => {
@@ -1063,21 +1056,20 @@ export function SessionView({
             </div>
           </div>
 
-          {/* --- WIDGET INTELIGENTE DE PROGRESO Y RUTINAS PENDIENTES --- */}
+          {/* --- WIDGET INTELIGENTE DE PROGRESO SEMANAL --- */}
           <Card className="bg-gradient-to-r from-brand-500/10 via-brand-500/5 to-transparent border-brand-500/20">
             <CardHeader className="py-3">
               <CardTitle className="text-sm font-bold flex items-center justify-between">
                 <span className="flex items-center gap-2 text-gray-900 dark:text-white">
                   <Sparkles size={16} className="text-brand-500" />
-                  Progreso y Rutinas Pendientes de la Semana
+                  Progreso Semanal (Lunes - Domingo)
                 </span>
                 <span className="text-xs px-2.5 py-1 bg-brand-500 text-white font-bold rounded-full">
-                  {weeklyStatus.totalCompleted} hechos
+                  {weeklyStatus.totalCompleted} completados
                 </span>
               </CardTitle>
             </CardHeader>
-            <CardBody className="py-2 pb-4 space-y-4">
-              {/* Calendario visual por días */}
+            <CardBody className="py-2 pb-4">
               <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
                 {weeklyStatus.evaluatedDays.map((d, i) => (
                   <div
@@ -1107,33 +1099,6 @@ export function SessionView({
                     </span>
                   </div>
                 ))}
-              </div>
-
-              {/* Lista de rutinas faltantes (independiente del orden) */}
-              <div className="pt-3 border-t border-brand-500/10 dark:border-brand-500/10">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">
-                  <AlertCircle size={14} className="text-brand-500" />
-                  <span>Rutinas que te quedan pendientes esta semana:</span>
-                </div>
-                {weeklyStatus.pendingRoutines.length === 0 ? (
-                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 px-3 py-2 rounded-xl">
-                    🎉 ¡Felicidades! Has completado todas tus rutinas planificadas esta semana.
-                  </p>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {weeklyStatus.pendingRoutines.map((r) => (
-                      <button
-                        key={r.id}
-                        onClick={() => createBlankSession(r.id)}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-900 hover:bg-brand-50 dark:hover:bg-brand-500/10 border border-gray-200 dark:border-gray-800 hover:border-brand-500 rounded-xl text-xs font-medium text-gray-800 dark:text-gray-200 transition-all shadow-sm group cursor-pointer"
-                      >
-                        <span className="w-2 h-2 rounded-full bg-brand-500 group-hover:scale-125 transition-transform" />
-                        <span>{r.name}</span>
-                        <Play size={12} className="text-brand-500 ml-1 opacity-70 group-hover:opacity-100" />
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
             </CardBody>
           </Card>
