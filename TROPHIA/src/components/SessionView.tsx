@@ -253,6 +253,7 @@ export function SessionView({
 
   const [createOpen, setCreateOpen] = useState(false);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false); // Estado para colapsar/expandir el historial
   const [localNotes, setLocalNotes] = useState('');
   const [visibleCount, setVisibleCount] = useState(6);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -1130,75 +1131,101 @@ export function SessionView({
             </CardBody>
           </Card>
 
-          {sessions.length === 0 ? (
-            <Card>
-              <EmptyState
-                icon={<ListChecks size={32} />}
-                title="Sin sesiones"
-                description="Inicia una rutina desde la pestaña Rutinas o crea una sesión libre aquí."
-                action={
-                  <Button onClick={() => setCreateOpen(true)}>
-                    <Plus size={18} />
-                    Nueva sesión
-                  </Button>
-                }
-              />
-            </Card>
-          ) : (
-            <>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {sessions.slice(0, visibleCount).map((s) => (
-                  <Card key={s.id} className="hover:shadow-md transition-shadow">
-                    <CardBody>
-                      <div className="space-y-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <h3 className="font-semibold break-words leading-tight">{s.routineName}</h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mt-1 flex-wrap">
-                              <Calendar size={12} className="shrink-0" />
-                              {fmtDate(s.date)}
-                              {s.notes && (
-                                <span className="inline-flex items-center gap-1 text-brand-500 bg-brand-50 dark:bg-brand-500/10 px-1.5 py-0.5 rounded text-[10px] font-medium">
-                                  📝 Con notas
-                                </span>
-                              )}
-                            </p>
-                          </div>
-                          <Badge color={s.completed ? 'green' : 'amber'}>
-                            {s.completed ? 'Completada' : 'En progreso'}
-                          </Badge>
-                        </div>
-                        <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400 break-words">
-                          <span>
-                            {completedSets(s)}/{totalSets(s)} bloques
-                          </span>
-                          <span>{totalVolume(s).toFixed(1)} kg vol.</span>
-                        </div>
-                        <div className="flex gap-2 pt-1">
-                          <Button size="sm" onClick={() => onActiveSessionChange(s.id)} className="flex-1">
-                            <Play size={14} />
-                            Abrir
-                          </Button>
-                          <Button size="sm" variant="danger" onClick={() => moveToTrash(s.id)}>
-                            <Trash2 size={14} />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardBody>
-                  </Card>
-                ))}
+          {/* --- SECCIÓN COLAPSABLE (ACORDEÓN) PARA EL HISTORIAL DE SESIONES --- */}
+          <div className="space-y-4 pt-2 border-t border-gray-100 dark:border-gray-800">
+            <button
+              onClick={() => setHistoryOpen(!historyOpen)}
+              className="w-full flex items-center justify-between p-4 rounded-2xl bg-gray-50 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-900 border border-gray-200 dark:border-gray-800 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <Calendar size={18} className="text-brand-500" />
+                <span className="font-bold text-sm text-gray-900 dark:text-gray-100">
+                  Historial de Sesiones Anteriores ({sessions.length})
+                </span>
               </div>
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <span>{historyOpen ? 'Ocultar' : 'Ver historial'}</span>
+                <ChevronDown
+                  size={16}
+                  className={`transition-transform duration-200 ${historyOpen ? 'rotate-180' : ''}`}
+                />
+              </div>
+            </button>
 
-              {visibleCount < sessions.length && (
-                <div className="text-center pt-2">
-                  <Button variant="outline" onClick={() => setVisibleCount((prev) => prev + 6)}>
-                    <ChevronDown size={16} className="mr-1" />
-                    Cargar más sesiones ({sessions.length - visibleCount} restantes)
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
+            {historyOpen && (
+              <div className="space-y-4 animate-fadeIn">
+                {sessions.length === 0 ? (
+                  <Card>
+                    <EmptyState
+                      icon={<ListChecks size={32} />}
+                      title="Sin sesiones"
+                      description="Inicia una rutina desde la pestaña Rutinas o crea una sesión libre aquí."
+                      action={
+                        <Button onClick={() => setCreateOpen(true)}>
+                          <Plus size={18} />
+                          Nueva sesión
+                        </Button>
+                      }
+                    />
+                  </Card>
+                ) : (
+                  <>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {sessions.slice(0, visibleCount).map((s) => (
+                        <Card key={s.id} className="hover:shadow-md transition-shadow">
+                          <CardBody>
+                            <div className="space-y-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <h3 className="font-semibold break-words leading-tight">{s.routineName}</h3>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mt-1 flex-wrap">
+                                    <Calendar size={12} className="shrink-0" />
+                                    {fmtDate(s.date)}
+                                    {s.notes && (
+                                      <span className="inline-flex items-center gap-1 text-brand-500 bg-brand-50 dark:bg-brand-500/10 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                                        📝 Con notas
+                                      </span>
+                                    )}
+                                  </p>
+                                </div>
+                                <Badge color={s.completed ? 'green' : 'amber'}>
+                                  {s.completed ? 'Completada' : 'En progreso'}
+                                </Badge>
+                              </div>
+                              <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400 break-words">
+                                <span>
+                                  {completedSets(s)}/{totalSets(s)} bloques
+                                </span>
+                                <span>{totalVolume(s).toFixed(1)} kg vol.</span>
+                              </div>
+                              <div className="flex gap-2 pt-1">
+                                <Button size="sm" onClick={() => onActiveSessionChange(s.id)} className="flex-1">
+                                  <Play size={14} />
+                                  Abrir
+                                </Button>
+                                <Button size="sm" variant="danger" onClick={() => moveToTrash(s.id)}>
+                                  <Trash2 size={14} />
+                                </Button>
+                              </div>
+                            </div>
+                          </CardBody>
+                        </Card>
+                      ))}
+                    </div>
+
+                    {visibleCount < sessions.length && (
+                      <div className="text-center pt-2">
+                        <Button variant="outline" onClick={() => setVisibleCount((prev) => prev + 6)}>
+                          <ChevronDown size={16} className="mr-1" />
+                          Cargar más sesiones ({sessions.length - visibleCount} restantes)
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
 
           <Modal
             open={createOpen}
