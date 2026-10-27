@@ -1,4 +1,4 @@
-import { Sparkles, Flame, Trophy, Zap } from 'lucide-react';
+import { Sparkles, Flame, Trophy } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 
 interface TrophiaCoachProps {
@@ -20,7 +20,7 @@ export function TrophiaCoach({ pendingRoutinesCount = 0 }: TrophiaCoachProps) {
         icon: Flame,
         badge: `¡Día de acción! · ${capitalizedDay}`,
         title: `¡A por todo, ${firstName}! 🔥`,
-        text: `Tienes ${pendingRoutinesCount} rutina${pendingRoutinesCount > 1 ? 's' : ''} pendiente${pendingRoutinesCount > 1 ? 's' : ''} esta semana. Tu mejor versión se construye hoy en el gimnasio, ¡rompamos récords!`
+        text: `Tienes ${pendingRoutinesCount} rutina${pendingRoutinesCount > 1 ? 's' : ''} pendiente${pendingRoutinesCount > 1 ? 's' : ''} esta semana. Tu mejor versión se construye hoy en el gimnasio, ¡rompemos récords!`
       };
     } else {
       return {
