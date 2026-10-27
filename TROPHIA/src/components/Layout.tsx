@@ -111,29 +111,17 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const isAdmin = user?.role === 'admin';
 
-  // Detección robusta de red para iOS y navegador
+  // Detección de red para actualizar la nube en tiempo real
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
-    
-    // Detector de fallos de red en peticiones globales
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      if (event.reason && typeof event.reason.message === 'string') {
-        const msg = event.reason.message.toLowerCase();
-        if (msg.includes('network') || msg.includes('fetch') || msg.includes('offline') || msg.includes('failed')) {
-          setIsOffline(true);
-        }
-      }
-    };
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
     };
   }, []);
 
@@ -202,25 +190,34 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
               </h1>
             </div>
 
-            {/* Derecha: Estado de sincronización inteligente + Controles */}
-            <div className="flex items-center gap-3 sm:gap-4 z-10">
+            {/* Derecha: Indicador de sincronización visible siempre + Controles */}
+            <div className="flex items-center gap-2 sm:gap-4 z-10">
               {headerExtra}
               
-              <div className={`items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border transition-all ${
+              {/* Indicador de Estado de Conexión / Sincronización */}
+              <div className={`flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl border transition-all shrink-0 ${
                 pendingMutations > 0 || isOffline
-                  ? 'flex bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 font-semibold animate-pulse' 
-                  : 'hidden sm:flex text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/60 border-gray-200/60 dark:border-gray-800'
+                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 font-semibold' 
+                  : 'text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/60 border-gray-200/60 dark:border-gray-800'
               }`}>
                 {pendingMutations > 0 || isOffline ? (
-                  <><CloudOff size={14} className="text-amber-500 shrink-0" /><span className="whitespace-nowrap">{isOffline ? 'Sin conexión' : `${pendingMutations} pendientes`}</span></>
+                  <>
+                    <CloudOff size={14} className="text-amber-500 shrink-0" />
+                    <span className="whitespace-nowrap text-[11px] sm:text-xs">
+                      {isOffline ? 'Sin conexión' : `${pendingMutations} pendientes`}
+                    </span>
+                  </>
                 ) : (
-                  <><Cloud size={14} className="text-emerald-500 shrink-0" /><span className="whitespace-nowrap">Sincronizado</span></>
+                  <>
+                    <Cloud size={14} className="text-emerald-500 shrink-0" />
+                    <span className="whitespace-nowrap text-[11px] sm:text-xs">Sincronizado</span>
+                  </>
                 )}
               </div>
               
               <button 
                 onClick={() => setIsContactModalOpen(true)} 
-                className="p-2.5 rounded-xl text-brand-500 bg-brand-500/10 hover:bg-brand-500/20 dark:bg-brand-500/10 dark:hover:bg-brand-500/25 transition-colors focus:outline-none" 
+                className="p-2.5 rounded-xl text-brand-500 bg-brand-500/10 hover:bg-brand-500/20 dark:bg-brand-500/10 dark:hover:bg-brand-500/25 transition-colors focus:outline-none shrink-0" 
                 aria-label="Soporte y Contacto"
                 title="Soporte y Contacto"
               >
@@ -229,7 +226,7 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
 
               <button 
                 onClick={toggleTheme} 
-                className="p-2.5 rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 transition-colors focus:outline-none" 
+                className="p-2.5 rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 transition-colors focus:outline-none shrink-0" 
                 aria-label="Cambiar tema"
               >
                 {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
@@ -237,7 +234,7 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
 
               <button 
                 onClick={logout} 
-                className="p-2.5 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors focus:outline-none" 
+                className="p-2.5 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors focus:outline-none shrink-0" 
                 aria-label="Cerrar sesión" 
                 title="Cerrar sesión"
               >
