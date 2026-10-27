@@ -15,6 +15,7 @@ interface LayoutProps {
   onView: (v: View) => void;
   children: ReactNode;
   headerExtra?: ReactNode;
+  isSessionActive?: boolean; // Prop para ocultar la barra inferior durante una sesión activa
 }
 
 const NAV: Array<{ id: View; label: string; icon: typeof TrendingUp }> = [
@@ -103,14 +104,13 @@ function DeveloperContactModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
   );
 }
 
-export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
+export function Layout({ view, onView, children, headerExtra, isSessionActive = false }: LayoutProps) {
   const { user, logout, pendingMutations } = useAuth();
   const [theme, toggleTheme] = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [isContactModalOpen, setIsContactModalOpen] = useState(false); // Estado del modal
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const isAdmin = user?.role === 'admin';
 
-  // Forzar que el administrador permanezca exclusivamente en la vista de administración
   useEffect(() => {
     if (isAdmin && view !== 'admin') {
       onView('admin');
@@ -126,7 +126,6 @@ export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
 
   const navItems = (
     <>
-      {/* Si es admin, ocultamos completamente las pestañas de entrenamiento personales */}
       {!isAdmin && NAV.map((item) => {
         const Icon = item.icon;
         const active = view === item.id;
@@ -163,7 +162,7 @@ export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f10] text-gray-900 dark:text-gray-100 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f10] text-gray-900 dark:text-gray-100 flex flex-col pb-20 md:pb-0">
       <header className="sticky top-0 z-40 border-b border-gray-200 dark:border-gray-800 bg-white/90 dark:bg-[#0f0f10]/90 backdrop-blur-xl">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex h-16 items-center justify-between gap-2 sm:gap-3">
@@ -200,7 +199,7 @@ export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
               {/* Botón de Contacto Desktop */}
               <button 
                 onClick={() => setIsContactModalOpen(true)} 
-                className="hidden sm:flex p-2.5 rounded-xl text-brand-500 bg-brand-500/10 hover:bg-brand-500/20 dark:bg-brand-500/10 dark:hover:bg-brand-500/20 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500" 
+                className="hidden sm:flex p-2.5 rounded-xl text-brand-500 bg-brand-500/10 hover:bg-brand-500/25 dark:bg-brand-500/10 dark:hover:bg-brand-500/20 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500" 
                 aria-label="Contactar al desarrollador"
                 title="Soporte y Contacto"
               >
@@ -246,7 +245,7 @@ export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
           </div>
         </nav>
 
-        {/* Mobile Navigation Dropdown */}
+        {/* Mobile Navigation Dropdown (Menú desplegable superior original) */}
         {mobileOpen && (
           <div className="md:hidden absolute top-16 left-0 right-0 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0f0f10] shadow-lg z-50">
              <nav className="flex flex-col px-4 py-3 gap-1.5 animate-fade-in max-h-[calc(100vh-4rem)] overflow-y-auto">
@@ -262,7 +261,6 @@ export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
                
                {navItems}
 
-               {/* Botón de Contacto Mobile */}
                <button
                  onClick={() => {
                    setMobileOpen(false);
@@ -305,6 +303,32 @@ export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
         {children}
       </main>
 
+      {/* --- BARRA DE NAVEGACIÓN INFERIOR MÓVIL (Se oculta automáticamente si hay sesión activa) --- */}
+      {!isAdmin && !isSessionActive && (
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-45 bg-white/95 dark:bg-[#0f0f10]/95 backdrop-blur-xl border-t border-gray-200 dark:border-gray-800 px-2 py-1.5 shadow-2xl">
+          <div className="grid grid-cols-5 gap-1">
+            {NAV.map((item) => {
+              const Icon = item.icon;
+              const active = view === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id)}
+                  className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl transition-all ${
+                    active 
+                      ? 'text-brand-500 bg-brand-500/10 font-bold scale-105' 
+                      : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 font-medium'
+                  }`}
+                >
+                  <Icon size={20} className={active ? 'text-brand-500' : ''} />
+                  <span className="text-[10px] mt-1 tracking-tight truncate max-w-full">{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+      )}
+
       <footer className="border-t border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-[#0f0f10]/50 mt-auto">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-gray-400 font-condensed tracking-wide text-center sm:text-left">TROPHIA · Offline-First PWA</p>
@@ -325,7 +349,6 @@ export function Layout({ view, onView, children, headerExtra }: LayoutProps) {
         </div>
       </footer>
 
-      {/* Renderizado del Modal */}
       <DeveloperContactModal 
         isOpen={isContactModalOpen} 
         onClose={() => setIsContactModalOpen(false)} 

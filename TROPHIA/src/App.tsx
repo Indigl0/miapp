@@ -25,7 +25,11 @@ function AppContent() {
   if (!user) return <LoginView />;
 
   return (
-    <Layout view={view} onView={setView}>
+    <Layout 
+      view={view} 
+      onView={setView} 
+      isSessionActive={!!activeSessionId}
+    >
       {/* Vista del Catálogo de Ejercicios */}
       {view === 'exercises' && <ExercisesView />}
       
