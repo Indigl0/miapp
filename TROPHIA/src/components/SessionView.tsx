@@ -1062,7 +1062,7 @@ export function SessionView({
             </div>
           </div>
 
-          {/* --- WIDGET INTELIGENTE DE PROGRESO Y RUTINAS PENDIENTES --- */}
+          {/* --- WIDGET INTELIGENTE DE PROGRESO Y RUTINAS PENDIENTES (MEJORADO VISUALMENTE) --- */}
           <Card className="bg-gradient-to-r from-brand-500/10 via-brand-500/5 to-transparent border-brand-500/20">
             <CardHeader className="py-3">
               <CardTitle className="text-sm font-bold flex items-center justify-between">
@@ -1076,56 +1076,71 @@ export function SessionView({
               </CardTitle>
             </CardHeader>
             <CardBody className="py-2 pb-4 space-y-4">
-              <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+              {/* Días de la semana rediseñados y más grandes para evitar apretar el "Hoy" */}
+              <div className="grid grid-cols-4 sm:grid-cols-7 gap-2.5">
                 {weeklyStatus.evaluatedDays.map((d, i) => (
                   <div
                     key={i}
-                    className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border transition-all ${
+                    className={`flex flex-col items-center justify-between py-3 px-1.5 min-h-[82px] rounded-2xl border transition-all ${
                       d.completed
                         ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
                         : d.isToday
-                        ? 'bg-brand-500/10 border-brand-500/40 text-brand-600 dark:text-brand-400 shadow-sm ring-2 ring-brand-500/20'
-                        : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-800 text-gray-400'
+                        ? 'bg-brand-500/15 border-brand-500/50 text-brand-600 dark:text-brand-400 shadow-md ring-2 ring-brand-500/30 scale-105'
+                        : 'bg-gray-50/80 dark:bg-gray-900/50 border-gray-200 dark:border-gray-800 text-gray-400'
                     }`}
                   >
-                    <span className="text-[10px] font-bold uppercase tracking-wider">{d.name.slice(0, 3)}</span>
-                    <div className="mt-1.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider">{d.name.slice(0, 3)}</span>
+                    <div className="my-1 flex items-center justify-center">
                       {d.completed ? (
-                        <CheckCircle2 size={18} className="text-emerald-500" />
-                      ) : d.isToday ? (
-                        <div className="w-4 h-4 rounded-full bg-brand-500 flex items-center justify-center text-[9px] text-white font-bold">
-                          Hoy
+                        <div className="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                          <CheckCircle2 size={16} className="text-emerald-500" />
                         </div>
+                      ) : d.isToday ? (
+                        <span className="px-2 py-0.5 rounded-full bg-brand-500 text-white font-black text-[10px] tracking-wide shadow-sm animate-pulse">
+                          HOY
+                        </span>
                       ) : (
-                        <div className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-700" />
+                        <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center text-[10px] text-gray-400">
+                          ·
+                        </div>
                       )}
                     </div>
-                    <span className="text-[9px] font-medium mt-1 truncate max-w-full">
+                    <span className="text-[10px] font-semibold mt-0.5 truncate max-w-full">
                       {d.completed ? 'Hecho' : d.isToday ? 'Pendiente' : '-'}
                     </span>
                   </div>
                 ))}
               </div>
 
+              {/* Rutinas pendientes rediseñadas en tarjetas más grandes, táctiles y modernas */}
               <div className="pt-3 border-t border-brand-500/10 dark:border-brand-500/10">
-                <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2.5">
                   Rutinas que te faltan por completar esta semana (independiente del orden):
                 </p>
                 {weeklyStatus.pendingRoutines.length === 0 ? (
-                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 px-3 py-2 rounded-xl">
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 px-3.5 py-2.5 rounded-xl">
                     🎉 ¡Felicidades! Has completado todas tus rutinas planificadas esta semana.
                   </p>
                 ) : (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {weeklyStatus.pendingRoutines.map((r) => (
                       <button
                         key={r.id}
                         onClick={() => createBlankSession(r.id)}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-900 hover:bg-brand-50 dark:hover:bg-brand-500/10 border border-gray-200 dark:border-gray-800 hover:border-brand-500 rounded-xl text-xs font-medium text-gray-800 dark:text-gray-200 transition-all shadow-sm group cursor-pointer"
+                        className="flex items-center justify-between p-3.5 bg-white dark:bg-gray-900 hover:bg-brand-50/80 dark:hover:bg-brand-500/10 border border-gray-200/80 dark:border-gray-800 hover:border-brand-400 rounded-2xl text-left transition-all shadow-sm hover:shadow group cursor-pointer"
                       >
-                        <span className="w-2 h-2 rounded-full bg-brand-500 group-hover:scale-125 transition-transform" />
-                        <span>{r.name}</span>
-                        <Play size={12} className="text-brand-500 ml-1 opacity-70 group-hover:opacity-100" />
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-brand-500/10 text-brand-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                            <Play size={15} className="ml-0.5 fill-brand-500" />
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block">Rutina pendiente</span>
+                            <span className="text-sm font-bold text-gray-800 dark:text-gray-100 truncate block mt-0.5">{r.name}</span>
+                          </div>
+                        </div>
+                        <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 group-hover:bg-brand-500 group-hover:text-white flex items-center justify-center text-gray-500 transition-colors shrink-0">
+                          <Plus size={14} />
+                        </div>
                       </button>
                     ))}
                   </div>
