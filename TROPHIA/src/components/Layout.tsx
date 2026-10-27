@@ -111,7 +111,7 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const isAdmin = user?.role === 'admin';
 
-  // Detección de red para actualizar la nube en tiempo real
+  // Detección de red en tiempo real
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
@@ -190,28 +190,24 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
               </h1>
             </div>
 
-            {/* Derecha: Indicador de sincronización visible siempre + Controles */}
-            <div className="flex items-center gap-2 sm:gap-4 z-10">
+            {/* Derecha: Botones de control compactos (Solo Iconos) */}
+            <div className="flex items-center gap-2 sm:gap-3 z-10">
               {headerExtra}
               
-              {/* Indicador de Estado de Conexión / Sincronización */}
-              <div className={`flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl border transition-all shrink-0 ${
-                pendingMutations > 0 || isOffline
-                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 font-semibold' 
-                  : 'text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/60 border-gray-200/60 dark:border-gray-800'
-              }`}>
+              {/* Indicador de Estado de Conexión en formato Botón / Icono */}
+              <div 
+                className={`p-2.5 rounded-xl border transition-all shrink-0 flex items-center justify-center ${
+                  pendingMutations > 0 || isOffline
+                    ? 'bg-amber-500/10 border-amber-500/35 text-amber-600 dark:text-amber-400 animate-pulse' 
+                    : 'bg-gray-100 dark:bg-gray-800/60 border-gray-200/60 dark:border-gray-800 text-gray-500 dark:text-gray-400'
+                }`}
+                title={isOffline ? 'Sin conexión' : pendingMutations > 0 ? `${pendingMutations} cambios pendientes` : 'Sincronizado'}
+                aria-label={isOffline ? 'Sin conexión' : pendingMutations > 0 ? `${pendingMutations} cambios pendientes` : 'Sincronizado'}
+              >
                 {pendingMutations > 0 || isOffline ? (
-                  <>
-                    <CloudOff size={14} className="text-amber-500 shrink-0" />
-                    <span className="whitespace-nowrap text-[11px] sm:text-xs">
-                      {isOffline ? 'Sin conexión' : `${pendingMutations} pendientes`}
-                    </span>
-                  </>
+                  <CloudOff size={20} className="text-amber-500 shrink-0" />
                 ) : (
-                  <>
-                    <Cloud size={14} className="text-emerald-500 shrink-0" />
-                    <span className="whitespace-nowrap text-[11px] sm:text-xs">Sincronizado</span>
-                  </>
+                  <Cloud size={20} className="text-emerald-500 shrink-0" />
                 )}
               </div>
               
@@ -228,6 +224,7 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
                 onClick={toggleTheme} 
                 className="p-2.5 rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 transition-colors focus:outline-none shrink-0" 
                 aria-label="Cambiar tema"
+                title="Cambiar tema"
               >
                 {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
               </button>
