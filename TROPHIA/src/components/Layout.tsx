@@ -108,7 +108,34 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
   const { user, logout, pendingMutations } = useAuth();
   const [theme, toggleTheme] = useTheme();
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const isAdmin = user?.role === 'admin';
+
+  // Detección robusta de red para iOS y navegador
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    
+    // Detector de fallos de red en peticiones globales
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      if (event.reason && typeof event.reason.message === 'string') {
+        const msg = event.reason.message.toLowerCase();
+        if (msg.includes('network') || msg.includes('fetch') || msg.includes('offline') || msg.includes('failed')) {
+          setIsOffline(true);
+        }
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
 
   useEffect(() => {
     if (isAdmin && view !== 'admin') {
@@ -180,12 +207,12 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
               {headerExtra}
               
               <div className={`items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border transition-all ${
-                pendingMutations > 0 
+                pendingMutations > 0 || isOffline
                   ? 'flex bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 font-semibold animate-pulse' 
                   : 'hidden sm:flex text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/60 border-gray-200/60 dark:border-gray-800'
               }`}>
-                {pendingMutations > 0 ? (
-                  <><CloudOff size={14} className="text-amber-500 shrink-0" /><span className="whitespace-nowrap">{pendingMutations} pendientes</span></>
+                {pendingMutations > 0 || isOffline ? (
+                  <><CloudOff size={14} className="text-amber-500 shrink-0" /><span className="whitespace-nowrap">{isOffline ? 'Sin conexión' : `${pendingMutations} pendientes`}</span></>
                 ) : (
                   <><Cloud size={14} className="text-emerald-500 shrink-0" /><span className="whitespace-nowrap">Sincronizado</span></>
                 )}
