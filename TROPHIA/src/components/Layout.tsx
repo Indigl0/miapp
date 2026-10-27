@@ -175,11 +175,15 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
               </h1>
             </div>
 
-            {/* Derecha: Estado de sincronización + Controles */}
+            {/* Derecha: Estado de sincronización inteligente + Controles */}
             <div className="flex items-center gap-3 sm:gap-4 z-10">
               {headerExtra}
               
-              <div className="hidden sm:flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/60 px-3 py-1.5 rounded-xl border border-gray-200/60 dark:border-gray-800">
+              <div className={`items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border transition-all ${
+                pendingMutations > 0 
+                  ? 'flex bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 font-semibold animate-pulse' 
+                  : 'hidden sm:flex text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/60 border-gray-200/60 dark:border-gray-800'
+              }`}>
                 {pendingMutations > 0 ? (
                   <><CloudOff size={14} className="text-amber-500 shrink-0" /><span className="whitespace-nowrap">{pendingMutations} pendientes</span></>
                 ) : (
@@ -227,7 +231,7 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
         </nav>
       </header>
 
-      {/* Se añadió pb-28 para dar suficiente espacio al final y evitar que la barra inferior tape el contenido */}
+      {/* pb-28 mantiene el espacio para la barra inferior */}
       <main className="flex-1 mx-auto max-w-7xl w-full px-4 sm:px-6 pt-6 pb-28 sm:py-8 animate-fade-in">
         {currentInfo && (
           <div className="mb-6 p-4 rounded-2xl bg-brand-500/5 border border-brand-500/15 flex items-start gap-3.5 transition-all">
