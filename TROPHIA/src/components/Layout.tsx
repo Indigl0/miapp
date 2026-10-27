@@ -160,7 +160,7 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f10] text-gray-900 dark:text-gray-100 flex flex-col pb-20 md:pb-0">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f10] text-gray-900 dark:text-gray-100 flex flex-col">
       <header className="sticky top-0 z-40 border-b border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-[#0f0f10]/95 backdrop-blur-xl">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex h-20 items-center justify-between py-2">
@@ -227,7 +227,8 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
         </nav>
       </header>
 
-      <main className="flex-1 mx-auto max-w-7xl w-full px-4 sm:px-6 py-6 sm:py-8 animate-fade-in">
+      {/* Se añadió pb-28 para dar suficiente espacio al final y evitar que la barra inferior tape el contenido */}
+      <main className="flex-1 mx-auto max-w-7xl w-full px-4 sm:px-6 pt-6 pb-28 sm:py-8 animate-fade-in">
         {currentInfo && (
           <div className="mb-6 p-4 rounded-2xl bg-brand-500/5 border border-brand-500/15 flex items-start gap-3.5 transition-all">
             <div className="p-2 rounded-xl bg-brand-500/10 text-brand-500 shrink-0 mt-0.5">
