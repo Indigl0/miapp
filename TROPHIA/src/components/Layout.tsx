@@ -161,12 +161,12 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f10] text-gray-900 dark:text-gray-100 flex flex-col pb-20 md:pb-0">
-      <header className="sticky top-0 z-40 border-b border-gray-200 dark:border-gray-800 bg-white/90 dark:bg-[#0f0f10]/90 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-[#0f0f10]/95 backdrop-blur-xl">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          {/* Header estructurado en 3 columnas para centrar perfectamente el logo y título */}
-          <div className="grid grid-cols-3 h-16 items-center">
+          {/* Header con espaciado vertical más generoso (py-3) y gap amplio */}
+          <div className="grid grid-cols-3 h-18 py-3 items-center">
             
-            {/* Columna Izquierda: Estado de sincronización en desktop */}
+            {/* Columna Izquierda */}
             <div className="flex items-center justify-start min-w-0">
               <div className="hidden lg:flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
                 {pendingMutations > 0 ? (
@@ -177,7 +177,7 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
               </div>
             </div>
 
-            {/* Columna Central: Logo y Título CENTRADOS */}
+            {/* Columna Central: Logo y Título CENTRADOS con buen respiro */}
             <div className="flex items-center justify-center gap-2.5 min-w-0">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500 shadow-sm shadow-brand-500/30 shrink-0">
                 <TrendingUp size={20} className="text-white" />
@@ -187,14 +187,14 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
               </h1>
             </div>
 
-            {/* Columna Derecha: Controles (Soporte, Tema, Logout) */}
-            <div className="flex items-center justify-end gap-2 sm:gap-3">
+            {/* Columna Derecha: Controles con separación holgada (gap-3) */}
+            <div className="flex items-center justify-end gap-3">
               {headerExtra}
               
               {/* Botón de Contacto y Soporte Directo */}
               <button 
                 onClick={() => setIsContactModalOpen(true)} 
-                className="p-2 sm:p-2.5 rounded-xl text-brand-500 bg-brand-500/10 hover:bg-brand-500/20 dark:bg-brand-500/10 dark:hover:bg-brand-500/25 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500" 
+                className="p-2.5 rounded-xl text-brand-500 bg-brand-500/10 hover:bg-brand-500/20 dark:bg-brand-500/10 dark:hover:bg-brand-500/25 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500" 
                 aria-label="Contactar al desarrollador"
                 title="Soporte y Contacto"
               >
@@ -203,7 +203,7 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
 
               <button 
                 onClick={toggleTheme} 
-                className="p-2 sm:p-2.5 rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500" 
+                className="p-2.5 rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500" 
                 aria-label="Cambiar tema"
               >
                 {theme === 'dark' ? <Sun size={20} className="sm:w-[18px] sm:h-[18px]"/> : <Moon size={20} className="sm:w-[18px] sm:h-[18px]" />}
@@ -211,7 +211,7 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
 
               <button 
                 onClick={logout} 
-                className="p-2 sm:p-2.5 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500" 
+                className="p-2.5 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500" 
                 aria-label="Cerrar sesión" 
                 title="Cerrar sesión"
               >
