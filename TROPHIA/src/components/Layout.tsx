@@ -163,56 +163,55 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
     <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f10] text-gray-900 dark:text-gray-100 flex flex-col pb-20 md:pb-0">
       <header className="sticky top-0 z-40 border-b border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-[#0f0f10]/95 backdrop-blur-xl">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          {/* Header con posicionamiento relativo para garantizar centrado perfecto sin superposiciones */}
-          <div className="relative flex h-16 items-center justify-between py-2">
+          <div className="flex h-20 items-center justify-between py-2">
             
-            {/* Izquierda: Sincronización o espacio reservado */}
-            <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 z-10">
-              {pendingMutations > 0 ? (
-                <><CloudOff size={14} className="text-amber-500" /><span className="hidden lg:inline">{pendingMutations} pendientes</span></>
-              ) : (
-                <><Cloud size={14} className="text-emerald-500" /><span className="hidden lg:inline">Sincronizado</span></>
-              )}
-            </div>
-
-            {/* Centro: Logo y Título Absolutamente Centrados */}
-            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 pointer-events-none">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-500 shadow-sm shadow-brand-500/30 shrink-0">
-                <TrendingUp size={18} className="text-white" />
+            {/* Izquierda: Logo y Título Más Grandes */}
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-500 shadow-md shadow-brand-500/40 shrink-0">
+                <TrendingUp size={24} className="text-white" />
               </div>
-              <h1 className="font-condensed text-lg sm:text-xl font-bold tracking-tight whitespace-nowrap">
+              <h1 className="font-condensed text-2xl sm:text-3xl font-extrabold tracking-tight whitespace-nowrap">
                 TROPHIA
               </h1>
             </div>
 
-            {/* Derecha: Botones de control con espacio seguro */}
-            <div className="flex items-center gap-2 sm:gap-2.5 z-10">
+            {/* Derecha: Estado de sincronización + Botones de control */}
+            <div className="flex items-center gap-3 sm:gap-4 z-10">
               {headerExtra}
+              
+              {/* Indicador de sincronización */}
+              <div className="hidden sm:flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/60 px-3 py-1.5 rounded-xl border border-gray-200/60 dark:border-gray-800">
+                {pendingMutations > 0 ? (
+                  <><CloudOff size={14} className="text-amber-500 shrink-0" /><span className="whitespace-nowrap">{pendingMutations} pendientes</span></>
+                ) : (
+                  <><Cloud size={14} className="text-emerald-500 shrink-0" /><span className="whitespace-nowrap">Sincronizado</span></>
+                )}
+              </div>
               
               <button 
                 onClick={() => setIsContactModalOpen(true)} 
-                className="p-2 rounded-xl text-brand-500 bg-brand-500/10 hover:bg-brand-500/20 dark:bg-brand-500/10 dark:hover:bg-brand-500/25 transition-colors focus:outline-none" 
+                className="p-2.5 rounded-xl text-brand-500 bg-brand-500/10 hover:bg-brand-500/20 dark:bg-brand-500/10 dark:hover:bg-brand-500/25 transition-colors focus:outline-none" 
                 aria-label="Soporte y Contacto"
                 title="Soporte y Contacto"
               >
-                <MessageCircle size={18} />
+                <MessageCircle size={20} />
               </button>
 
               <button 
                 onClick={toggleTheme} 
-                className="p-2 rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 transition-colors focus:outline-none" 
+                className="p-2.5 rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 transition-colors focus:outline-none" 
                 aria-label="Cambiar tema"
               >
-                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
               </button>
 
               <button 
                 onClick={logout} 
-                className="p-2 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors focus:outline-none" 
+                className="p-2.5 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors focus:outline-none" 
                 aria-label="Cerrar sesión" 
                 title="Cerrar sesión"
               >
-                <LogOut size={18} />
+                <LogOut size={20} />
               </button>
             </div>
 
