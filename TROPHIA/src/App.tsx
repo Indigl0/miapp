@@ -9,6 +9,7 @@ import { SessionView } from '@/components/SessionView';
 import { AnalyticsView } from '@/components/AnalyticsView';
 import { MetricsView } from '@/components/MetricsView';
 import { FullPageSpinner } from '@/components/ui/Feedback';
+import { TrophiaCoach } from '@/components/TrophiaCoach'; // <-- Importado aquí
 
 function AppContent() {
   const { user, ready } = useAuth();
@@ -36,12 +37,17 @@ function AppContent() {
       {/* Vista de Rutinas */}
       {view === 'routines' && <RoutinesView />}
       
-      {/* Vista de Sesión de Entrenamiento Activa */}
+      {/* Vista de Sesión de Entrenamiento */}
       {view === 'session' && (
-        <SessionView 
-          activeSessionId={activeSessionId} 
-          onActiveSessionChange={setActiveSessionId} 
-        />
+        <>
+          {/* Coach motivacional: solo se muestra si no estás en medio de una sesión activa */}
+          {!activeSessionId && <TrophiaCoach />}
+          
+          <SessionView 
+            activeSessionId={activeSessionId} 
+            onActiveSessionChange={setActiveSessionId} 
+          />
+        </>
       )}
       
       {view === 'analytics' && <AnalyticsView />}
