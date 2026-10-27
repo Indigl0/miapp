@@ -1062,7 +1062,7 @@ export function SessionView({
             </div>
           </div>
 
-          {/* --- WIDGET INTELIGENTE DE PROGRESO Y RUTINAS PENDIENTES (MEJORADO VISUALMENTE) --- */}
+          {/* --- WIDGET INTELIGENTE DE PROGRESO Y RUTINAS PENDIENTES --- */}
           <Card className="bg-gradient-to-r from-brand-500/10 via-brand-500/5 to-transparent border-brand-500/20">
             <CardHeader className="py-3">
               <CardTitle className="text-sm font-bold flex items-center justify-between">
@@ -1076,7 +1076,7 @@ export function SessionView({
               </CardTitle>
             </CardHeader>
             <CardBody className="py-2 pb-4 space-y-4">
-              {/* Días de la semana rediseñados y más grandes para evitar apretar el "Hoy" */}
+              {/* Días de la semana rediseñados y más grandes */}
               <div className="grid grid-cols-4 sm:grid-cols-7 gap-2.5">
                 {weeklyStatus.evaluatedDays.map((d, i) => (
                   <div
@@ -1112,7 +1112,7 @@ export function SessionView({
                 ))}
               </div>
 
-              {/* Rutinas pendientes rediseñadas en tarjetas más grandes, táctiles y modernas */}
+              {/* Rutinas pendientes rediseñadas sin el signo + */}
               <div className="pt-3 border-t border-brand-500/10 dark:border-brand-500/10">
                 <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2.5">
                   Rutinas que te faltan por completar esta semana (independiente del orden):
@@ -1137,9 +1137,6 @@ export function SessionView({
                             <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block">Rutina pendiente</span>
                             <span className="text-sm font-bold text-gray-800 dark:text-gray-100 truncate block mt-0.5">{r.name}</span>
                           </div>
-                        </div>
-                        <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 group-hover:bg-brand-500 group-hover:text-white flex items-center justify-center text-gray-500 transition-colors shrink-0">
-                          <Plus size={14} />
                         </div>
                       </button>
                     ))}
