@@ -1,6 +1,6 @@
 import { 
   TrendingUp, BarChart3, ClipboardList, ListChecks, LogOut, Moon, Sun, 
-  Shield, CloudOff, Cloud, X, UserCheck, Dumbbell, Info, 
+  Shield, CloudOff, Cloud, X, User, Dumbbell, Info, 
   Instagram, Mail, MessageCircle 
 } from 'lucide-react';
 import { useState, useEffect, type ReactNode } from 'react';
@@ -23,7 +23,7 @@ const NAV: Array<{ id: View; label: string; icon: typeof TrendingUp }> = [
   { id: 'routines', label: 'Rutinas', icon: ClipboardList },
   { id: 'session', label: 'Sesión', icon: ListChecks },
   { id: 'analytics', label: 'Análisis', icon: BarChart3 },
-  { id: 'metrics', label: 'Métricas', icon: UserCheck },
+  { id: 'metrics', label: 'Físico', icon: User },
 ];
 
 const VIEW_INFO: Record<View, { title: string; description: string }> = {
@@ -44,8 +44,8 @@ const VIEW_INFO: Record<View, { title: string; description: string }> = {
     description: 'Métricas avanzadas de progreso. Evalúa la evolución del volumen total de carga, la distribución del trabajo muscular y el indicador de RIR (Repeticiones en Recámara) para maximizar la hipertrofia y prevenir el sobreentrenamiento.'
   },
   metrics: {
-    title: 'Composición Corporal',
-    description: 'Seguimiento y control morfofisiológico. Registra la evolución de tu peso corporal, analiza las tendencias en el tiempo y ajusta tus parámetros nutricionales o metabólicos en función de tus objetivos.'
+    title: 'Seguimiento Físico',
+    description: 'Control y evolución morfofisiológica. Registra los cambios en tu peso corporal, perímetros y composición general para evaluar visual y numéricamente tu transformación en el tiempo.'
   },
   admin: {
     title: 'Panel de Administración',
@@ -165,7 +165,7 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex h-20 items-center justify-between py-2">
             
-            {/* Izquierda: Logo y Título Más Grandes */}
+            {/* Izquierda: Logo y Título */}
             <div className="flex items-center gap-3 min-w-0">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-500 shadow-md shadow-brand-500/40 shrink-0">
                 <TrendingUp size={24} className="text-white" />
@@ -175,11 +175,10 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
               </h1>
             </div>
 
-            {/* Derecha: Estado de sincronización + Botones de control */}
+            {/* Derecha: Estado de sincronización + Controles */}
             <div className="flex items-center gap-3 sm:gap-4 z-10">
               {headerExtra}
               
-              {/* Indicador de sincronización */}
               <div className="hidden sm:flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/60 px-3 py-1.5 rounded-xl border border-gray-200/60 dark:border-gray-800">
                 {pendingMutations > 0 ? (
                   <><CloudOff size={14} className="text-amber-500 shrink-0" /><span className="whitespace-nowrap">{pendingMutations} pendientes</span></>
