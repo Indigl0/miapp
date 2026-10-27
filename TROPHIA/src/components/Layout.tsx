@@ -1,6 +1,6 @@
 import { 
   TrendingUp, BarChart3, ClipboardList, ListChecks, LogOut, Moon, Sun, 
-  Shield, CloudOff, Cloud, Menu, X, UserCheck, Dumbbell, Info, 
+  Shield, CloudOff, Cloud, X, UserCheck, Dumbbell, Info, 
   Instagram, Mail, MessageCircle 
 } from 'lucide-react';
 import { useState, useEffect, type ReactNode } from 'react';
@@ -15,7 +15,7 @@ interface LayoutProps {
   onView: (v: View) => void;
   children: ReactNode;
   headerExtra?: ReactNode;
-  isSessionActive?: boolean; // Prop para ocultar la barra inferior durante una sesión activa
+  isSessionActive?: boolean;
 }
 
 const NAV: Array<{ id: View; label: string; icon: typeof TrendingUp }> = [
@@ -107,7 +107,6 @@ function DeveloperContactModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
 export function Layout({ view, onView, children, headerExtra, isSessionActive = false }: LayoutProps) {
   const { user, logout, pendingMutations } = useAuth();
   const [theme, toggleTheme] = useTheme();
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const isAdmin = user?.role === 'admin';
 
@@ -121,7 +120,6 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
 
   const handleNavClick = (id: View) => {
     onView(id);
-    setMobileOpen(false);
   };
 
   const navItems = (
@@ -165,41 +163,38 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
     <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f10] text-gray-900 dark:text-gray-100 flex flex-col pb-20 md:pb-0">
       <header className="sticky top-0 z-40 border-b border-gray-200 dark:border-gray-800 bg-white/90 dark:bg-[#0f0f10]/90 backdrop-blur-xl">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="flex h-16 items-center justify-between gap-2 sm:gap-3">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <button 
-                className="md:hidden p-2 -ml-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-500" 
-                onClick={() => setMobileOpen((v) => !v)} 
-                aria-label="Menú"
-                aria-expanded={mobileOpen}
-              >
-                {mobileOpen ? <X size={24} /> : <Menu size={24} />}
-              </button>
-              
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500 shadow-sm shadow-brand-500/30 shrink-0">
-                  <TrendingUp size={20} className="text-white" />
-                </div>
-                <h1 className="font-condensed text-xl sm:text-2xl font-bold tracking-tight break-words whitespace-nowrap">
-                  TROPHIA
-                </h1>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 sm:gap-3">
-              {headerExtra}
-              <div className="hidden lg:flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mr-2">
+          {/* Header estructurado en 3 columnas para centrar perfectamente el logo y título */}
+          <div className="grid grid-cols-3 h-16 items-center">
+            
+            {/* Columna Izquierda: Estado de sincronización en desktop */}
+            <div className="flex items-center justify-start min-w-0">
+              <div className="hidden lg:flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
                 {pendingMutations > 0 ? (
                   <><CloudOff size={14} className="text-amber-500" /><span className="whitespace-nowrap">{pendingMutations} pendientes</span></>
                 ) : (
                   <><Cloud size={14} className="text-emerald-500" /><span className="whitespace-nowrap">Sincronizado</span></>
                 )}
               </div>
+            </div>
+
+            {/* Columna Central: Logo y Título CENTRADOS */}
+            <div className="flex items-center justify-center gap-2.5 min-w-0">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500 shadow-sm shadow-brand-500/30 shrink-0">
+                <TrendingUp size={20} className="text-white" />
+              </div>
+              <h1 className="font-condensed text-xl sm:text-2xl font-bold tracking-tight break-words whitespace-nowrap">
+                TROPHIA
+              </h1>
+            </div>
+
+            {/* Columna Derecha: Controles (Soporte, Tema, Logout) */}
+            <div className="flex items-center justify-end gap-2 sm:gap-3">
+              {headerExtra}
               
-              {/* Botón de Contacto Desktop */}
+              {/* Botón de Contacto y Soporte Directo */}
               <button 
                 onClick={() => setIsContactModalOpen(true)} 
-                className="hidden sm:flex p-2.5 rounded-xl text-brand-500 bg-brand-500/10 hover:bg-brand-500/25 dark:bg-brand-500/10 dark:hover:bg-brand-500/20 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500" 
+                className="p-2 sm:p-2.5 rounded-xl text-brand-500 bg-brand-500/10 hover:bg-brand-500/20 dark:bg-brand-500/10 dark:hover:bg-brand-500/25 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500" 
                 aria-label="Contactar al desarrollador"
                 title="Soporte y Contacto"
               >
@@ -214,16 +209,6 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
                 {theme === 'dark' ? <Sun size={20} className="sm:w-[18px] sm:h-[18px]"/> : <Moon size={20} className="sm:w-[18px] sm:h-[18px]" />}
               </button>
 
-              <div className="hidden sm:flex items-center gap-2.5 pl-3 border-l border-gray-200 dark:border-gray-800">
-                <div className="text-right min-w-0">
-                  <p className="text-xs text-gray-400 leading-tight">Bienvenido</p>
-                  <p className="text-sm font-semibold leading-tight truncate max-w-[120px]">{user?.name}</p>
-                </div>
-                <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
-                  {user?.name?.charAt(0).toUpperCase()}
-                </div>
-              </div>
-
               <button 
                 onClick={logout} 
                 className="p-2 sm:p-2.5 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500" 
@@ -233,6 +218,7 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
                 <LogOut size={20} className="sm:w-[18px] sm:h-[18px]" />
               </button>
             </div>
+
           </div>
         </div>
 
@@ -244,44 +230,6 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
             </div>
           </div>
         </nav>
-
-        {/* Mobile Navigation Dropdown (Menú desplegable superior original) */}
-        {mobileOpen && (
-          <div className="md:hidden absolute top-16 left-0 right-0 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0f0f10] shadow-lg z-50">
-             <nav className="flex flex-col px-4 py-3 gap-1.5 animate-fade-in max-h-[calc(100vh-4rem)] overflow-y-auto">
-               <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100 dark:border-gray-800 sm:hidden">
-                 <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-base font-bold shrink-0">
-                    {user?.name?.charAt(0).toUpperCase()}
-                 </div>
-                 <div>
-                   <p className="text-xs text-gray-400">Sesión iniciada como</p>
-                   <p className="text-sm font-semibold">{user?.name}</p>
-                 </div>
-               </div>
-               
-               {navItems}
-
-               <button
-                 onClick={() => {
-                   setMobileOpen(false);
-                   setIsContactModalOpen(true);
-                 }}
-                 className="flex items-center mt-2 w-full gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-brand-500 bg-brand-500/10 hover:bg-brand-500/20 transition-all duration-200"
-               >
-                 <MessageCircle size={20} className="shrink-0" />
-                 <span>Soporte y Contacto</span>
-               </button>
-               
-               <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400 sm:hidden">
-                  {pendingMutations > 0 ? (
-                    <><CloudOff size={16} className="text-amber-500" /><span>{pendingMutations} pendientes</span></>
-                  ) : (
-                    <><Cloud size={16} className="text-emerald-500" /><span>Sincronizado</span></>
-                  )}
-               </div>
-             </nav>
-          </div>
-        )}
       </header>
 
       <main className="flex-1 mx-auto max-w-7xl w-full px-4 sm:px-6 py-6 sm:py-8 animate-fade-in">
@@ -303,7 +251,7 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
         {children}
       </main>
 
-      {/* --- BARRA DE NAVEGACIÓN INFERIOR MÓVIL (Se oculta automáticamente si hay sesión activa) --- */}
+      {/* --- BARRA DE NAVEGACIÓN INFERIOR MÓVIL --- */}
       {!isAdmin && !isSessionActive && (
         <nav className="md:hidden fixed bottom-0 left-0 right-0 z-45 bg-white/95 dark:bg-[#0f0f10]/95 backdrop-blur-xl border-t border-gray-200 dark:border-gray-800 px-2 py-1.5 shadow-2xl">
           <div className="grid grid-cols-5 gap-1">
