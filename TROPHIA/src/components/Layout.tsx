@@ -180,12 +180,16 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex h-20 items-center justify-between py-2">
             
-            {/* Izquierda: Logo y Título */}
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-500 shadow-md shadow-brand-500/40 shrink-0">
+            {/* Izquierda: Logo y Título (Ahora interactivo para volver a la sesión) */}
+            <div 
+              onClick={() => !isAdmin && onView('session')}
+              className={`flex items-center gap-3 min-w-0 ${!isAdmin ? 'cursor-pointer group' : ''}`}
+              title="Ir a Sesión"
+            >
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-500 shadow-md shadow-brand-500/40 shrink-0 group-hover:scale-105 transition-transform">
                 <TrendingUp size={24} className="text-white" />
               </div>
-              <h1 className="font-condensed text-2xl sm:text-3xl font-extrabold tracking-tight whitespace-nowrap">
+              <h1 className="font-condensed text-2xl sm:text-3xl font-extrabold tracking-tight whitespace-nowrap group-hover:text-brand-500 transition-colors">
                 TROPHIA
               </h1>
             </div>
