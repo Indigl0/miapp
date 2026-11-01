@@ -704,7 +704,7 @@ export function SessionView({
                     }}
                   >
                     <X size={18} />
-                    Cerrar
+                    Pausar
                   </Button>
                 </div>
               </div>
