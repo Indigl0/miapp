@@ -498,9 +498,17 @@ export function SessionView({
     await updateSession({ ...s, exercises: exercisesCopy });
 
     if (isNowCompleted) {
-      const routineEx = currentRoutine?.exercises.find((re) => re.exerciseId === exercisesList[exIdx].exerciseId);
-      if (routineEx?.restSeconds) {
-        startRestTimer(routineEx.restSeconds);
+      // Validar si es la última serie del último ejercicio de la sesión
+      const isLastExercise = exIdx === exercisesList.length - 1;
+      const currentSets = exercisesList[exIdx]?.sets || [];
+      const isLastSet = setIdx === currentSets.length - 1;
+
+      // Si es el último set del último ejercicio, no iniciamos el temporizador
+      if (!(isLastExercise && isLastSet)) {
+        const routineEx = currentRoutine?.exercises.find((re) => re.exerciseId === exercisesList[exIdx].exerciseId);
+        if (routineEx?.restSeconds) {
+          startRestTimer(routineEx.restSeconds);
+        }
       }
     }
   };
