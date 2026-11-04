@@ -266,6 +266,7 @@ export function SessionView({
   const [isTimerFinished, setIsTimerFinished] = useState<boolean>(false);
   const [screenFlash, setScreenFlash] = useState<boolean>(false);
   const restTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const targetEndTimeRef = useRef<number | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -288,12 +289,50 @@ export function SessionView({
     if (restTimerRef.current) clearInterval(restTimerRef.current);
     setIsTimerFinished(false);
     setActiveRestSeconds(seconds);
+
+    const endTime = Date.now() + seconds * 1000;
+    targetEndTimeRef.current = endTime;
     setRestRemaining(seconds);
 
-    restTimerRef.current = setInterval(() => {
-      setRestRemaining((prev) => {
-        if (prev <= 1) {
+    const checkTime = () => {
+      const nowTime = Date.now();
+      const remaining = Math.ceil((endTime - nowTime) / 1000);
+
+      if (remaining <= 0) {
+        if (restTimerRef.current) clearInterval(restTimerRef.current);
+        setRestRemaining(0);
+        playTimerBeep();
+        triggerScreenFlash();
+        setIsTimerFinished(true);
+
+        setTimeout(() => {
+          setActiveRestSeconds(null);
+          setIsTimerFinished(false);
+          targetEndTimeRef.current = null;
+        }, 5000);
+      } else {
+        setRestRemaining(remaining);
+      }
+    };
+
+    restTimerRef.current = setInterval(checkTime, 1000);
+  };
+
+  const cancelRestTimer = () => {
+    if (restTimerRef.current) clearInterval(restTimerRef.current);
+    setActiveRestSeconds(null);
+    setIsTimerFinished(false);
+    targetEndTimeRef.current = null;
+  };
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && targetEndTimeRef.current && activeRestSeconds !== null) {
+        const remaining = Math.ceil((targetEndTimeRef.current - Date.now()) / 1000);
+        
+        if (remaining <= 0) {
           if (restTimerRef.current) clearInterval(restTimerRef.current);
+          setRestRemaining(0);
           playTimerBeep();
           triggerScreenFlash();
           setIsTimerFinished(true);
@@ -301,26 +340,20 @@ export function SessionView({
           setTimeout(() => {
             setActiveRestSeconds(null);
             setIsTimerFinished(false);
+            targetEndTimeRef.current = null;
           }, 5000);
-
-          return 0;
+        } else {
+          setRestRemaining(remaining);
         }
-        return prev - 1;
-      });
-    }, 1000);
-  };
+      }
+    };
 
-  const cancelRestTimer = () => {
-    if (restTimerRef.current) clearInterval(restTimerRef.current);
-    setActiveRestSeconds(null);
-    setIsTimerFinished(false);
-  };
-
-  useEffect(() => {
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (restTimerRef.current) clearInterval(restTimerRef.current);
     };
-  }, []);
+  }, [activeRestSeconds]);
 
   const [weightInputs, setWeightInputs] = useState<Record<string, string>>({});
   const [distanceInputs, setDistanceInputs] = useState<Record<string, string>>({});
@@ -1076,7 +1109,6 @@ export function SessionView({
               </CardTitle>
             </CardHeader>
             <CardBody className="py-2 pb-4 space-y-4">
-              {/* Días de la semana rediseñados y más grandes */}
               <div className="grid grid-cols-4 sm:grid-cols-7 gap-2.5">
                 {weeklyStatus.evaluatedDays.map((d, i) => (
                   <div
@@ -1112,7 +1144,6 @@ export function SessionView({
                 ))}
               </div>
 
-              {/* Rutinas pendientes rediseñadas sin el signo + */}
               <div className="pt-3 border-t border-brand-500/10 dark:border-brand-500/10">
                 <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2.5">
                   Rutinas que te faltan por completar esta semana (independiente del orden):
@@ -1146,7 +1177,6 @@ export function SessionView({
             </CardBody>
           </Card>
 
-          {/* --- SESIONES EN PROGRESO (VISIBLES AUTOMÁTICAMENTE) --- */}
           {inProgressSessions.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white px-1">
@@ -1191,7 +1221,6 @@ export function SessionView({
             </div>
           )}
 
-          {/* --- SECCIÓN COLAPSABLE (ACORDEÓN) PARA EL HISTORIAL DE SESIONES COMPLETADAS --- */}
           <div className="space-y-4 pt-2 border-t border-gray-100 dark:border-gray-800">
             <button
               onClick={() => setHistoryOpen(!historyOpen)}
