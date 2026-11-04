@@ -36,9 +36,25 @@ function AppContent() {
 
   return (
     <>
-      {/* Notificación flotante inferior tipo snackbar estilizada */}
+      <style>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translate(-50%, 16px);
+          }
+          to {
+            opacity: 1;
+            transform: translate(-50%, 0);
+          }
+        }
+        .animate-fade-in-up {
+          animation: fadeInUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+      `}</style>
+
+      {/* Notificación flotante inferior con animación suave de deslizamiento */}
       {toastMessage && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4.5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-fade-in border border-white/10 dark:border-gray-200">
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4.5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/10 dark:border-gray-200 animate-fade-in-up">
           <div className="w-7 h-7 rounded-xl bg-brand-500 flex items-center justify-center shrink-0 text-white shadow-sm">
             <Dumbbell size={15} />
           </div>
@@ -64,32 +80,23 @@ function AppContent() {
         isSessionActive={!!activeSessionId}
         onLogoClick={() => {
           if (view !== 'session') {
-            // Si estás en otra sección, el logo te lleva de vuelta a Sesión
             setView('session');
           } else if (activeSessionId) {
-            // Si estás en Sesión y hay entrenamiento activo, muestra el aviso flotante abajo
             showToast("Entrenamiento en curso. Usa 'Pausar' para salir");
           }
         }}
       >
-        {/* Vista del Catálogo de Ejercicios */}
         {view === 'exercises' && <ExercisesView />}
-        
-        {/* Vista de Rutinas */}
         {view === 'routines' && <RoutinesView />}
-        
-        {/* Vista de Sesión de Entrenamiento */}
         {view === 'session' && (
           <>
             {!activeSessionId && <TrophiaCoach />}
-            
             <SessionView 
               activeSessionId={activeSessionId} 
               onActiveSessionChange={setActiveSessionId} 
             />
           </>
         )}
-        
         {view === 'analytics' && <AnalyticsView />}
         {view === 'metrics' && <MetricsView />}
         {view === 'admin' && user.role === 'admin' && <AdminPanel />}
