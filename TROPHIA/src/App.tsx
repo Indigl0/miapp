@@ -37,22 +37,22 @@ function AppContent() {
   return (
     <>
       <style>{`
-        @keyframes gentleFloat {
+        @keyframes noticeableBounce {
           0%, 100% {
             transform: translate(-50%, 0);
           }
           50% {
-            transform: translate(-50%, -5px);
+            transform: translate(-50%, -12px);
           }
         }
-        .animate-gentle-float {
-          animation: gentleFloat 2.5s ease-in-out infinite;
+        .animate-noticeable-bounce {
+          animation: noticeableBounce 1s ease-in-out infinite;
         }
       `}</style>
 
-      {/* Notificación flotante inferior con rebote suave y orgánico */}
+      {/* Notificación flotante inferior con rebote más notorio */}
       {toastMessage && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4.5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/10 dark:border-gray-200 animate-gentle-float">
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4.5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/10 dark:border-gray-200 animate-noticeable-bounce">
           <div className="w-7 h-7 rounded-xl bg-brand-500 flex items-center justify-center shrink-0 text-white shadow-sm">
             <Dumbbell size={15} />
           </div>
