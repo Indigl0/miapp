@@ -110,6 +110,24 @@ export function SessionView({
   const { user } = useAuth();
   const currentUserId = user?.id;
 
+  // Persistir y recuperar sesión activa ante recargas del navegador en móvil
+  useEffect(() => {
+    if (activeSessionId) {
+      localStorage.setItem('trophia_active_session_id', activeSessionId);
+    } else {
+      localStorage.removeItem('trophia_active_session_id');
+    }
+  }, [activeSessionId]);
+
+  useEffect(() => {
+    if (!activeSessionId) {
+      const savedId = localStorage.getItem('trophia_active_session_id');
+      if (savedId) {
+        onActiveSessionChange(savedId);
+      }
+    }
+  }, [activeSessionId, onActiveSessionChange]);
+
   const rawSessions = useLiveQuery(
     async () => {
       if (!currentUserId) return [];
@@ -292,6 +310,8 @@ export function SessionView({
 
     const endTime = Date.now() + seconds * 1000;
     targetEndTimeRef.current = endTime;
+    localStorage.setItem('trophia_rest_end_time', endTime.toString());
+    localStorage.setItem('trophia_rest_initial_seconds', seconds.toString());
     setRestRemaining(seconds);
 
     const checkTime = () => {
@@ -304,6 +324,9 @@ export function SessionView({
         playTimerBeep();
         triggerScreenFlash();
         setIsTimerFinished(true);
+
+        localStorage.removeItem('trophia_rest_end_time');
+        localStorage.removeItem('trophia_rest_initial_seconds');
 
         setTimeout(() => {
           setActiveRestSeconds(null);
@@ -323,8 +346,53 @@ export function SessionView({
     setActiveRestSeconds(null);
     setIsTimerFinished(false);
     targetEndTimeRef.current = null;
+    localStorage.removeItem('trophia_rest_end_time');
+    localStorage.removeItem('trophia_rest_initial_seconds');
   };
 
+  // Recuperar el temporizador si la PWA se recarga por completo al volver del fondo
+  useEffect(() => {
+    const savedEndTime = localStorage.getItem('trophia_rest_end_time');
+    const savedInitialSec = localStorage.getItem('trophia_rest_initial_seconds');
+
+    if (savedEndTime && savedInitialSec) {
+      const endTime = parseInt(savedEndTime, 10);
+      const initialSec = parseInt(savedInitialSec, 10);
+      const remaining = Math.ceil((endTime - Date.now()) / 1000);
+
+      if (remaining > 0) {
+        targetEndTimeRef.current = endTime;
+        setActiveRestSeconds(initialSec);
+        setRestRemaining(remaining);
+
+        if (restTimerRef.current) clearInterval(restTimerRef.current);
+        restTimerRef.current = setInterval(() => {
+          const currentRemaining = Math.ceil((endTime - Date.now()) / 1000);
+          if (currentRemaining <= 0) {
+            if (restTimerRef.current) clearInterval(restTimerRef.current);
+            setRestRemaining(0);
+            playTimerBeep();
+            triggerScreenFlash();
+            setIsTimerFinished(true);
+            localStorage.removeItem('trophia_rest_end_time');
+            localStorage.removeItem('trophia_rest_initial_seconds');
+            setTimeout(() => {
+              setActiveRestSeconds(null);
+              setIsTimerFinished(false);
+              targetEndTimeRef.current = null;
+            }, 5000);
+          } else {
+            setRestRemaining(currentRemaining);
+          }
+        }, 1000);
+      } else {
+        localStorage.removeItem('trophia_rest_end_time');
+        localStorage.removeItem('trophia_rest_initial_seconds');
+      }
+    }
+  }, []);
+
+  // Detector de visibilidad tradicional para cuando la app no se recarga sino que solo se minimiza
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && targetEndTimeRef.current && activeRestSeconds !== null) {
@@ -336,6 +404,9 @@ export function SessionView({
           playTimerBeep();
           triggerScreenFlash();
           setIsTimerFinished(true);
+
+          localStorage.removeItem('trophia_rest_end_time');
+          localStorage.removeItem('trophia_rest_initial_seconds');
 
           setTimeout(() => {
             setActiveRestSeconds(null);
@@ -493,6 +564,10 @@ export function SessionView({
   };
 
   const finishSession = async (s: TrainingSession) => {
+    localStorage.removeItem('trophia_active_session_id');
+    localStorage.removeItem('trophia_rest_end_time');
+    localStorage.removeItem('trophia_rest_initial_seconds');
+
     const filteredExercises = (s.exercises || []).filter((ex) => {
       if (ex.cardioDetails) {
         return ex.cardioDetails.completed === true;
@@ -512,7 +587,10 @@ export function SessionView({
     await db.sessions.put(updated);
     await enqueue({ kind: 'delete', table: 'sessions', id });
     showToast('Sesión movida a la papelera');
-    if (activeSessionId === id) onActiveSessionChange(null);
+    if (activeSessionId === id) {
+      localStorage.removeItem('trophia_active_session_id');
+      onActiveSessionChange(null);
+    }
   };
 
   const restoreSession = async (id: string) => {
@@ -732,6 +810,9 @@ export function SessionView({
                   <Button
                     variant="outline"
                     onClick={async () => {
+                      localStorage.removeItem('trophia_active_session_id');
+                      localStorage.removeItem('trophia_rest_end_time');
+                      localStorage.removeItem('trophia_rest_initial_seconds');
                       await updateSession({ ...activeSession, notes: localNotes });
                       onActiveSessionChange(null);
                     }}
@@ -1205,7 +1286,10 @@ export function SessionView({
                           <span>{totalVolume(s).toFixed(1)} kg vol.</span>
                         </div>
                         <div className="flex gap-2 pt-1">
-                          <Button size="sm" onClick={() => onActiveSessionChange(s.id)} className="flex-1">
+                          <Button size="sm" onClick={() => {
+                            localStorage.setItem('trophia_active_session_id', s.id);
+                            onActiveSessionChange(s.id);
+                          }} className="flex-1">
                             <Play size={14} />
                             Continuar
                           </Button>
@@ -1280,7 +1364,10 @@ export function SessionView({
                                 <span>{totalVolume(s).toFixed(1)} kg vol.</span>
                               </div>
                               <div className="flex gap-2 pt-1">
-                                <Button size="sm" onClick={() => onActiveSessionChange(s.id)} className="flex-1">
+                                <Button size="sm" onClick={() => {
+                                  localStorage.setItem('trophia_active_session_id', s.id);
+                                  onActiveSessionChange(s.id);
+                                }} className="flex-1">
                                   <Play size={14} />
                                   Abrir
                                 </Button>
