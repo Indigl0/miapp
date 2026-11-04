@@ -10,7 +10,7 @@ import { AnalyticsView } from '@/components/AnalyticsView';
 import { MetricsView } from '@/components/MetricsView';
 import { FullPageSpinner } from '@/components/ui/Feedback';
 import { TrophiaCoach } from '@/components/TrophiaCoach';
-import { X } from 'lucide-react'; // <-- Importado para el botón de cerrar el toast global
+import { X } from 'lucide-react';
 
 function AppContent() {
   const { user, ready } = useAuth();
@@ -22,7 +22,7 @@ function AppContent() {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage((prev) => (prev === msg ? null : prev));
-    }, 3000);
+    }, 3500);
   };
 
   useEffect(() => {
@@ -36,11 +36,14 @@ function AppContent() {
 
   return (
     <>
-      {/* Toast global para avisos en toda la app */}
+      {/* Toast con diseño corporativo naranja centrado arriba */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-gray-900 text-white dark:bg-white dark:text-gray-900 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-bounce">
-          <span className="text-sm font-medium">{toastMessage}</span>
-          <button onClick={() => setToastMessage(null)} className="opacity-70 hover:opacity-100 cursor-pointer">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-brand-500 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce border border-brand-400/40">
+          <span className="text-sm font-semibold tracking-wide">{toastMessage}</span>
+          <button 
+            onClick={() => setToastMessage(null)} 
+            className="opacity-80 hover:opacity-100 p-1 rounded-lg bg-black/10 hover:bg-black/20 transition-colors cursor-pointer"
+          >
             <X size={16} />
           </button>
         </div>
@@ -57,8 +60,12 @@ function AppContent() {
         }} 
         isSessionActive={!!activeSessionId}
         onLogoClick={() => {
-          if (activeSessionId) {
-            showToast("Tienes un entrenamiento en curso. Usa the botón 'Pausar' para salir");
+          if (view !== 'session') {
+            // Si estás en otra pestaña (Ejercicios, Análisis, Físico), el logo te lleva a Sesión
+            setView('session');
+          } else if (activeSessionId) {
+            // Si estás en Sesión y hay entrenamiento activo, muestra el aviso naranja
+            showToast("Tienes un entrenamiento en curso. Usa el botón 'Pausar' para salir");
           }
         }}
       >
