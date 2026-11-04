@@ -10,7 +10,7 @@ import { AnalyticsView } from '@/components/AnalyticsView';
 import { MetricsView } from '@/components/MetricsView';
 import { FullPageSpinner } from '@/components/ui/Feedback';
 import { TrophiaCoach } from '@/components/TrophiaCoach';
-import { X, Dumbbell } from 'lucide-react';
+import { X } from 'lucide-react';
 
 function AppContent() {
   const { user, ready } = useAuth();
@@ -22,7 +22,7 @@ function AppContent() {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage((prev) => (prev === msg ? null : prev));
-    }, 3500);
+    }, 3000);
   };
 
   useEffect(() => {
@@ -36,32 +36,12 @@ function AppContent() {
 
   return (
     <>
-      <style>{`
-        @keyframes noticeableBounce {
-          0%, 100% {
-            transform: translate(-50%, 0);
-          }
-          50% {
-            transform: translate(-50%, -12px);
-          }
-        }
-        .animate-noticeable-bounce {
-          animation: noticeableBounce 1s ease-in-out infinite;
-        }
-      `}</style>
-
-      {/* Notificación flotante inferior con rebote más notorio */}
+      {/* Notificación idéntica a la de la papelera con animate-bounce */}
       {toastMessage && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4.5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/10 dark:border-gray-200 animate-noticeable-bounce">
-          <div className="w-7 h-7 rounded-xl bg-brand-500 flex items-center justify-center shrink-0 text-white shadow-sm">
-            <Dumbbell size={15} />
-          </div>
-          <span className="text-xs sm:text-sm font-medium tracking-tight whitespace-nowrap">{toastMessage}</span>
-          <button 
-            onClick={() => setToastMessage(null)} 
-            className="opacity-70 hover:opacity-100 p-1 rounded-lg transition-colors cursor-pointer ml-1"
-          >
-            <X size={15} />
+        <div className="fixed bottom-6 right-6 z-50 bg-gray-900 text-white dark:bg-white dark:text-gray-900 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-bounce">
+          <span className="text-sm font-medium">{toastMessage}</span>
+          <button onClick={() => setToastMessage(null)} className="opacity-70 hover:opacity-100 cursor-pointer">
+            <X size={16} />
           </button>
         </div>
       )}
@@ -70,7 +50,7 @@ function AppContent() {
         view={view} 
         onView={(newView) => {
           if (activeSessionId && newView !== 'session') {
-            showToast("Entrenamiento en curso. Usa 'Pausar' para salir");
+            showToast("Tienes un entrenamiento en curso. Usa el botón 'Pausar' para salir");
             return;
           }
           setView(newView);
@@ -80,7 +60,7 @@ function AppContent() {
           if (view !== 'session') {
             setView('session');
           } else if (activeSessionId) {
-            showToast("Entrenamiento en curso. Usa 'Pausar' para salir");
+            showToast("Tienes un entrenamiento en curso. Usa el botón 'Pausar' para salir");
           }
         }}
       >
