@@ -314,9 +314,9 @@ export function SessionView({
     localStorage.setItem('trophia_rest_initial_seconds', seconds.toString());
     setRestRemaining(seconds);
 
-    const checkTime = () => {
-      const nowTime = Date.now();
-      const remaining = Math.ceil((endTime - nowTime) / 1000);
+    restTimerRef.current = setInterval(() => {
+      if (!targetEndTimeRef.current) return;
+      const remaining = Math.ceil((targetEndTimeRef.current - Date.now()) / 1000);
 
       if (remaining <= 0) {
         if (restTimerRef.current) clearInterval(restTimerRef.current);
@@ -336,9 +336,7 @@ export function SessionView({
       } else {
         setRestRemaining(remaining);
       }
-    };
-
-    restTimerRef.current = setInterval(checkTime, 1000);
+    }, 1000);
   };
 
   const cancelRestTimer = () => {
@@ -367,7 +365,8 @@ export function SessionView({
 
         if (restTimerRef.current) clearInterval(restTimerRef.current);
         restTimerRef.current = setInterval(() => {
-          const currentRemaining = Math.ceil((endTime - Date.now()) / 1000);
+          if (!targetEndTimeRef.current) return;
+          const currentRemaining = Math.ceil((targetEndTimeRef.current - Date.now()) / 1000);
           if (currentRemaining <= 0) {
             if (restTimerRef.current) clearInterval(restTimerRef.current);
             setRestRemaining(0);
@@ -392,10 +391,10 @@ export function SessionView({
     }
   }, []);
 
-  // Detector de visibilidad tradicional para cuando la app no se recarga sino que solo se minimiza
+  // Efecto para detectar cuando la app vuelve a estar visible sin destruir el intervalo en cada tick
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && targetEndTimeRef.current && activeRestSeconds !== null) {
+      if (document.visibilityState === 'visible' && targetEndTimeRef.current) {
         const remaining = Math.ceil((targetEndTimeRef.current - Date.now()) / 1000);
         
         if (remaining <= 0) {
@@ -424,7 +423,7 @@ export function SessionView({
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (restTimerRef.current) clearInterval(restTimerRef.current);
     };
-  }, [activeRestSeconds]);
+  }, []);
 
   const [weightInputs, setWeightInputs] = useState<Record<string, string>>({});
   const [distanceInputs, setDistanceInputs] = useState<Record<string, string>>({});
