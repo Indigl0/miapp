@@ -498,14 +498,24 @@ export function SessionView({
     await updateSession({ ...s, exercises: exercisesCopy });
 
     if (isNowCompleted) {
-      // Validar si es la última serie del último ejercicio de la sesión
-      const isLastExercise = exIdx === exercisesList.length - 1;
-      const currentSets = exercisesList[exIdx]?.sets || [];
-      const isLastSet = setIdx === currentSets.length - 1;
+      const currentEx = exercisesList[exIdx];
+      const currentSets = currentEx?.sets || [];
+      const isLastSetOfExercise = setIdx === currentSets.length - 1;
 
-      // Si es el último set del último ejercicio, no iniciamos el temporizador
-      if (!(isLastExercise && isLastSet)) {
-        const routineEx = currentRoutine?.exercises.find((re) => re.exerciseId === exercisesList[exIdx].exerciseId);
+      // Verificar si hay algún ejercicio posterior en la sesión que contenga series (ejercicios de fuerza)
+      let hasMoreWeightExercisesAhead = false;
+      for (let i = exIdx + 1; i < exercisesList.length; i++) {
+        if (exercisesList[i]?.sets && (exercisesList[i]?.sets?.length ?? 0) > 0) {
+          hasMoreWeightExercisesAhead = true;
+          break;
+        }
+      }
+
+      // Si es el último set del último ejercicio con pesas de la sesión, no iniciamos temporizador
+      const isFinalWeightSetOfSession = isLastSetOfExercise && !hasMoreWeightExercisesAhead;
+
+      if (!isFinalWeightSetOfSession) {
+        const routineEx = currentRoutine?.exercises.find((re) => re.exerciseId === currentEx?.exerciseId);
         if (routineEx?.restSeconds) {
           startRestTimer(routineEx.restSeconds);
         }
