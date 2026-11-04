@@ -37,24 +37,24 @@ function AppContent() {
   return (
     <>
       <style>{`
-        @keyframes fadeInUp {
+        @keyframes fadeInSoft {
           from {
             opacity: 0;
-            transform: translate(-50%, 16px);
+            transform: translate(-50%, 4px);
           }
           to {
             opacity: 1;
             transform: translate(-50%, 0);
           }
         }
-        .animate-fade-in-up {
-          animation: fadeInUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        .animate-fade-in-soft {
+          animation: fadeInSoft 0.2s ease-out forwards;
         }
       `}</style>
 
-      {/* Notificación flotante inferior con animación suave de deslizamiento */}
+      {/* Notificación flotante inferior con aparición ultra sutil en su lugar */}
       {toastMessage && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4.5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/10 dark:border-gray-200 animate-fade-in-up">
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4.5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/10 dark:border-gray-200 animate-fade-in-soft">
           <div className="w-7 h-7 rounded-xl bg-brand-500 flex items-center justify-center shrink-0 text-white shadow-sm">
             <Dumbbell size={15} />
           </div>
