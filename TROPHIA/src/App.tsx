@@ -36,9 +36,9 @@ function AppContent() {
 
   return (
     <>
-      {/* Notificación perfectamente centrada en la parte inferior */}
+      {/* Notificación perfectamente centrada con mx-auto */}
       {toastMessage && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white dark:bg-white dark:text-gray-900 px-4 py-3 rounded-xl shadow-2xl flex items-center justify-between gap-3 animate-bounce w-[90%] max-w-sm">
+        <div className="fixed bottom-6 left-0 right-0 mx-auto z-50 bg-gray-900 text-white dark:bg-white dark:text-gray-900 px-4 py-3 rounded-xl shadow-2xl flex items-center justify-between gap-3 animate-bounce w-[92%] max-w-sm">
           <span className="text-xs sm:text-sm font-medium text-center flex-1">{toastMessage}</span>
           <button onClick={() => setToastMessage(null)} className="opacity-70 hover:opacity-100 cursor-pointer shrink-0">
             <X size={16} />
