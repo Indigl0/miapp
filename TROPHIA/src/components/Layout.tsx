@@ -16,6 +16,7 @@ interface LayoutProps {
   children: ReactNode;
   headerExtra?: ReactNode;
   isSessionActive?: boolean;
+  onLogoClick?: () => void; // <-- Prop añadida para controlar el clic en el logo
 }
 
 const NAV: Array<{ id: View; label: string; icon: typeof TrendingUp }> = [
@@ -104,7 +105,7 @@ function DeveloperContactModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
   );
 }
 
-export function Layout({ view, onView, children, headerExtra, isSessionActive = false }: LayoutProps) {
+export function Layout({ view, onView, children, headerExtra, isSessionActive = false, onLogoClick }: LayoutProps) {
   const { user, logout, pendingMutations } = useAuth();
   const [theme, toggleTheme] = useTheme();
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
@@ -180,10 +181,16 @@ export function Layout({ view, onView, children, headerExtra, isSessionActive = 
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex h-20 items-center justify-between py-2">
             
-            {/* Izquierda: Logo y Título (Ahora interactivo para volver a la sesión) */}
+            {/* Izquierda: Logo y Título (Protegido por onLogoClick si hay sesión activa) */}
             <div 
-              onClick={() => !isAdmin && onView('session')}
-              className={`flex items-center gap-3 min-w-0 ${!isAdmin ? 'cursor-pointer group' : ''}`}
+              onClick={() => {
+                if (onLogoClick) {
+                  onLogoClick();
+                } else if (!isAdmin) {
+                  onView('session');
+                }
+              }}
+              className="flex items-center gap-3 min-w-0 cursor-pointer group"
               title="Ir a Sesión"
             >
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-500 shadow-md shadow-brand-500/40 shrink-0 group-hover:scale-105 transition-transform">
