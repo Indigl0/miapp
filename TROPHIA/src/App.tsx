@@ -36,11 +36,11 @@ function AppContent() {
 
   return (
     <>
-      {/* Notificación idéntica a la de la papelera con animate-bounce */}
+      {/* Notificación perfectamente centrada en la parte inferior */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-gray-900 text-white dark:bg-white dark:text-gray-900 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-bounce">
-          <span className="text-sm font-medium">{toastMessage}</span>
-          <button onClick={() => setToastMessage(null)} className="opacity-70 hover:opacity-100 cursor-pointer">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white dark:bg-white dark:text-gray-900 px-4 py-3 rounded-xl shadow-2xl flex items-center justify-between gap-3 animate-bounce w-[90%] max-w-sm">
+          <span className="text-xs sm:text-sm font-medium text-center flex-1">{toastMessage}</span>
+          <button onClick={() => setToastMessage(null)} className="opacity-70 hover:opacity-100 cursor-pointer shrink-0">
             <X size={16} />
           </button>
         </div>
