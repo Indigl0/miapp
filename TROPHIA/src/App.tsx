@@ -10,7 +10,7 @@ import { AnalyticsView } from '@/components/AnalyticsView';
 import { MetricsView } from '@/components/MetricsView';
 import { FullPageSpinner } from '@/components/ui/Feedback';
 import { TrophiaCoach } from '@/components/TrophiaCoach';
-import { X } from 'lucide-react';
+import { X, Dumbbell } from 'lucide-react'; // <-- Icono añadido para el toast
 
 function AppContent() {
   const { user, ready } = useAuth();
@@ -36,15 +36,18 @@ function AppContent() {
 
   return (
     <>
-      {/* Toast con diseño corporativo naranja centrado arriba */}
+      {/* Notificación flotante superior con estilo corporativo y animación suave */}
       {toastMessage && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-brand-500 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce border border-brand-400/40">
-          <span className="text-sm font-semibold tracking-wide">{toastMessage}</span>
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-brand-500 text-white px-4.5 py-3 rounded-2xl shadow-xl shadow-brand-500/25 flex items-center gap-3 animate-fade-in border border-brand-400/40">
+          <div className="w-7 h-7 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <Dumbbell size={15} className="text-white" />
+          </div>
+          <span className="text-xs sm:text-sm font-semibold tracking-wide whitespace-nowrap">{toastMessage}</span>
           <button 
             onClick={() => setToastMessage(null)} 
-            className="opacity-80 hover:opacity-100 p-1 rounded-lg bg-black/10 hover:bg-black/20 transition-colors cursor-pointer"
+            className="opacity-75 hover:opacity-100 p-1 rounded-lg bg-black/10 hover:bg-black/20 transition-colors cursor-pointer ml-1"
           >
-            <X size={16} />
+            <X size={15} />
           </button>
         </div>
       )}
@@ -53,7 +56,7 @@ function AppContent() {
         view={view} 
         onView={(newView) => {
           if (activeSessionId && newView !== 'session') {
-            showToast("Tienes un entrenamiento en curso. Usa el botón 'Pausar' para salir");
+            showToast("Entrenamiento en curso. Usa 'Pausar' para salir");
             return;
           }
           setView(newView);
@@ -61,11 +64,11 @@ function AppContent() {
         isSessionActive={!!activeSessionId}
         onLogoClick={() => {
           if (view !== 'session') {
-            // Si estás en otra pestaña (Ejercicios, Análisis, Físico), el logo te lleva a Sesión
+            // Si estás en otra sección (Físico, Análisis, etc.), el logo te lleva de vuelta a Sesión
             setView('session');
           } else if (activeSessionId) {
-            // Si estás en Sesión y hay entrenamiento activo, muestra el aviso naranja
-            showToast("Tienes un entrenamiento en curso. Usa el botón 'Pausar' para salir");
+            // Si estás en Sesión y hay entrenamiento activo, muestra el aviso elegante
+            showToast("Entrenamiento en curso. Usa 'Pausar' para salir");
           }
         }}
       >
